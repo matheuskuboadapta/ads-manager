@@ -40,6 +40,31 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
     });
   }, [campaigns, nameFilter, statusFilter]);
 
+  // Cálculo das métricas de resumo
+  const summaryMetrics = useMemo(() => {
+    if (!filteredCampaigns.length) return null;
+
+    const totalSpend = filteredCampaigns.reduce((sum, campaign) => sum + campaign.spend, 0);
+    const totalRevenue = filteredCampaigns.reduce((sum, campaign) => sum + campaign.revenue, 0);
+    const totalSales = filteredCampaigns.reduce((sum, campaign) => sum + campaign.sales, 0);
+    const totalProfit = filteredCampaigns.reduce((sum, campaign) => sum + campaign.profit, 0);
+    const totalClicks = filteredCampaigns.reduce((sum, campaign) => sum + campaign.clicks, 0);
+    const totalImpressions = filteredCampaigns.reduce((sum, campaign) => sum + campaign.impressions, 0);
+
+    return {
+      spend: totalSpend,
+      revenue: totalRevenue,
+      sales: totalSales,
+      profit: totalProfit,
+      cpa: totalSales > 0 ? totalSpend / totalSales : 0,
+      cpm: totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0,
+      roas: totalSpend > 0 ? totalRevenue / totalSpend : 0,
+      ctr: totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0,
+      clickCv: totalClicks > 0 ? (totalSales / totalClicks) * 100 : 0,
+      epc: totalClicks > 0 ? totalRevenue / totalClicks : 0,
+    };
+  }, [filteredCampaigns]);
+
   const handleStatusChange = async (campaign: any, newStatus: boolean) => {
     try {
       // Use realId instead of name
@@ -301,6 +326,47 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                   </TableCell>
                 </TableRow>
               ))}
+              {summaryMetrics && (
+                <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-semibold">
+                  <TableCell></TableCell>
+                  <TableCell className="font-bold text-blue-900">
+                    RESUMO ({filteredCampaigns.length} campanhas)
+                  </TableCell>
+                  <TableCell></TableCell>
+                  <TableCell className="text-right font-mono text-sm text-blue-900">
+                    {formatCurrency(summaryMetrics.spend)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-green-700 text-sm">
+                    {formatCurrency(summaryMetrics.revenue)}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold text-sm text-blue-900">
+                    {summaryMetrics.sales}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    <span className={summaryMetrics.profit > 0 ? 'text-green-700' : 'text-red-700'}>
+                      {formatCurrency(summaryMetrics.profit)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm text-blue-900">
+                    {formatCurrency(summaryMetrics.cpa)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm text-blue-900">
+                    {formatCurrency(summaryMetrics.cpm)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-semibold text-sm text-blue-900">
+                    {summaryMetrics.roas.toFixed(2)}x
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm text-blue-900">
+                    {formatPercentage(summaryMetrics.ctr)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm text-blue-900">
+                    {formatPercentage(summaryMetrics.clickCv)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm text-blue-900">
+                    {formatCurrency(summaryMetrics.epc)}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>

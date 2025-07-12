@@ -32,6 +32,31 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
     });
   }, [ads, nameFilter, statusFilter]);
 
+  // Cálculo das métricas de resumo
+  const summaryMetrics = useMemo(() => {
+    if (!filteredAds.length) return null;
+
+    const totalSpend = filteredAds.reduce((sum, ad) => sum + ad.spend, 0);
+    const totalRevenue = filteredAds.reduce((sum, ad) => sum + ad.revenue, 0);
+    const totalSales = filteredAds.reduce((sum, ad) => sum + ad.sales, 0);
+    const totalProfit = filteredAds.reduce((sum, ad) => sum + ad.profit, 0);
+    const totalClicks = filteredAds.reduce((sum, ad) => sum + ad.clicks, 0);
+    const totalImpressions = filteredAds.reduce((sum, ad) => sum + ad.impressions, 0);
+
+    return {
+      spend: totalSpend,
+      revenue: totalRevenue,
+      sales: totalSales,
+      profit: totalProfit,
+      cpa: totalSales > 0 ? totalSpend / totalSales : 0,
+      cpm: totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0,
+      roas: totalSpend > 0 ? totalRevenue / totalSpend : 0,
+      ctr: totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0,
+      clickCv: totalClicks > 0 ? (totalSales / totalClicks) * 100 : 0,
+      epc: totalClicks > 0 ? totalRevenue / totalClicks : 0,
+    };
+  }, [filteredAds]);
+
   const handleStatusChange = async (adId: string, newStatus: boolean) => {
     try {
       await updateAd(adId, 'status', newStatus ? 'ACTIVE' : 'PAUSED');
@@ -190,6 +215,47 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
                   </TableCell>
                 </TableRow>
               ))}
+              {summaryMetrics && (
+                <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-semibold">
+                  <TableCell></TableCell>
+                  <TableCell className="font-bold text-blue-900">
+                    RESUMO ({filteredAds.length} anúncios)
+                  </TableCell>
+                  <TableCell></TableCell>
+                  <TableCell className="text-right font-mono text-sm text-blue-900">
+                    {formatCurrency(summaryMetrics.spend)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-green-700 text-sm">
+                    {formatCurrency(summaryMetrics.revenue)}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold text-sm text-blue-900">
+                    {summaryMetrics.sales}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    <span className={summaryMetrics.profit > 0 ? 'text-green-700' : 'text-red-700'}>
+                      {formatCurrency(summaryMetrics.profit)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm text-blue-900">
+                    {formatCurrency(summaryMetrics.cpa)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm text-blue-900">
+                    {formatCurrency(summaryMetrics.cpm)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-semibold text-sm text-blue-900">
+                    {summaryMetrics.roas.toFixed(2)}x
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm text-blue-900">
+                    {formatPercentage(summaryMetrics.ctr)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm text-blue-900">
+                    {formatPercentage(summaryMetrics.clickCv)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm text-blue-900">
+                    {formatCurrency(summaryMetrics.epc)}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </div>
