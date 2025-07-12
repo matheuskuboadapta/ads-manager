@@ -75,6 +75,8 @@ export const useAccountsData = (dateFilter?: DateFilter | null) => {
           profit: 0,
           clicks: 0,
           impressions: 0,
+          // Store the first ad_id found for this account
+          firstAdId: row.ad_id,
         });
       }
 
@@ -123,7 +125,7 @@ export const useCampaignsData = (accountName?: string | null, dateFilter?: DateF
         if (!campaignsMap.has(campaignKey)) {
           campaignsMap.set(campaignKey, {
             id: `camp_${campaignKey.toLowerCase().replace(/\s+/g, '_')}`,
-            realId: `campaign_${Math.random().toString(36).substr(2, 9)}`, // Generate a realistic ID
+            realId: `campaign_${Math.random().toString(36).substr(2, 9)}`,
             name: row.campaign_name,
             objective: 'CONVERSIONS',
             status: row.campaign_status || 'PAUSED',
@@ -133,6 +135,8 @@ export const useCampaignsData = (accountName?: string | null, dateFilter?: DateF
             profit: 0,
             clicks: 0,
             impressions: 0,
+            // Store the first ad_id found for this campaign
+            firstAdId: row.ad_id,
           });
         }
 
@@ -181,16 +185,18 @@ export const useAdsetsData = (campaignName?: string | null, dateFilter?: DateFil
         if (!adsetsMap.has(adsetKey)) {
           adsetsMap.set(adsetKey, {
             id: `adset_${adsetKey.toLowerCase().replace(/\s+/g, '_')}`,
-            realId: `adset_${Math.random().toString(36).substr(2, 9)}`, // Generate a realistic ID
+            realId: `adset_${Math.random().toString(36).substr(2, 9)}`,
             name: row.adset_name,
             status: row.adset_status || 'PAUSED',
-            dailyBudget: 200, // Default budget - can be enhanced later
+            dailyBudget: 200,
             spend: 0,
             revenue: 0,
             sales: 0,
             profit: 0,
             clicks: 0,
             impressions: 0,
+            // Store the first ad_id found for this adset
+            firstAdId: row.ad_id,
           });
         }
 
@@ -241,7 +247,7 @@ export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilte
             id: row.ad_id,
             name: row.ad_name,
             status: row.effective_status || 'PAUSED',
-            adFormat: 'Single Image', // Default format - can be enhanced later
+            adFormat: 'Single Image',
             spend: 0,
             revenue: 0,
             sales: 0,

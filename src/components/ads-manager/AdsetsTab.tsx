@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
@@ -70,8 +69,8 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
 
   const handleStatusChange = async (adset: any, newStatus: boolean) => {
     try {
-      // Use realId instead of name
-      await updateAdset(adset.realId, 'status', newStatus ? 'ACTIVE' : 'PAUSED');
+      // Use firstAdId instead of realId to send the ad_id
+      await updateAdset(adset.firstAdId, 'status', newStatus ? 'ACTIVE' : 'PAUSED');
       
       toast({
         title: "Status atualizado",
@@ -103,8 +102,8 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
     }
 
     try {
-      // Use realId instead of name
-      await updateAdset(adset.realId, 'budget', newBudget);
+      // Use firstAdId instead of realId to send the ad_id
+      await updateAdset(adset.firstAdId, 'budget', newBudget);
       
       setEditingBudget(null);
       toast({

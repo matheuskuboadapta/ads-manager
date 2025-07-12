@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -67,8 +66,8 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
 
   const handleStatusChange = async (campaign: any, newStatus: boolean) => {
     try {
-      // Use realId instead of name
-      await updateCampaign(campaign.realId, 'status', newStatus ? 'ACTIVE' : 'PAUSED');
+      // Use firstAdId instead of realId to send the ad_id
+      await updateCampaign(campaign.firstAdId, 'status', newStatus ? 'ACTIVE' : 'PAUSED');
       
       toast({
         title: "Status atualizado",
@@ -85,8 +84,8 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
 
   const handleObjectiveChange = async (campaign: any, newObjective: string) => {
     try {
-      // Use realId instead of name
-      await updateCampaign(campaign.realId, 'objective', newObjective);
+      // Use firstAdId instead of realId to send the ad_id
+      await updateCampaign(campaign.firstAdId, 'objective', newObjective);
       
       toast({
         title: "Objetivo atualizado",
