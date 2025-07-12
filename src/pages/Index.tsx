@@ -17,6 +17,13 @@ export default function Index() {
   const [selectedAdset, setSelectedAdset] = useState<string | null>(null);
   const { toast } = useToast();
 
+  console.log('=== INDEX STATE ===');
+  console.log('activeTab:', activeTab);
+  console.log('selectedAccount:', selectedAccount);
+  console.log('selectedCampaign:', selectedCampaign);
+  console.log('selectedAdset:', selectedAdset);
+  console.log('===================');
+
   const handleRefresh = () => {
     toast({
       title: "Dados atualizados",
@@ -25,39 +32,81 @@ export default function Index() {
   };
 
   const handleAccountSelect = (accountName: string) => {
+    console.log('=== ACCOUNT SELECT HANDLER ===');
     console.log('Account selected:', accountName);
+    console.log('Previous selectedAccount:', selectedAccount);
+    
     setSelectedAccount(accountName);
     setSelectedCampaign(null);
     setSelectedAdset(null);
     setActiveTab('campaigns');
+    
+    console.log('State will be updated to:', {
+      selectedAccount: accountName,
+      selectedCampaign: null,
+      selectedAdset: null,
+      activeTab: 'campaigns'
+    });
+    console.log('==============================');
   };
 
   const handleCampaignSelect = (campaignName: string) => {
+    console.log('=== CAMPAIGN SELECT HANDLER ===');
     console.log('Campaign selected:', campaignName);
+    console.log('Current selectedAccount:', selectedAccount);
+    console.log('Previous selectedCampaign:', selectedCampaign);
+    
     setSelectedCampaign(campaignName);
     setSelectedAdset(null);
     setActiveTab('adsets');
+    
+    console.log('State will be updated to:', {
+      selectedAccount: selectedAccount,
+      selectedCampaign: campaignName,
+      selectedAdset: null,
+      activeTab: 'adsets'
+    });
+    console.log('===============================');
   };
 
   const handleAdsetSelect = (adsetName: string) => {
+    console.log('=== ADSET SELECT HANDLER ===');
     console.log('Adset selected:', adsetName);
+    console.log('Current selectedCampaign:', selectedCampaign);
+    console.log('Previous selectedAdset:', selectedAdset);
+    
     setSelectedAdset(adsetName);
     setActiveTab('ads');
+    
+    console.log('State will be updated to:', {
+      selectedCampaign: selectedCampaign,
+      selectedAdset: adsetName,
+      activeTab: 'ads'
+    });
+    console.log('============================');
   };
 
   const handleTabChange = (tab: string) => {
+    console.log('=== TAB CHANGE HANDLER ===');
+    console.log('Tab changed to:', tab);
+    console.log('Previous tab:', activeTab);
+    
     setActiveTab(tab);
     // Clear selections when accessing tabs directly
     if (tab === 'accounts') {
       setSelectedAccount(null);
       setSelectedCampaign(null);
       setSelectedAdset(null);
+      console.log('Cleared all selections for accounts tab');
     } else if (tab === 'campaigns') {
       setSelectedCampaign(null);
       setSelectedAdset(null);
+      console.log('Cleared campaign and adset selections for campaigns tab');
     } else if (tab === 'adsets') {
       setSelectedAdset(null);
+      console.log('Cleared adset selection for adsets tab');
     }
+    console.log('==========================');
   };
 
   return (

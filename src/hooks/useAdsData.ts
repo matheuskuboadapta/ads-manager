@@ -44,6 +44,7 @@ export const useAdsData = (dateFilter?: DateFilter | null) => {
       }
 
       console.log('Ads data fetched successfully:', data?.length, 'records');
+      console.log('Sample of raw data:', data?.slice(0, 3));
       return data as AdsViewData[];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -114,10 +115,17 @@ export const useCampaignsData = (accountName?: string | null, dateFilter?: DateF
     if (!adsData) return [];
 
     console.log('Processing campaigns data for account:', accountName);
+    console.log('Total raw ads data records:', adsData.length);
+    
     const campaignsMap = new Map();
+    let filteredRows = 0;
 
     adsData
-      .filter(row => !accountName || row.account_name === accountName)
+      .filter(row => {
+        const shouldInclude = !accountName || row.account_name === accountName;
+        if (shouldInclude) filteredRows++;
+        return shouldInclude;
+      })
       .forEach(row => {
         if (!row.campaign_name) return;
 
@@ -149,6 +157,10 @@ export const useCampaignsData = (accountName?: string | null, dateFilter?: DateF
         campaign.impressions += row.impressions || 0;
       });
 
+    console.log('Filtered rows for account:', filteredRows);
+    console.log('Unique campaigns found:', campaignsMap.size);
+    console.log('Campaign names:', Array.from(campaignsMap.keys()));
+
     const campaigns = Array.from(campaignsMap.values()).map(campaign => ({
       ...campaign,
       cpa: campaign.sales > 0 ? campaign.spend / campaign.sales : 0,
@@ -173,41 +185,70 @@ export const useAdsetsData = (campaignName?: string | null, dateFilter?: DateFil
   const adsetsData = React.useMemo(() => {
     if (!adsData) return [];
 
+    console.log('=== ADSETS DATA PROCESSING ===');
     console.log('Processing adsets data for campaign:', campaignName);
+    console.log('Total raw ads data records:', adsData.length);
+    
+    // Log all campaign names available in the data
+    const uniqueCampaignNames = [...new Set(adsData.map(row => row.campaign_name).filter(Boolean))];
+    console.log('Available campaign names in data:', uniqueCampaignNames);
+    
     const adsetsMap = new Map();
+    let filteredRows = 0;
 
-    adsData
-      .filter(row => !campaignName || row.campaign_name === campaignName)
-      .forEach(row => {
-        if (!row.adset_name) return;
+    const filteredData = adsData.filter(row => {
+      const shouldInclude = !campaignName || row.campaign_name === campaignName;
+      if (shouldInclude) filteredRows++;
+      if (campaignName && row.campaign_name === campaignName) {
+        console.log('Matching row found:', {
+          campaign_name: row.campaign_name,
+          adset_name: row.adset_name,
+          ad_name: row.ad_name
+        });
+      }
+      return shouldInclude;
+    });
 
-        const adsetKey = row.adset_name;
-        if (!adsetsMap.has(adsetKey)) {
-          adsetsMap.set(adsetKey, {
-            id: `adset_${adsetKey.toLowerCase().replace(/\s+/g, '_')}`,
-            realId: `adset_${Math.random().toString(36).substr(2, 9)}`,
-            name: row.adset_name,
-            status: row.adset_status || 'PAUSED',
-            dailyBudget: 200,
-            spend: 0,
-            revenue: 0,
-            sales: 0,
-            profit: 0,
-            clicks: 0,
-            impressions: 0,
-            // Store the first ad_id found for this adset
-            firstAdId: row.ad_id,
-          });
-        }
+    console.log('Filtered rows for campaign:', filteredRows);
+    console.log('Filtered data sample:', filteredData.slice(0, 3));
 
-        const adset = adsetsMap.get(adsetKey);
-        adset.spend += row.spend || 0;
-        adset.revenue += row.real_revenue || 0;
-        adset.sales += row.real_sales || 0;
-        adset.profit += row.profit || 0;
-        adset.clicks += row.clicks || 0;
-        adset.impressions += row.impressions || 0;
-      });
+    filteredData.forEach(row => {
+      if (!row.adset_name) {
+        console.log('Row missing adset_name:', row);
+        return;
+      }
+
+      const adsetKey = row.adset_name;
+      if (!adsetsMap.has(adsetKey)) {
+        console.log('Creating new adset:', adsetKey);
+        adsetsMap.set(adsetKey, {
+          id: `adset_${adsetKey.toLowerCase().replace(/\s+/g, '_')}`,
+          realId: `adset_${Math.random().toString(36).substr(2, 9)}`,
+          name: row.adset_name,
+          status: row.adset_status || 'PAUSED',
+          dailyBudget: 200,
+          spend: 0,
+          revenue: 0,
+          sales: 0,
+          profit: 0,
+          clicks: 0,
+          impressions: 0,
+          // Store the first ad_id found for this adset
+          firstAdId: row.ad_id,
+        });
+      }
+
+      const adset = adsetsMap.get(adsetKey);
+      adset.spend += row.spend || 0;
+      adset.revenue += row.real_revenue || 0;
+      adset.sales += row.real_sales || 0;
+      adset.profit += row.profit || 0;
+      adset.clicks += row.clicks || 0;
+      adset.impressions += row.impressions || 0;
+    });
+
+    console.log('Unique adsets found:', adsetsMap.size);
+    console.log('Adset names:', Array.from(adsetsMap.keys()));
 
     const adsets = Array.from(adsetsMap.values()).map(adset => ({
       ...adset,
@@ -220,7 +261,8 @@ export const useAdsetsData = (campaignName?: string | null, dateFilter?: DateFil
       roas: adset.spend > 0 ? adset.revenue / adset.spend : 0,
     }));
 
-    console.log('Processed adsets:', adsets.length);
+    console.log('Final processed adsets:', adsets.length);
+    console.log('=== END ADSETS DATA PROCESSING ===');
     return adsets;
   }, [adsData, campaignName]);
 
