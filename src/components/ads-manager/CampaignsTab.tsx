@@ -12,119 +12,23 @@ import { Eye, Plus, Target } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { updateCampaign, createCampaign } from '@/utils/api';
-
-interface Campaign {
-  id: string;
-  name: string;
-  objective: string;
-  status: 'active' | 'paused';
-  spend: number;
-  revenue: number;
-  sales: number;
-  profit: number;
-  cpa: number;
-  clicks: number;
-  cpm: number;
-  cpc: number;
-  ctr: number;
-  clickCv: number;
-  epc: number;
-  roas: number;
-}
+import { useCampaignsData } from '@/hooks/useAdsData';
 
 interface CampaignsTabProps {
   accountId: string | null;
   onCampaignSelect: (campaignId: string) => void;
 }
 
-// Mock data
-const mockCampaigns: Campaign[] = [
-  {
-    id: 'camp_001',
-    name: 'Black Friday 2024 - Cremes',
-    objective: 'CONVERSIONS',
-    status: 'active',
-    spend: 5420.30,
-    revenue: 18250.80,
-    sales: 47,
-    profit: 12830.50,
-    cpa: 115.30,
-    clicks: 1250,
-    cpm: 15.40,
-    cpc: 4.34,
-    ctr: 2.82,
-    clickCv: 3.76,
-    epc: 14.60,
-    roas: 3.37
-  },
-  {
-    id: 'camp_002',
-    name: 'Retargeting - Abandono Carrinho',
-    objective: 'CONVERSIONS',
-    status: 'active',
-    spend: 2840.75,
-    revenue: 9150.30,
-    sales: 28,
-    profit: 6309.55,
-    cpa: 101.46,
-    clicks: 890,
-    cpm: 12.80,
-    cpc: 3.19,
-    ctr: 4.01,
-    clickCv: 3.15,
-    epc: 10.28,
-    roas: 3.22
-  },
-  {
-    id: 'camp_003',
-    name: 'Prospecção - Lookalike',
-    objective: 'REACH',
-    status: 'paused',
-    spend: 1180.40,
-    revenue: 2890.20,
-    sales: 12,
-    profit: 1709.80,
-    cpa: 98.37,
-    clicks: 420,
-    cpm: 8.90,
-    cpc: 2.81,
-    ctr: 3.17,
-    clickCv: 2.86,
-    epc: 6.88,
-    roas: 2.45
-  }
-];
-
 const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: campaigns, isLoading, error } = useCampaignsData(accountId);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newCampaign, setNewCampaign] = useState({ name: '', objective: 'CONVERSIONS' });
   const { toast } = useToast();
-
-  useEffect(() => {
-    if (accountId) {
-      loadCampaigns();
-    }
-  }, [accountId]);
-
-  const loadCampaigns = async () => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-    setCampaigns(mockCampaigns);
-    setLoading(false);
-  };
 
   const handleStatusChange = async (campaignId: string, newStatus: boolean) => {
     try {
       await updateCampaign(campaignId, 'status', newStatus ? 'active' : 'paused');
       
-      setCampaigns(prev => prev.map(campaign => 
-        campaign.id === campaignId 
-          ? { ...campaign, status: newStatus ? 'active' : 'paused' }
-          : campaign
-      ));
-
       toast({
         title: "Status atualizado",
         description: `Campanha ${newStatus ? 'ativada' : 'pausada'} com sucesso.`,
@@ -142,12 +46,6 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
     try {
       await updateCampaign(campaignId, 'objective', newObjective);
       
-      setCampaigns(prev => prev.map(campaign => 
-        campaign.id === campaignId 
-          ? { ...campaign, objective: newObjective }
-          : campaign
-      ));
-
       toast({
         title: "Objetivo atualizado",
         description: "Objetivo da campanha alterado com sucesso.",
@@ -185,7 +83,6 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
 
       setShowCreateDialog(false);
       setNewCampaign({ name: '', objective: 'CONVERSIONS' });
-      loadCampaigns();
     } catch (error) {
       toast({
         title: "Erro",
@@ -195,11 +92,33 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         <span className="ml-3 text-slate-600">Carregando campanhas...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <p className="text-red-600 mb-2">Erro ao carregar dados das campanhas</p>
+          <p className="text-slate-500 text-sm">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!campaigns || campaigns.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <p className="text-slate-600 mb-2">Nenhuma campanha encontrada</p>
+          <p className="text-slate-500 text-sm">Selecione uma conta com campanhas ativas</p>
+        </div>
       </div>
     );
   }
@@ -336,7 +255,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                 </TableCell>
                 <TableCell className="text-center">
                   <Button
-                    onClick={() => onCampaignSelect(campaign.id)}
+                    onClick={() => onCampaignSelect(campaign.name)}
                     size="sm"
                     className="flex items-center space-x-1"
                   >

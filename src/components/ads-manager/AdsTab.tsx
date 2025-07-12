@@ -7,116 +7,20 @@ import { Megaphone, ExternalLink } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { updateAd } from '@/utils/api';
-
-interface Ad {
-  id: string;
-  name: string;
-  status: 'active' | 'paused';
-  adFormat: string;
-  spend: number;
-  revenue: number;
-  sales: number;
-  profit: number;
-  cpa: number;
-  clicks: number;
-  cpm: number;
-  cpc: number;
-  ctr: number;
-  clickCv: number;
-  epc: number;
-  roas: number;
-}
+import { useAdsListData } from '@/hooks/useAdsData';
 
 interface AdsTabProps {
   adsetId: string | null;
 }
 
-// Mock data
-const mockAds: Ad[] = [
-  {
-    id: 'ad_001',
-    name: 'Creme Anti-Idade - Carousel',
-    status: 'active',
-    adFormat: 'Carousel/Collection',
-    spend: 1240.30,
-    revenue: 4180.50,
-    sales: 12,
-    profit: 2940.20,
-    cpa: 103.36,
-    clicks: 320,
-    cpm: 16.80,
-    cpc: 3.88,
-    ctr: 4.33,
-    clickCv: 3.75,
-    epc: 13.06,
-    roas: 3.37
-  },
-  {
-    id: 'ad_002',
-    name: 'Sérum Vitamina C - Video',
-    status: 'active',
-    adFormat: 'Video',
-    spend: 890.50,
-    revenue: 2650.30,
-    sales: 8,
-    profit: 1759.80,
-    cpa: 111.31,
-    clicks: 240,
-    cpm: 14.20,
-    cpc: 3.71,
-    ctr: 3.83,
-    clickCv: 3.33,
-    epc: 11.04,
-    roas: 2.98
-  },
-  {
-    id: 'ad_003',
-    name: 'Kit Skincare - Single Image',
-    status: 'paused',
-    adFormat: 'Single Image',
-    spend: 430.15,
-    revenue: 1290.40,
-    sales: 4,
-    profit: 860.25,
-    cpa: 107.54,
-    clicks: 120,
-    cpm: 12.40,
-    cpc: 3.58,
-    ctr: 3.46,
-    clickCv: 3.33,
-    epc: 10.75,
-    roas: 3.00
-  }
-];
-
 const AdsTab = ({ adsetId }: AdsTabProps) => {
-  const [ads, setAds] = useState<Ad[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: ads, isLoading, error } = useAdsListData(adsetId);
   const { toast } = useToast();
-
-  useEffect(() => {
-    if (adsetId) {
-      loadAds();
-    }
-  }, [adsetId]);
-
-  const loadAds = async () => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-    setAds(mockAds);
-    setLoading(false);
-  };
 
   const handleStatusChange = async (adId: string, newStatus: boolean) => {
     try {
       await updateAd(adId, 'status', newStatus ? 'active' : 'paused');
       
-      setAds(prev => prev.map(ad => 
-        ad.id === adId 
-          ? { ...ad, status: newStatus ? 'active' : 'paused' }
-          : ad
-      ));
-
       toast({
         title: "Status atualizado",
         description: `Anúncio ${newStatus ? 'ativado' : 'pausado'} com sucesso.`,
@@ -130,11 +34,33 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         <span className="ml-3 text-slate-600">Carregando anúncios...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <p className="text-red-600 mb-2">Erro ao carregar dados dos anúncios</p>
+          <p className="text-slate-500 text-sm">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!ads || ads.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <p className="text-slate-600 mb-2">Nenhum anúncio encontrado</p>
+          <p className="text-slate-500 text-sm">Selecione um conjunto com anúncios ativos</p>
+        </div>
       </div>
     );
   }

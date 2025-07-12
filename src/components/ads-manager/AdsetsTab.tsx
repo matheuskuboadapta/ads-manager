@@ -11,121 +11,25 @@ import { Eye, Plus, BarChart3, Edit2, Check, X } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { updateAdset, createAdset } from '@/utils/api';
-
-interface Adset {
-  id: string;
-  name: string;
-  status: 'active' | 'paused';
-  dailyBudget: number;
-  spend: number;
-  revenue: number;
-  sales: number;
-  profit: number;
-  cpa: number;
-  clicks: number;
-  cpm: number;
-  cpc: number;
-  ctr: number;
-  clickCv: number;
-  epc: number;
-  roas: number;
-}
+import { useAdsetsData } from '@/hooks/useAdsData';
 
 interface AdsetsTabProps {
   campaignId: string | null;
   onAdsetSelect: (adsetId: string) => void;
 }
 
-// Mock data
-const mockAdsets: Adset[] = [
-  {
-    id: 'adset_001',
-    name: 'Lookalike 1% - Compradoras 90d',
-    status: 'active',
-    dailyBudget: 250.00,
-    spend: 2180.40,
-    revenue: 7850.30,
-    sales: 24,
-    profit: 5669.90,
-    cpa: 90.85,
-    clicks: 580,
-    cpm: 18.40,
-    cpc: 3.76,
-    ctr: 4.89,
-    clickCv: 4.14,
-    epc: 13.53,
-    roas: 3.60
-  },
-  {
-    id: 'adset_002',
-    name: 'Interesses - Skincare + Beauty',
-    status: 'active',
-    dailyBudget: 180.00,
-    spend: 1540.85,
-    revenue: 4320.50,
-    sales: 18,
-    profit: 2779.65,
-    cpa: 85.60,
-    clicks: 420,
-    cpm: 15.20,
-    cpc: 3.67,
-    ctr: 4.14,
-    clickCv: 4.29,
-    epc: 10.29,
-    roas: 2.80
-  },
-  {
-    id: 'adset_003',
-    name: 'Retargeting - Visualizaram Produto',
-    status: 'paused',
-    dailyBudget: 120.00,
-    spend: 890.25,
-    revenue: 2580.40,
-    sales: 12,
-    profit: 1690.15,
-    cpa: 74.19,
-    clicks: 290,
-    cpm: 12.80,
-    cpc: 3.07,
-    ctr: 4.17,
-    clickCv: 4.14,
-    epc: 8.90,
-    roas: 2.90
-  }
-];
-
 const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
-  const [adsets, setAdsets] = useState<Adset[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: adsets, isLoading, error } = useAdsetsData(campaignId);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
   const [tempBudget, setTempBudget] = useState<string>('');
   const [newAdset, setNewAdset] = useState({ name: '', dailyBudget: '' });
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (campaignId) {
-      loadAdsets();
-    }
-  }, [campaignId]);
-
-  const loadAdsets = async () => {
-    setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 800));
-    setAdsets(mockAdsets);
-    setLoading(false);
-  };
-
   const handleStatusChange = async (adsetId: string, newStatus: boolean) => {
     try {
       await updateAdset(adsetId, 'status', newStatus ? 'active' : 'paused');
       
-      setAdsets(prev => prev.map(adset => 
-        adset.id === adsetId 
-          ? { ...adset, status: newStatus ? 'active' : 'paused' }
-          : adset
-      ));
-
       toast({
         title: "Status atualizado",
         description: `Conjunto ${newStatus ? 'ativado' : 'pausado'} com sucesso.`,
@@ -158,12 +62,6 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
     try {
       await updateAdset(adsetId, 'budget', newBudget);
       
-      setAdsets(prev => prev.map(adset => 
-        adset.id === adsetId 
-          ? { ...adset, dailyBudget: newBudget }
-          : adset
-      ));
-
       setEditingBudget(null);
       toast({
         title: "Orçamento atualizado",
@@ -218,7 +116,6 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
 
       setShowCreateDialog(false);
       setNewAdset({ name: '', dailyBudget: '' });
-      loadAdsets();
     } catch (error) {
       toast({
         title: "Erro",
@@ -228,11 +125,33 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         <span className="ml-3 text-slate-600">Carregando conjuntos...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <p className="text-red-600 mb-2">Erro ao carregar dados dos conjuntos</p>
+          <p className="text-slate-500 text-sm">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!adsets || adsets.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <p className="text-slate-600 mb-2">Nenhum conjunto encontrado</p>
+          <p className="text-slate-500 text-sm">Selecione uma campanha com conjuntos ativos</p>
+        </div>
       </div>
     );
   }
@@ -389,7 +308,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                 </TableCell>
                 <TableCell className="text-center">
                   <Button
-                    onClick={() => onAdsetSelect(adset.id)}
+                    onClick={() => onAdsetSelect(adset.name)}
                     size="sm"
                     className="flex items-center space-x-1"
                   >
