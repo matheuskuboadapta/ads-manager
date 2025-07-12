@@ -1,18 +1,20 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Eye, Plus, Target } from 'lucide-react';
+import { Plus, Target } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { updateCampaign, createCampaign } from '@/utils/api';
 import { useCampaignsData } from '@/hooks/useAdsData';
+import FilterBar from './FilterBar';
+import { DateRange } from 'react-day-picker';
+import { Button } from '@/components/ui/button';
 
 interface CampaignsTabProps {
   accountId: string | null;
@@ -23,7 +25,20 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   const { data: campaigns, isLoading, error } = useCampaignsData(accountId);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newCampaign, setNewCampaign] = useState({ name: '', objective: 'CONVERSIONS' });
+  const [nameFilter, setNameFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const { toast } = useToast();
+
+  const filteredCampaigns = useMemo(() => {
+    if (!campaigns) return [];
+
+    return campaigns.filter(campaign => {
+      const matchesName = campaign.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || campaign.status === statusFilter;
+      return matchesName && matchesStatus;
+    });
+  }, [campaigns, nameFilter, statusFilter]);
 
   const handleStatusChange = async (campaignId: string, newStatus: boolean) => {
     try {
@@ -132,7 +147,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
         </div>
         <div className="flex items-center space-x-3">
           <Badge variant="secondary" className="px-3 py-1">
-            {campaigns.length} campanhas
+            {filteredCampaigns.length} campanhas
           </Badge>
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
@@ -186,6 +201,16 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
         </div>
       </div>
 
+      <FilterBar
+        activeTab="campaigns"
+        onNameFilter={setNameFilter}
+        onStatusFilter={setStatusFilter}
+        onDateRangeFilter={setDateRange}
+        nameFilter={nameFilter}
+        statusFilter={statusFilter}
+        dateRange={dateRange}
+      />
+
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -197,13 +222,16 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
               <TableHead className="font-semibold text-right">Faturamento</TableHead>
               <TableHead className="font-semibold text-right">Vendas</TableHead>
               <TableHead className="font-semibold text-right">Profit</TableHead>
+              <TableHead className="font-semibold text-right">CPA</TableHead>
+              <TableHead className="font-semibold text-right">CPM</TableHead>
               <TableHead className="font-semibold text-right">ROAS</TableHead>
               <TableHead className="font-semibold text-right">CTR</TableHead>
-              <TableHead className="font-semibold text-center">Ações</TableHead>
+              <TableHead className="font-semibold text-right">Click CV</TableHead>
+              <TableHead className="font-semibold text-right">EPC</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {campaigns.map((campaign) => (
+            {filteredCampaigns.map((campaign) => (
               <TableRow key={campaign.id} className="hover:bg-slate-50">
                 <TableCell>
                   <Switch
@@ -212,9 +240,12 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                   />
                 </TableCell>
                 <TableCell className="font-medium">
-                  <div className="flex items-center space-x-2">
+                  <div 
+                    className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors"
+                    onClick={() => onCampaignSelect(campaign.name)}
+                  >
                     <Target className="h-4 w-4 text-blue-600" />
-                    <span>{campaign.name}</span>
+                    <span className="underline-offset-4 hover:underline">{campaign.name}</span>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -247,21 +278,23 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                     {formatCurrency(campaign.profit)}
                   </span>
                 </TableCell>
+                <TableCell className="text-right font-mono">
+                  {formatCurrency(campaign.cpa)}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {formatCurrency(campaign.cpm)}
+                </TableCell>
                 <TableCell className="text-right font-mono font-semibold">
                   {campaign.roas.toFixed(2)}x
                 </TableCell>
                 <TableCell className="text-right font-mono">
                   {formatPercentage(campaign.ctr)}
                 </TableCell>
-                <TableCell className="text-center">
-                  <Button
-                    onClick={() => onCampaignSelect(campaign.name)}
-                    size="sm"
-                    className="flex items-center space-x-1"
-                  >
-                    <Eye className="h-4 w-4" />
-                    <span>Ver Conjuntos</span>
-                  </Button>
+                <TableCell className="text-right font-mono">
+                  {formatPercentage(campaign.clickCv)}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {formatCurrency(campaign.epc)}
                 </TableCell>
               </TableRow>
             ))}

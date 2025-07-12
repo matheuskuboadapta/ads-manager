@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -8,6 +8,8 @@ import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { updateAd } from '@/utils/api';
 import { useAdsListData } from '@/hooks/useAdsData';
+import FilterBar from './FilterBar';
+import { DateRange } from 'react-day-picker';
 
 interface AdsTabProps {
   adsetId: string | null;
@@ -15,7 +17,20 @@ interface AdsTabProps {
 
 const AdsTab = ({ adsetId }: AdsTabProps) => {
   const { data: ads, isLoading, error } = useAdsListData(adsetId);
+  const [nameFilter, setNameFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const { toast } = useToast();
+
+  const filteredAds = useMemo(() => {
+    if (!ads) return [];
+
+    return ads.filter(ad => {
+      const matchesName = ad.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || ad.status === statusFilter;
+      return matchesName && matchesStatus;
+    });
+  }, [ads, nameFilter, statusFilter]);
 
   const handleStatusChange = async (adId: string, newStatus: boolean) => {
     try {
@@ -73,9 +88,19 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
           <p className="text-slate-600">Visualize o desempenho individual dos anúncios</p>
         </div>
         <Badge variant="secondary" className="px-3 py-1">
-          {ads.length} anúncios
+          {filteredAds.length} anúncios
         </Badge>
       </div>
+
+      <FilterBar
+        activeTab="ads"
+        onNameFilter={setNameFilter}
+        onStatusFilter={setStatusFilter}
+        onDateRangeFilter={setDateRange}
+        nameFilter={nameFilter}
+        statusFilter={statusFilter}
+        dateRange={dateRange}
+      />
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-start space-x-3">
@@ -102,13 +127,16 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
               <TableHead className="font-semibold text-right">Faturamento</TableHead>
               <TableHead className="font-semibold text-right">Vendas</TableHead>
               <TableHead className="font-semibold text-right">Profit</TableHead>
-              <TableHead className="font-semibold text-right">ROAS</TableHead>
               <TableHead className="font-semibold text-right">CPA</TableHead>
+              <TableHead className="font-semibold text-right">CPM</TableHead>
+              <TableHead className="font-semibold text-right">ROAS</TableHead>
               <TableHead className="font-semibold text-right">CTR</TableHead>
+              <TableHead className="font-semibold text-right">Click CV</TableHead>
+              <TableHead className="font-semibold text-right">EPC</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {ads.map((ad) => (
+            {filteredAds.map((ad) => (
               <TableRow key={ad.id} className="hover:bg-slate-50">
                 <TableCell>
                   <Switch
@@ -141,14 +169,23 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
                     {formatCurrency(ad.profit)}
                   </span>
                 </TableCell>
-                <TableCell className="text-right font-mono font-semibold">
-                  {ad.roas.toFixed(2)}x
-                </TableCell>
                 <TableCell className="text-right font-mono">
                   {formatCurrency(ad.cpa)}
                 </TableCell>
                 <TableCell className="text-right font-mono">
+                  {formatCurrency(ad.cpm)}
+                </TableCell>
+                <TableCell className="text-right font-mono font-semibold">
+                  {ad.roas.toFixed(2)}x
+                </TableCell>
+                <TableCell className="text-right font-mono">
                   {formatPercentage(ad.ctr)}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {formatPercentage(ad.clickCv)}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {formatCurrency(ad.epc)}
                 </TableCell>
               </TableRow>
             ))}

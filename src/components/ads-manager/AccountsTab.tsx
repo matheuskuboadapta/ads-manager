@@ -1,11 +1,12 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, BarChart3 } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useAccountsData } from '@/hooks/useAdsData';
+import FilterBar from './FilterBar';
+import { DateRange } from 'react-day-picker';
 
 interface AccountsTabProps {
   onAccountSelect: (accountId: string) => void;
@@ -13,6 +14,18 @@ interface AccountsTabProps {
 
 const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
   const { data: accounts, isLoading, error } = useAccountsData();
+  const [nameFilter, setNameFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+
+  const filteredAccounts = useMemo(() => {
+    if (!accounts) return [];
+
+    return accounts.filter(account => {
+      const matchesName = account.name.toLowerCase().includes(nameFilter.toLowerCase());
+      return matchesName;
+    });
+  }, [accounts, nameFilter]);
 
   if (isLoading) {
     return (
@@ -53,9 +66,19 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
           <p className="text-slate-600">Visualize e gerencie suas contas do Meta Ads</p>
         </div>
         <Badge variant="secondary" className="px-3 py-1">
-          {accounts.length} contas
+          {filteredAccounts.length} contas
         </Badge>
       </div>
+
+      <FilterBar
+        activeTab="accounts"
+        onNameFilter={setNameFilter}
+        onStatusFilter={setStatusFilter}
+        onDateRangeFilter={setDateRange}
+        nameFilter={nameFilter}
+        statusFilter={statusFilter}
+        dateRange={dateRange}
+      />
 
       <div className="overflow-x-auto">
         <Table>
@@ -68,18 +91,23 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
               <TableHead className="font-semibold text-right">Vendas</TableHead>
               <TableHead className="font-semibold text-right">Profit</TableHead>
               <TableHead className="font-semibold text-right">CPA</TableHead>
+              <TableHead className="font-semibold text-right">CPM</TableHead>
               <TableHead className="font-semibold text-right">ROAS</TableHead>
               <TableHead className="font-semibold text-right">CTR</TableHead>
-              <TableHead className="font-semibold text-center">Ações</TableHead>
+              <TableHead className="font-semibold text-right">Click CV</TableHead>
+              <TableHead className="font-semibold text-right">EPC</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {accounts.map((account) => (
+            {filteredAccounts.map((account) => (
               <TableRow key={account.id} className="hover:bg-slate-50">
                 <TableCell className="font-medium">
-                  <div className="flex items-center space-x-2">
+                  <div 
+                    className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors"
+                    onClick={() => onAccountSelect(account.name)}
+                  >
                     <BarChart3 className="h-4 w-4 text-blue-600" />
-                    <span>{account.name}</span>
+                    <span className="underline-offset-4 hover:underline">{account.name}</span>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -107,21 +135,20 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
                 <TableCell className="text-right font-mono">
                   {formatCurrency(account.cpa)}
                 </TableCell>
+                <TableCell className="text-right font-mono">
+                  {formatCurrency(account.cpm)}
+                </TableCell>
                 <TableCell className="text-right font-mono font-semibold">
                   {account.roas.toFixed(2)}x
                 </TableCell>
                 <TableCell className="text-right font-mono">
                   {formatPercentage(account.ctr)}
                 </TableCell>
-                <TableCell className="text-center">
-                  <Button
-                    onClick={() => onAccountSelect(account.name)}
-                    size="sm"
-                    className="flex items-center space-x-1"
-                  >
-                    <Eye className="h-4 w-4" />
-                    <span>Ver Campanhas</span>
-                  </Button>
+                <TableCell className="text-right font-mono">
+                  {formatPercentage(account.clickCv)}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {formatCurrency(account.epc)}
                 </TableCell>
               </TableRow>
             ))}

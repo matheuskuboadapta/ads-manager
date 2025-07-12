@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,11 +7,13 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Eye, Plus, BarChart3, Edit2, Check, X } from 'lucide-react';
+import { Plus, BarChart3, Edit2, Check, X } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { updateAdset, createAdset } from '@/utils/api';
 import { useAdsetsData } from '@/hooks/useAdsData';
+import FilterBar from './FilterBar';
+import { DateRange } from 'react-day-picker';
 
 interface AdsetsTabProps {
   campaignId: string | null;
@@ -24,7 +26,20 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
   const [tempBudget, setTempBudget] = useState<string>('');
   const [newAdset, setNewAdset] = useState({ name: '', dailyBudget: '' });
+  const [nameFilter, setNameFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const { toast } = useToast();
+
+  const filteredAdsets = useMemo(() => {
+    if (!adsets) return [];
+
+    return adsets.filter(adset => {
+      const matchesName = adset.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || adset.status === statusFilter;
+      return matchesName && matchesStatus;
+    });
+  }, [adsets, nameFilter, statusFilter]);
 
   const handleStatusChange = async (adsetId: string, newStatus: boolean) => {
     try {
@@ -165,7 +180,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
         </div>
         <div className="flex items-center space-x-3">
           <Badge variant="secondary" className="px-3 py-1">
-            {adsets.length} conjuntos
+            {filteredAdsets.length} conjuntos
           </Badge>
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
@@ -214,6 +229,16 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
         </div>
       </div>
 
+      <FilterBar
+        activeTab="adsets"
+        onNameFilter={setNameFilter}
+        onStatusFilter={setStatusFilter}
+        onDateRangeFilter={setDateRange}
+        nameFilter={nameFilter}
+        statusFilter={statusFilter}
+        dateRange={dateRange}
+      />
+
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
@@ -225,13 +250,16 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
               <TableHead className="font-semibold text-right">Faturamento</TableHead>
               <TableHead className="font-semibold text-right">Vendas</TableHead>
               <TableHead className="font-semibold text-right">Profit</TableHead>
-              <TableHead className="font-semibold text-right">ROAS</TableHead>
               <TableHead className="font-semibold text-right">CPA</TableHead>
-              <TableHead className="font-semibold text-center">Ações</TableHead>
+              <TableHead className="font-semibold text-right">CPM</TableHead>
+              <TableHead className="font-semibold text-right">ROAS</TableHead>
+              <TableHead className="font-semibold text-right">CTR</TableHead>
+              <TableHead className="font-semibold text-right">Click CV</TableHead>
+              <TableHead className="font-semibold text-right">EPC</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {adsets.map((adset) => (
+            {filteredAdsets.map((adset) => (
               <TableRow key={adset.id} className="hover:bg-slate-50">
                 <TableCell>
                   <Switch
@@ -240,9 +268,12 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                   />
                 </TableCell>
                 <TableCell className="font-medium">
-                  <div className="flex items-center space-x-2">
+                  <div 
+                    className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors"
+                    onClick={() => onAdsetSelect(adset.name)}
+                  >
                     <BarChart3 className="h-4 w-4 text-blue-600" />
-                    <span>{adset.name}</span>
+                    <span className="underline-offset-4 hover:underline">{adset.name}</span>
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
@@ -300,21 +331,23 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                     {formatCurrency(adset.profit)}
                   </span>
                 </TableCell>
+                <TableCell className="text-right font-mono">
+                  {formatCurrency(adset.cpa)}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {formatCurrency(adset.cpm)}
+                </TableCell>
                 <TableCell className="text-right font-mono font-semibold">
                   {adset.roas.toFixed(2)}x
                 </TableCell>
                 <TableCell className="text-right font-mono">
-                  {formatCurrency(adset.cpa)}
+                  {formatPercentage(adset.ctr)}
                 </TableCell>
-                <TableCell className="text-center">
-                  <Button
-                    onClick={() => onAdsetSelect(adset.name)}
-                    size="sm"
-                    className="flex items-center space-x-1"
-                  >
-                    <Eye className="h-4 w-4" />
-                    <span>Ver Anúncios</span>
-                  </Button>
+                <TableCell className="text-right font-mono">
+                  {formatPercentage(adset.clickCv)}
+                </TableCell>
+                <TableCell className="text-right font-mono">
+                  {formatCurrency(adset.epc)}
                 </TableCell>
               </TableRow>
             ))}
