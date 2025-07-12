@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +17,7 @@ import { Button } from '@/components/ui/button';
 
 interface CampaignsTabProps {
   accountId: string | null;
-  onCampaignSelect: (campaignId: string) => void;
+  onCampaignSelect: (campaignName: string) => void;
 }
 
 const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
@@ -269,7 +270,10 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                   <TableCell className="font-medium">
                     <div 
                       className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors"
-                      onClick={() => onCampaignSelect(campaign.name)}
+                      onClick={() => {
+                        console.log('Clicking on campaign:', campaign.name);
+                        onCampaignSelect(campaign.name);
+                      }}
                     >
                       <Target className="h-4 w-4 text-blue-600 flex-shrink-0" />
                       <span className="underline-offset-4 hover:underline truncate">{campaign.name}</span>

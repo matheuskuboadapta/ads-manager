@@ -24,18 +24,24 @@ export default function Index() {
     });
   };
 
-  const handleAccountSelect = (accountId: string) => {
-    setSelectedAccount(accountId);
+  const handleAccountSelect = (accountName: string) => {
+    console.log('Account selected:', accountName);
+    setSelectedAccount(accountName);
+    setSelectedCampaign(null);
+    setSelectedAdset(null);
     setActiveTab('campaigns');
   };
 
-  const handleCampaignSelect = (campaignId: string) => {
-    setSelectedCampaign(campaignId);
+  const handleCampaignSelect = (campaignName: string) => {
+    console.log('Campaign selected:', campaignName);
+    setSelectedCampaign(campaignName);
+    setSelectedAdset(null);
     setActiveTab('adsets');
   };
 
-  const handleAdsetSelect = (adsetId: string) => {
-    setSelectedAdset(adsetId);
+  const handleAdsetSelect = (adsetName: string) => {
+    console.log('Adset selected:', adsetName);
+    setSelectedAdset(adsetName);
     setActiveTab('ads');
   };
 
