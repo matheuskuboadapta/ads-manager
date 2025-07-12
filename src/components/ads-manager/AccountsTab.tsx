@@ -5,18 +5,18 @@ import { Badge } from '@/components/ui/badge';
 import { BarChart3 } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useAccountsData } from '@/hooks/useAdsData';
-import FilterBar from './FilterBar';
-import { DateRange } from 'react-day-picker';
+import FilterBar, { DateFilter } from './FilterBar';
 
 interface AccountsTabProps {
   onAccountSelect: (accountId: string) => void;
 }
 
 const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
-  const { data: accounts, isLoading, error } = useAccountsData();
   const [nameFilter, setNameFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [dateFilter, setDateFilter] = useState<DateFilter | null>(null);
+  
+  const { data: accounts, isLoading, error } = useAccountsData(dateFilter);
 
   const filteredAccounts = useMemo(() => {
     if (!accounts) return [];
@@ -74,86 +74,79 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
         activeTab="accounts"
         onNameFilter={setNameFilter}
         onStatusFilter={setStatusFilter}
-        onDateRangeFilter={setDateRange}
+        onDateFilter={setDateFilter}
         nameFilter={nameFilter}
         statusFilter={statusFilter}
-        dateRange={dateRange}
+        dateFilter={dateFilter}
       />
 
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-slate-50">
-              <TableHead className="font-semibold">Nome da Conta</TableHead>
-              <TableHead className="font-semibold">Status</TableHead>
-              <TableHead className="font-semibold text-right">Valor Gasto</TableHead>
-              <TableHead className="font-semibold text-right">Faturamento</TableHead>
-              <TableHead className="font-semibold text-right">Vendas</TableHead>
-              <TableHead className="font-semibold text-right">Profit</TableHead>
-              <TableHead className="font-semibold text-right">CPA</TableHead>
-              <TableHead className="font-semibold text-right">CPM</TableHead>
-              <TableHead className="font-semibold text-right">ROAS</TableHead>
-              <TableHead className="font-semibold text-right">CTR</TableHead>
-              <TableHead className="font-semibold text-right">Click CV</TableHead>
-              <TableHead className="font-semibold text-right">EPC</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredAccounts.map((account) => (
-              <TableRow key={account.id} className="hover:bg-slate-50">
-                <TableCell className="font-medium">
-                  <div 
-                    className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors"
-                    onClick={() => onAccountSelect(account.name)}
-                  >
-                    <BarChart3 className="h-4 w-4 text-blue-600" />
-                    <span className="underline-offset-4 hover:underline">{account.name}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge 
-                    variant={account.status === 'active' ? 'default' : 'secondary'}
-                    className={account.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}
-                  >
-                    {account.status === 'active' ? 'Ativa' : 'Pausada'}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatCurrency(account.spend)}
-                </TableCell>
-                <TableCell className="text-right font-mono text-green-600">
-                  {formatCurrency(account.revenue)}
-                </TableCell>
-                <TableCell className="text-right font-semibold">
-                  {account.sales}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  <span className={account.profit > 0 ? 'text-green-600' : 'text-red-600'}>
-                    {formatCurrency(account.profit)}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatCurrency(account.cpa)}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatCurrency(account.cpm)}
-                </TableCell>
-                <TableCell className="text-right font-mono font-semibold">
-                  {account.roas.toFixed(2)}x
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatPercentage(account.ctr)}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatPercentage(account.clickCv)}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatCurrency(account.epc)}
-                </TableCell>
+      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-slate-50">
+                <TableHead className="font-semibold min-w-[200px]">Nome da Conta</TableHead>
+                <TableHead className="font-semibold text-right min-w-[120px]">Valor Gasto</TableHead>
+                <TableHead className="font-semibold text-right min-w-[120px]">Faturamento</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">Vendas</TableHead>
+                <TableHead className="font-semibold text-right min-w-[100px]">Profit</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">CPA</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">CPM</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">ROAS</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">CTR</TableHead>
+                <TableHead className="font-semibold text-right min-w-[90px]">Click CV</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">EPC</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filteredAccounts.map((account) => (
+                <TableRow key={account.id} className="hover:bg-slate-50">
+                  <TableCell className="font-medium">
+                    <div 
+                      className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors"
+                      onClick={() => onAccountSelect(account.name)}
+                    >
+                      <BarChart3 className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                      <span className="underline-offset-4 hover:underline truncate">{account.name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatCurrency(account.spend)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-green-600 text-sm">
+                    {formatCurrency(account.revenue)}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold text-sm">
+                    {account.sales}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    <span className={account.profit > 0 ? 'text-green-600' : 'text-red-600'}>
+                      {formatCurrency(account.profit)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatCurrency(account.cpa)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatCurrency(account.cpm)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-semibold text-sm">
+                    {account.roas.toFixed(2)}x
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatPercentage(account.ctr)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatPercentage(account.clickCv)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatCurrency(account.epc)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );

@@ -8,19 +8,19 @@ import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { updateAd } from '@/utils/api';
 import { useAdsListData } from '@/hooks/useAdsData';
-import FilterBar from './FilterBar';
-import { DateRange } from 'react-day-picker';
+import FilterBar, { DateFilter } from './FilterBar';
 
 interface AdsTabProps {
   adsetId: string | null;
 }
 
 const AdsTab = ({ adsetId }: AdsTabProps) => {
-  const { data: ads, isLoading, error } = useAdsListData(adsetId);
   const [nameFilter, setNameFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [dateFilter, setDateFilter] = useState<DateFilter | null>(null);
   const { toast } = useToast();
+
+  const { data: ads, isLoading, error } = useAdsListData(adsetId, dateFilter);
 
   const filteredAds = useMemo(() => {
     if (!ads) return [];
@@ -34,7 +34,7 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
 
   const handleStatusChange = async (adId: string, newStatus: boolean) => {
     try {
-      await updateAd(adId, 'status', newStatus ? 'active' : 'paused');
+      await updateAd(adId, 'status', newStatus ? 'ACTIVE' : 'PAUSED');
       
       toast({
         title: "Status atualizado",
@@ -74,7 +74,7 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <p className="text-slate-600 mb-2">Nenhum anúncio encontrado</p>
-          <p className="text-slate-500 text-sm">Selecione um conjunto com anúncios ativos</p>
+          <p className="text-slate-500 text-sm">Selecione um conjunto com anúncios ativos ou acesse todos os anúncios</p>
         </div>
       </div>
     );
@@ -96,10 +96,10 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
         activeTab="ads"
         onNameFilter={setNameFilter}
         onStatusFilter={setStatusFilter}
-        onDateRangeFilter={setDateRange}
+        onDateFilter={setDateFilter}
         nameFilter={nameFilter}
         statusFilter={statusFilter}
-        dateRange={dateRange}
+        dateFilter={dateFilter}
       />
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -116,81 +116,83 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-slate-50">
-              <TableHead className="font-semibold">Status</TableHead>
-              <TableHead className="font-semibold">Nome do Anúncio</TableHead>
-              <TableHead className="font-semibold">Formato</TableHead>
-              <TableHead className="font-semibold text-right">Valor Gasto</TableHead>
-              <TableHead className="font-semibold text-right">Faturamento</TableHead>
-              <TableHead className="font-semibold text-right">Vendas</TableHead>
-              <TableHead className="font-semibold text-right">Profit</TableHead>
-              <TableHead className="font-semibold text-right">CPA</TableHead>
-              <TableHead className="font-semibold text-right">CPM</TableHead>
-              <TableHead className="font-semibold text-right">ROAS</TableHead>
-              <TableHead className="font-semibold text-right">CTR</TableHead>
-              <TableHead className="font-semibold text-right">Click CV</TableHead>
-              <TableHead className="font-semibold text-right">EPC</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredAds.map((ad) => (
-              <TableRow key={ad.id} className="hover:bg-slate-50">
-                <TableCell>
-                  <Switch
-                    checked={ad.status === 'active'}
-                    onCheckedChange={(checked) => handleStatusChange(ad.id, checked)}
-                  />
-                </TableCell>
-                <TableCell className="font-medium">
-                  <div className="flex items-center space-x-2">
-                    <Megaphone className="h-4 w-4 text-blue-600" />
-                    <span>{ad.name}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="text-xs">
-                    {ad.adFormat}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatCurrency(ad.spend)}
-                </TableCell>
-                <TableCell className="text-right font-mono text-green-600">
-                  {formatCurrency(ad.revenue)}
-                </TableCell>
-                <TableCell className="text-right font-semibold">
-                  {ad.sales}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  <span className={ad.profit > 0 ? 'text-green-600' : 'text-red-600'}>
-                    {formatCurrency(ad.profit)}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatCurrency(ad.cpa)}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatCurrency(ad.cpm)}
-                </TableCell>
-                <TableCell className="text-right font-mono font-semibold">
-                  {ad.roas.toFixed(2)}x
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatPercentage(ad.ctr)}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatPercentage(ad.clickCv)}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatCurrency(ad.epc)}
-                </TableCell>
+      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-slate-50">
+                <TableHead className="font-semibold min-w-[80px]">Status</TableHead>
+                <TableHead className="font-semibold min-w-[200px]">Nome do Anúncio</TableHead>
+                <TableHead className="font-semibold min-w-[100px]">Formato</TableHead>
+                <TableHead className="font-semibold text-right min-w-[120px]">Valor Gasto</TableHead>
+                <TableHead className="font-semibold text-right min-w-[120px]">Faturamento</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">Vendas</TableHead>
+                <TableHead className="font-semibold text-right min-w-[100px]">Profit</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">CPA</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">CPM</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">ROAS</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">CTR</TableHead>
+                <TableHead className="font-semibold text-right min-w-[90px]">Click CV</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">EPC</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filteredAds.map((ad) => (
+                <TableRow key={ad.id} className="hover:bg-slate-50">
+                  <TableCell>
+                    <Switch
+                      checked={ad.status === 'ACTIVE'}
+                      onCheckedChange={(checked) => handleStatusChange(ad.id, checked)}
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center space-x-2">
+                      <Megaphone className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                      <span className="truncate">{ad.name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-xs">
+                      {ad.adFormat}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatCurrency(ad.spend)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-green-600 text-sm">
+                    {formatCurrency(ad.revenue)}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold text-sm">
+                    {ad.sales}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    <span className={ad.profit > 0 ? 'text-green-600' : 'text-red-600'}>
+                      {formatCurrency(ad.profit)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatCurrency(ad.cpa)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatCurrency(ad.cpm)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-semibold text-sm">
+                    {ad.roas.toFixed(2)}x
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatPercentage(ad.ctr)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatPercentage(ad.clickCv)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatCurrency(ad.epc)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       <div className="flex items-center justify-center pt-8">

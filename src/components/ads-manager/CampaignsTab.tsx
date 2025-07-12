@@ -12,8 +12,7 @@ import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { updateCampaign, createCampaign } from '@/utils/api';
 import { useCampaignsData } from '@/hooks/useAdsData';
-import FilterBar from './FilterBar';
-import { DateRange } from 'react-day-picker';
+import FilterBar, { DateFilter } from './FilterBar';
 import { Button } from '@/components/ui/button';
 
 interface CampaignsTabProps {
@@ -22,13 +21,14 @@ interface CampaignsTabProps {
 }
 
 const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
-  const { data: campaigns, isLoading, error } = useCampaignsData(accountId);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newCampaign, setNewCampaign] = useState({ name: '', objective: 'CONVERSIONS' });
   const [nameFilter, setNameFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [dateFilter, setDateFilter] = useState<DateFilter | null>(null);
   const { toast } = useToast();
+
+  const { data: campaigns, isLoading, error } = useCampaignsData(accountId, dateFilter);
 
   const filteredCampaigns = useMemo(() => {
     if (!campaigns) return [];
@@ -40,9 +40,10 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
     });
   }, [campaigns, nameFilter, statusFilter]);
 
-  const handleStatusChange = async (campaignId: string, newStatus: boolean) => {
+  const handleStatusChange = async (campaign: any, newStatus: boolean) => {
     try {
-      await updateCampaign(campaignId, 'status', newStatus ? 'active' : 'paused');
+      // Use realId instead of name
+      await updateCampaign(campaign.realId, 'status', newStatus ? 'ACTIVE' : 'PAUSED');
       
       toast({
         title: "Status atualizado",
@@ -57,9 +58,10 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
     }
   };
 
-  const handleObjectiveChange = async (campaignId: string, newObjective: string) => {
+  const handleObjectiveChange = async (campaign: any, newObjective: string) => {
     try {
-      await updateCampaign(campaignId, 'objective', newObjective);
+      // Use realId instead of name
+      await updateCampaign(campaign.realId, 'objective', newObjective);
       
       toast({
         title: "Objetivo atualizado",
@@ -132,7 +134,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <p className="text-slate-600 mb-2">Nenhuma campanha encontrada</p>
-          <p className="text-slate-500 text-sm">Selecione uma conta com campanhas ativas</p>
+          <p className="text-slate-500 text-sm">Selecione uma conta com campanhas ativas ou acesse todas as campanhas</p>
         </div>
       </div>
     );
@@ -205,101 +207,103 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
         activeTab="campaigns"
         onNameFilter={setNameFilter}
         onStatusFilter={setStatusFilter}
-        onDateRangeFilter={setDateRange}
+        onDateFilter={setDateFilter}
         nameFilter={nameFilter}
         statusFilter={statusFilter}
-        dateRange={dateRange}
+        dateFilter={dateFilter}
       />
 
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-slate-50">
-              <TableHead className="font-semibold">Status</TableHead>
-              <TableHead className="font-semibold">Nome da Campanha</TableHead>
-              <TableHead className="font-semibold">Objetivo</TableHead>
-              <TableHead className="font-semibold text-right">Valor Gasto</TableHead>
-              <TableHead className="font-semibold text-right">Faturamento</TableHead>
-              <TableHead className="font-semibold text-right">Vendas</TableHead>
-              <TableHead className="font-semibold text-right">Profit</TableHead>
-              <TableHead className="font-semibold text-right">CPA</TableHead>
-              <TableHead className="font-semibold text-right">CPM</TableHead>
-              <TableHead className="font-semibold text-right">ROAS</TableHead>
-              <TableHead className="font-semibold text-right">CTR</TableHead>
-              <TableHead className="font-semibold text-right">Click CV</TableHead>
-              <TableHead className="font-semibold text-right">EPC</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredCampaigns.map((campaign) => (
-              <TableRow key={campaign.id} className="hover:bg-slate-50">
-                <TableCell>
-                  <Switch
-                    checked={campaign.status === 'active'}
-                    onCheckedChange={(checked) => handleStatusChange(campaign.id, checked)}
-                  />
-                </TableCell>
-                <TableCell className="font-medium">
-                  <div 
-                    className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors"
-                    onClick={() => onCampaignSelect(campaign.name)}
-                  >
-                    <Target className="h-4 w-4 text-blue-600" />
-                    <span className="underline-offset-4 hover:underline">{campaign.name}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Select
-                    value={campaign.objective}
-                    onValueChange={(value) => handleObjectiveChange(campaign.id, value)}
-                  >
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="CONVERSIONS">Conversões</SelectItem>
-                      <SelectItem value="REACH">Alcance</SelectItem>
-                      <SelectItem value="TRAFFIC">Tráfego</SelectItem>
-                      <SelectItem value="AWARENESS">Reconhecimento</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatCurrency(campaign.spend)}
-                </TableCell>
-                <TableCell className="text-right font-mono text-green-600">
-                  {formatCurrency(campaign.revenue)}
-                </TableCell>
-                <TableCell className="text-right font-semibold">
-                  {campaign.sales}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  <span className={campaign.profit > 0 ? 'text-green-600' : 'text-red-600'}>
-                    {formatCurrency(campaign.profit)}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatCurrency(campaign.cpa)}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatCurrency(campaign.cpm)}
-                </TableCell>
-                <TableCell className="text-right font-mono font-semibold">
-                  {campaign.roas.toFixed(2)}x
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatPercentage(campaign.ctr)}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatPercentage(campaign.clickCv)}
-                </TableCell>
-                <TableCell className="text-right font-mono">
-                  {formatCurrency(campaign.epc)}
-                </TableCell>
+      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-slate-50">
+                <TableHead className="font-semibold min-w-[80px]">Status</TableHead>
+                <TableHead className="font-semibold min-w-[200px]">Nome da Campanha</TableHead>
+                <TableHead className="font-semibold min-w-[120px]">Objetivo</TableHead>
+                <TableHead className="font-semibold text-right min-w-[120px]">Valor Gasto</TableHead>
+                <TableHead className="font-semibold text-right min-w-[120px]">Faturamento</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">Vendas</TableHead>
+                <TableHead className="font-semibold text-right min-w-[100px]">Profit</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">CPA</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">CPM</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">ROAS</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">CTR</TableHead>
+                <TableHead className="font-semibold text-right min-w-[90px]">Click CV</TableHead>
+                <TableHead className="font-semibold text-right min-w-[80px]">EPC</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filteredCampaigns.map((campaign) => (
+                <TableRow key={campaign.id} className="hover:bg-slate-50">
+                  <TableCell>
+                    <Switch
+                      checked={campaign.status === 'ACTIVE'}
+                      onCheckedChange={(checked) => handleStatusChange(campaign, checked)}
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    <div 
+                      className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors"
+                      onClick={() => onCampaignSelect(campaign.name)}
+                    >
+                      <Target className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                      <span className="underline-offset-4 hover:underline truncate">{campaign.name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Select
+                      value={campaign.objective}
+                      onValueChange={(value) => handleObjectiveChange(campaign, value)}
+                    >
+                      <SelectTrigger className="w-[120px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="CONVERSIONS">Conversões</SelectItem>
+                        <SelectItem value="REACH">Alcance</SelectItem>
+                        <SelectItem value="TRAFFIC">Tráfego</SelectItem>
+                        <SelectItem value="AWARENESS">Reconhecimento</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatCurrency(campaign.spend)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-green-600 text-sm">
+                    {formatCurrency(campaign.revenue)}
+                  </TableCell>
+                  <TableCell className="text-right font-semibold text-sm">
+                    {campaign.sales}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    <span className={campaign.profit > 0 ? 'text-green-600' : 'text-red-600'}>
+                      {formatCurrency(campaign.profit)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatCurrency(campaign.cpa)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatCurrency(campaign.cpm)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono font-semibold text-sm">
+                    {campaign.roas.toFixed(2)}x
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatPercentage(campaign.ctr)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatPercentage(campaign.clickCv)}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-sm">
+                    {formatCurrency(campaign.epc)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );

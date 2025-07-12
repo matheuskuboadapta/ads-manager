@@ -1,6 +1,8 @@
+
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { DateFilter } from '@/components/ads-manager/FilterBar';
 
 interface AdsViewData {
   account_name: string | null;
@@ -20,14 +22,21 @@ interface AdsViewData {
   spend: number | null;
 }
 
-export const useAdsData = () => {
+export const useAdsData = (dateFilter?: DateFilter | null) => {
   return useQuery({
-    queryKey: ['ads-data'],
+    queryKey: ['ads-data', dateFilter],
     queryFn: async () => {
-      console.log('Fetching ads data from Supabase...');
-      const { data, error } = await supabase
-        .from('meta_ads_view')
-        .select('*');
+      console.log('Fetching ads data from Supabase with date filter:', dateFilter);
+      
+      let query = supabase.from('meta_ads_view').select('*');
+      
+      if (dateFilter) {
+        const fromDate = dateFilter.from.toISOString().split('T')[0];
+        const toDate = dateFilter.to.toISOString().split('T')[0];
+        query = query.gte('date_start', fromDate).lte('date_start', toDate);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching ads data:', error);
@@ -42,8 +51,8 @@ export const useAdsData = () => {
   });
 };
 
-export const useAccountsData = () => {
-  const { data: adsData, isLoading, error } = useAdsData();
+export const useAccountsData = (dateFilter?: DateFilter | null) => {
+  const { data: adsData, isLoading, error } = useAdsData(dateFilter);
 
   const accountsData = React.useMemo(() => {
     if (!adsData) return [];
@@ -96,17 +105,17 @@ export const useAccountsData = () => {
   return { data: accountsData, isLoading, error };
 };
 
-export const useCampaignsData = (accountName?: string | null) => {
-  const { data: adsData, isLoading, error } = useAdsData();
+export const useCampaignsData = (accountName?: string | null, dateFilter?: DateFilter | null) => {
+  const { data: adsData, isLoading, error } = useAdsData(dateFilter);
 
   const campaignsData = React.useMemo(() => {
-    if (!adsData || !accountName) return [];
+    if (!adsData) return [];
 
     console.log('Processing campaigns data for account:', accountName);
     const campaignsMap = new Map();
 
     adsData
-      .filter(row => row.account_name === accountName)
+      .filter(row => !accountName || row.account_name === accountName)
       .forEach(row => {
         if (!row.campaign_name) return;
 
@@ -114,9 +123,10 @@ export const useCampaignsData = (accountName?: string | null) => {
         if (!campaignsMap.has(campaignKey)) {
           campaignsMap.set(campaignKey, {
             id: `camp_${campaignKey.toLowerCase().replace(/\s+/g, '_')}`,
+            realId: `campaign_${Math.random().toString(36).substr(2, 9)}`, // Generate a realistic ID
             name: row.campaign_name,
             objective: 'CONVERSIONS',
-            status: row.campaign_status === 'ACTIVE' ? 'active' : 'paused',
+            status: row.campaign_status || 'PAUSED',
             spend: 0,
             revenue: 0,
             sales: 0,
@@ -153,17 +163,17 @@ export const useCampaignsData = (accountName?: string | null) => {
   return { data: campaignsData, isLoading, error };
 };
 
-export const useAdsetsData = (campaignName?: string | null) => {
-  const { data: adsData, isLoading, error } = useAdsData();
+export const useAdsetsData = (campaignName?: string | null, dateFilter?: DateFilter | null) => {
+  const { data: adsData, isLoading, error } = useAdsData(dateFilter);
 
   const adsetsData = React.useMemo(() => {
-    if (!adsData || !campaignName) return [];
+    if (!adsData) return [];
 
     console.log('Processing adsets data for campaign:', campaignName);
     const adsetsMap = new Map();
 
     adsData
-      .filter(row => row.campaign_name === campaignName)
+      .filter(row => !campaignName || row.campaign_name === campaignName)
       .forEach(row => {
         if (!row.adset_name) return;
 
@@ -171,8 +181,9 @@ export const useAdsetsData = (campaignName?: string | null) => {
         if (!adsetsMap.has(adsetKey)) {
           adsetsMap.set(adsetKey, {
             id: `adset_${adsetKey.toLowerCase().replace(/\s+/g, '_')}`,
+            realId: `adset_${Math.random().toString(36).substr(2, 9)}`, // Generate a realistic ID
             name: row.adset_name,
-            status: row.adset_status === 'ACTIVE' ? 'active' : 'paused',
+            status: row.adset_status || 'PAUSED',
             dailyBudget: 200, // Default budget - can be enhanced later
             spend: 0,
             revenue: 0,
@@ -210,17 +221,17 @@ export const useAdsetsData = (campaignName?: string | null) => {
   return { data: adsetsData, isLoading, error };
 };
 
-export const useAdsListData = (adsetName?: string | null) => {
-  const { data: adsData, isLoading, error } = useAdsData();
+export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilter | null) => {
+  const { data: adsData, isLoading, error } = useAdsData(dateFilter);
 
   const adsListData = React.useMemo(() => {
-    if (!adsData || !adsetName) return [];
+    if (!adsData) return [];
 
     console.log('Processing ads data for adset:', adsetName);
     const adsMap = new Map();
 
     adsData
-      .filter(row => row.adset_name === adsetName)
+      .filter(row => !adsetName || row.adset_name === adsetName)
       .forEach(row => {
         if (!row.ad_name || !row.ad_id) return;
 
@@ -229,7 +240,7 @@ export const useAdsListData = (adsetName?: string | null) => {
           adsMap.set(adKey, {
             id: row.ad_id,
             name: row.ad_name,
-            status: row.effective_status === 'ACTIVE' ? 'active' : 'paused',
+            status: row.effective_status || 'PAUSED',
             adFormat: 'Single Image', // Default format - can be enhanced later
             spend: 0,
             revenue: 0,
