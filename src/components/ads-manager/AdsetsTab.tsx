@@ -12,6 +12,8 @@ import { useToast } from '@/hooks/use-toast';
 import { updateAdset, createAdset } from '@/utils/api';
 import { useAdsetsData } from '@/hooks/useAdsData';
 import FilterBar, { DateFilter } from './FilterBar';
+import ColumnOrderDialog from './ColumnOrderDialog';
+import { useColumnOrder } from '@/hooks/useColumnOrder';
 
 interface AdsetsTabProps {
   campaignId: string | null;
@@ -27,6 +29,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState<DateFilter | null>(null);
   const { toast } = useToast();
+  const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
 
   const { data: adsets, isLoading, error } = useAdsetsData(campaignId, dateFilter);
 
@@ -210,6 +213,11 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
           <Badge variant="secondary" className="px-3 py-1">
             {filteredAdsets.length} conjuntos
           </Badge>
+          <ColumnOrderDialog
+            columnOrder={columnOrders.adsets}
+            onColumnOrderChange={(newOrder) => updateColumnOrder('adsets', newOrder)}
+            onReset={() => resetColumnOrder('adsets')}
+          />
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
               <Button className="flex items-center space-x-2">
@@ -272,19 +280,29 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50">
-                <TableHead className="font-semibold min-w-[80px]">Status</TableHead>
-                <TableHead className="font-semibold min-w-[200px]">Nome do Conjunto</TableHead>
-                <TableHead className="font-semibold text-right min-w-[130px]">Orçamento Diário</TableHead>
-                <TableHead className="font-semibold text-right min-w-[120px]">Valor Gasto</TableHead>
-                <TableHead className="font-semibold text-right min-w-[120px]">Faturamento</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">Vendas</TableHead>
-                <TableHead className="font-semibold text-right min-w-[100px]">Profit</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">CPA</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">CPM</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">ROAS</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">CTR</TableHead>
-                <TableHead className="font-semibold text-right min-w-[90px]">Click CV</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">EPC</TableHead>
+                {columnOrders.adsets.map((column) => {
+                  const isRightAligned = !['status', 'name'].includes(column);
+                  return (
+                    <TableHead 
+                      key={column}
+                      className={`font-semibold min-w-[80px] ${isRightAligned ? 'text-right' : ''} ${column === 'name' ? 'min-w-[200px]' : ''} ${column === 'dailyBudget' ? 'min-w-[130px]' : ''}`}
+                    >
+                      {column === 'status' && 'Status'}
+                      {column === 'name' && 'Nome do Conjunto'}
+                      {column === 'dailyBudget' && 'Orçamento Diário'}
+                      {column === 'spend' && 'Valor Gasto'}
+                      {column === 'revenue' && 'Faturamento'}
+                      {column === 'sales' && 'Vendas'}
+                      {column === 'profit' && 'Profit'}
+                      {column === 'cpa' && 'CPA'}
+                      {column === 'cpm' && 'CPM'}
+                      {column === 'roas' && 'ROAS'}
+                      {column === 'ctr' && 'CTR'}
+                      {column === 'clickCv' && 'Click CV'}
+                      {column === 'epc' && 'EPC'}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             </TableHeader>
             <TableBody>

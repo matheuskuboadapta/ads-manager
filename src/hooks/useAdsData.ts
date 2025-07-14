@@ -276,6 +276,24 @@ export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilte
     if (!adsData) return [];
 
     console.log('Processing ads data for adset:', adsetName);
+    
+    // Fetch video links from meta_ads_metrics table
+    const fetchVideoLink = async (adId: string) => {
+      try {
+        const { data } = await supabase
+          .from('meta_ads_metrics')
+          .select('preview_shareable_link')
+          .eq('ad_id', adId)
+          .limit(1)
+          .single();
+        
+        return data?.preview_shareable_link || null;
+      } catch (error) {
+        console.error('Error fetching video link:', error);
+        return null;
+      }
+    };
+
     const adsMap = new Map();
 
     adsData
@@ -290,6 +308,7 @@ export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilte
             name: row.ad_name,
             status: row.effective_status || 'PAUSED',
             adFormat: 'Single Image',
+            videoLink: null, // Will be populated later
             spend: 0,
             revenue: 0,
             sales: 0,
@@ -318,6 +337,23 @@ export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilte
       epc: ad.clicks > 0 ? ad.revenue / ad.clicks : 0,
       roas: ad.spend > 0 ? ad.revenue / ad.spend : 0,
     }));
+
+    // Fetch video links asynchronously
+    ads.forEach(async (ad) => {
+      try {
+        const { data } = await supabase
+          .from('meta_ads_metrics')
+          .select('preview_shareable_link')
+          .eq('ad_id', ad.id)
+          .limit(1)
+          .single();
+        
+        ad.videoLink = data?.preview_shareable_link || null;
+      } catch (error) {
+        console.error('Error fetching video link for ad:', ad.id, error);
+        ad.videoLink = null;
+      }
+    });
 
     console.log('Processed ads:', ads.length);
     return ads;

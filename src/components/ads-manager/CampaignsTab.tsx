@@ -14,6 +14,8 @@ import { updateCampaign, createCampaign } from '@/utils/api';
 import { useCampaignsData } from '@/hooks/useAdsData';
 import FilterBar, { DateFilter } from './FilterBar';
 import { Button } from '@/components/ui/button';
+import ColumnOrderDialog from './ColumnOrderDialog';
+import { useColumnOrder } from '@/hooks/useColumnOrder';
 
 interface CampaignsTabProps {
   accountId: string | null;
@@ -27,6 +29,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState<DateFilter | null>(null);
   const { toast } = useToast();
+  const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
 
   const { data: campaigns, isLoading, error } = useCampaignsData(accountId, dateFilter);
 
@@ -176,6 +179,11 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
           <Badge variant="secondary" className="px-3 py-1">
             {filteredCampaigns.length} campanhas
           </Badge>
+          <ColumnOrderDialog
+            columnOrder={columnOrders.campaigns}
+            onColumnOrderChange={(newOrder) => updateColumnOrder('campaigns', newOrder)}
+            onReset={() => resetColumnOrder('campaigns')}
+          />
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
               <Button className="flex items-center space-x-2">
@@ -243,131 +251,123 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50">
-                <TableHead className="font-semibold min-w-[80px]">Status</TableHead>
-                <TableHead className="font-semibold min-w-[200px]">Nome da Campanha</TableHead>
-                <TableHead className="font-semibold min-w-[120px]">Objetivo</TableHead>
-                <TableHead className="font-semibold text-right min-w-[120px]">Valor Gasto</TableHead>
-                <TableHead className="font-semibold text-right min-w-[120px]">Faturamento</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">Vendas</TableHead>
-                <TableHead className="font-semibold text-right min-w-[100px]">Profit</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">CPA</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">CPM</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">ROAS</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">CTR</TableHead>
-                <TableHead className="font-semibold text-right min-w-[90px]">Click CV</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">EPC</TableHead>
+                {columnOrders.campaigns.map((column) => {
+                  const isRightAligned = !['status', 'name'].includes(column);
+                  return (
+                    <TableHead 
+                      key={column}
+                      className={`font-semibold min-w-[80px] ${isRightAligned ? 'text-right' : ''} ${column === 'name' ? 'min-w-[200px]' : ''}`}
+                    >
+                      {column === 'status' && 'Status'}
+                      {column === 'name' && 'Nome da Campanha'}
+                      {column === 'spend' && 'Valor Gasto'}
+                      {column === 'revenue' && 'Faturamento'}
+                      {column === 'sales' && 'Vendas'}
+                      {column === 'profit' && 'Profit'}
+                      {column === 'cpa' && 'CPA'}
+                      {column === 'cpm' && 'CPM'}
+                      {column === 'roas' && 'ROAS'}
+                      {column === 'ctr' && 'CTR'}
+                      {column === 'clickCv' && 'Click CV'}
+                      {column === 'epc' && 'EPC'}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredCampaigns.map((campaign) => (
                 <TableRow key={campaign.id} className="hover:bg-slate-50">
-                  <TableCell>
-                    <Switch
-                      checked={campaign.status === 'ACTIVE'}
-                      onCheckedChange={(checked) => handleStatusChange(campaign, checked)}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    <div 
-                      className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors"
-                      onClick={() => {
-                        console.log('Clicking on campaign:', campaign.name);
-                        onCampaignSelect(campaign.name);
-                      }}
-                    >
-                      <Target className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                      <span className="underline-offset-4 hover:underline truncate">{campaign.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Select
-                      value={campaign.objective}
-                      onValueChange={(value) => handleObjectiveChange(campaign, value)}
-                    >
-                      <SelectTrigger className="w-[120px] text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="CONVERSIONS">Conversões</SelectItem>
-                        <SelectItem value="REACH">Alcance</SelectItem>
-                        <SelectItem value="TRAFFIC">Tráfego</SelectItem>
-                        <SelectItem value="AWARENESS">Reconhecimento</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatCurrency(campaign.spend)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-green-600 text-sm">
-                    {formatCurrency(campaign.revenue)}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold text-sm">
-                    {campaign.sales}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    <span className={campaign.profit > 0 ? 'text-green-600' : 'text-red-600'}>
-                      {formatCurrency(campaign.profit)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatCurrency(campaign.cpa)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatCurrency(campaign.cpm)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-semibold text-sm">
-                    {campaign.roas.toFixed(2)}x
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatPercentage(campaign.ctr)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatPercentage(campaign.clickCv)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatCurrency(campaign.epc)}
-                  </TableCell>
+                  {columnOrders.campaigns.map((column) => {
+                    const isRightAligned = !['status', 'name'].includes(column);
+                    
+                    return (
+                      <TableCell 
+                        key={column}
+                        className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'name' ? 'font-medium' : ''}`}
+                      >
+                        {column === 'status' && (
+                          <Switch
+                            checked={campaign.status === 'ACTIVE'}
+                            onCheckedChange={(checked) => handleStatusChange(campaign, checked)}
+                          />
+                        )}
+                        {column === 'name' && (
+                          <div 
+                            className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors"
+                            onClick={() => {
+                              console.log('Clicking on campaign:', campaign.name);
+                              onCampaignSelect(campaign.name);
+                            }}
+                          >
+                            <Target className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                            <span className="underline-offset-4 hover:underline truncate">{campaign.name}</span>
+                          </div>
+                        )}
+                        {column === 'spend' && formatCurrency(campaign.spend)}
+                        {column === 'revenue' && (
+                          <span className="text-green-600">{formatCurrency(campaign.revenue)}</span>
+                        )}
+                        {column === 'sales' && (
+                          <span className="font-semibold">{campaign.sales}</span>
+                        )}
+                        {column === 'profit' && (
+                          <span className={campaign.profit > 0 ? 'text-green-600' : 'text-red-600'}>
+                            {formatCurrency(campaign.profit)}
+                          </span>
+                        )}
+                        {column === 'cpa' && formatCurrency(campaign.cpa)}
+                        {column === 'cpm' && formatCurrency(campaign.cpm)}
+                        {column === 'roas' && (
+                          <span className="font-semibold">{campaign.roas.toFixed(2)}x</span>
+                        )}
+                        {column === 'ctr' && formatPercentage(campaign.ctr)}
+                        {column === 'clickCv' && formatPercentage(campaign.clickCv)}
+                        {column === 'epc' && formatCurrency(campaign.epc)}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               ))}
               {summaryMetrics && (
                 <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-semibold">
-                  <TableCell></TableCell>
-                  <TableCell className="font-bold text-blue-900">
-                    RESUMO ({filteredCampaigns.length} campanhas)
-                  </TableCell>
-                  <TableCell></TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatCurrency(summaryMetrics.spend)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-green-700 text-sm">
-                    {formatCurrency(summaryMetrics.revenue)}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold text-sm text-blue-900">
-                    {summaryMetrics.sales}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    <span className={summaryMetrics.profit > 0 ? 'text-green-700' : 'text-red-700'}>
-                      {formatCurrency(summaryMetrics.profit)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatCurrency(summaryMetrics.cpa)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatCurrency(summaryMetrics.cpm)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-semibold text-sm text-blue-900">
-                    {summaryMetrics.roas.toFixed(2)}x
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatPercentage(summaryMetrics.ctr)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatPercentage(summaryMetrics.clickCv)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatCurrency(summaryMetrics.epc)}
-                  </TableCell>
+                  {columnOrders.campaigns.map((column) => {
+                    const isRightAligned = !['status', 'name'].includes(column);
+                    
+                    return (
+                      <TableCell 
+                        key={column}
+                        className={`${isRightAligned ? 'text-right font-mono text-sm text-blue-900' : ''}`}
+                      >
+                        {column === 'status' && ''}
+                        {column === 'name' && (
+                          <span className="font-bold text-blue-900">
+                            RESUMO ({filteredCampaigns.length} campanhas)
+                          </span>
+                        )}
+                        {column === 'spend' && formatCurrency(summaryMetrics.spend)}
+                        {column === 'revenue' && (
+                          <span className="text-green-700">{formatCurrency(summaryMetrics.revenue)}</span>
+                        )}
+                        {column === 'sales' && (
+                          <span className="font-semibold">{summaryMetrics.sales}</span>
+                        )}
+                        {column === 'profit' && (
+                          <span className={summaryMetrics.profit > 0 ? 'text-green-700' : 'text-red-700'}>
+                            {formatCurrency(summaryMetrics.profit)}
+                          </span>
+                        )}
+                        {column === 'cpa' && formatCurrency(summaryMetrics.cpa)}
+                        {column === 'cpm' && formatCurrency(summaryMetrics.cpm)}
+                        {column === 'roas' && (
+                          <span className="font-semibold">{summaryMetrics.roas.toFixed(2)}x</span>
+                        )}
+                        {column === 'ctr' && formatPercentage(summaryMetrics.ctr)}
+                        {column === 'clickCv' && formatPercentage(summaryMetrics.clickCv)}
+                        {column === 'epc' && formatCurrency(summaryMetrics.epc)}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               )}
             </TableBody>

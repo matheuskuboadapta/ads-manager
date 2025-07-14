@@ -6,6 +6,8 @@ import { BarChart3 } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useAccountsData } from '@/hooks/useAdsData';
 import FilterBar, { DateFilter } from './FilterBar';
+import ColumnOrderDialog from './ColumnOrderDialog';
+import { useColumnOrder } from '@/hooks/useColumnOrder';
 
 interface AccountsTabProps {
   onAccountSelect: (accountId: string) => void;
@@ -15,6 +17,7 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
   const [nameFilter, setNameFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState<DateFilter | null>(null);
+  const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
   
   const { data: accounts, isLoading, error } = useAccountsData(dateFilter);
 
@@ -90,9 +93,16 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
           <h2 className="text-2xl font-bold text-slate-900">Contas Publicitárias</h2>
           <p className="text-slate-600">Visualize e gerencie suas contas do Meta Ads</p>
         </div>
-        <Badge variant="secondary" className="px-3 py-1">
-          {filteredAccounts.length} contas
-        </Badge>
+        <div className="flex items-center space-x-3">
+          <Badge variant="secondary" className="px-3 py-1">
+            {filteredAccounts.length} contas
+          </Badge>
+          <ColumnOrderDialog
+            columnOrder={columnOrders.accounts}
+            onColumnOrderChange={(newOrder) => updateColumnOrder('accounts', newOrder)}
+            onReset={() => resetColumnOrder('accounts')}
+          />
+        </div>
       </div>
 
       <FilterBar
@@ -110,102 +120,112 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50">
-                <TableHead className="font-semibold min-w-[200px]">Nome da Conta</TableHead>
-                <TableHead className="font-semibold text-right min-w-[120px]">Valor Gasto</TableHead>
-                <TableHead className="font-semibold text-right min-w-[120px]">Faturamento</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">Vendas</TableHead>
-                <TableHead className="font-semibold text-right min-w-[100px]">Profit</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">CPA</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">CPM</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">ROAS</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">CTR</TableHead>
-                <TableHead className="font-semibold text-right min-w-[90px]">Click CV</TableHead>
-                <TableHead className="font-semibold text-right min-w-[80px]">EPC</TableHead>
+                {columnOrders.accounts.map((column) => {
+                  const isRightAligned = column !== 'name';
+                  return (
+                    <TableHead 
+                      key={column}
+                      className={`font-semibold min-w-[80px] ${isRightAligned ? 'text-right' : ''} ${column === 'name' ? 'min-w-[200px]' : ''}`}
+                    >
+                      {column === 'name' && 'Nome da Conta'}
+                      {column === 'spend' && 'Valor Gasto'}
+                      {column === 'revenue' && 'Faturamento'}
+                      {column === 'sales' && 'Vendas'}
+                      {column === 'profit' && 'Profit'}
+                      {column === 'cpa' && 'CPA'}
+                      {column === 'cpm' && 'CPM'}
+                      {column === 'roas' && 'ROAS'}
+                      {column === 'ctr' && 'CTR'}
+                      {column === 'clickCv' && 'Click CV'}
+                      {column === 'epc' && 'EPC'}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredAccounts.map((account) => (
                 <TableRow key={account.id} className="hover:bg-slate-50">
-                  <TableCell className="font-medium">
-                    <div 
-                      className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors"
-                      onClick={() => onAccountSelect(account.name)}
-                    >
-                      <BarChart3 className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                      <span className="underline-offset-4 hover:underline truncate">{account.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatCurrency(account.spend)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-green-600 text-sm">
-                    {formatCurrency(account.revenue)}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold text-sm">
-                    {account.sales}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    <span className={account.profit > 0 ? 'text-green-600' : 'text-red-600'}>
-                      {formatCurrency(account.profit)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatCurrency(account.cpa)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatCurrency(account.cpm)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-semibold text-sm">
-                    {account.roas.toFixed(2)}x
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatPercentage(account.ctr)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatPercentage(account.clickCv)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatCurrency(account.epc)}
-                  </TableCell>
+                  {columnOrders.accounts.map((column) => {
+                    const isRightAligned = column !== 'name';
+                    
+                    return (
+                      <TableCell 
+                        key={column}
+                        className={`${isRightAligned ? 'text-right font-mono text-sm' : 'font-medium'}`}
+                      >
+                        {column === 'name' && (
+                          <div 
+                            className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors"
+                            onClick={() => onAccountSelect(account.name)}
+                          >
+                            <BarChart3 className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                            <span className="underline-offset-4 hover:underline truncate">{account.name}</span>
+                          </div>
+                        )}
+                        {column === 'spend' && formatCurrency(account.spend)}
+                        {column === 'revenue' && (
+                          <span className="text-green-600">{formatCurrency(account.revenue)}</span>
+                        )}
+                        {column === 'sales' && (
+                          <span className="font-semibold">{account.sales}</span>
+                        )}
+                        {column === 'profit' && (
+                          <span className={account.profit > 0 ? 'text-green-600' : 'text-red-600'}>
+                            {formatCurrency(account.profit)}
+                          </span>
+                        )}
+                        {column === 'cpa' && formatCurrency(account.cpa)}
+                        {column === 'cpm' && formatCurrency(account.cpm)}
+                        {column === 'roas' && (
+                          <span className="font-semibold">{account.roas.toFixed(2)}x</span>
+                        )}
+                        {column === 'ctr' && formatPercentage(account.ctr)}
+                        {column === 'clickCv' && formatPercentage(account.clickCv)}
+                        {column === 'epc' && formatCurrency(account.epc)}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               ))}
               {summaryMetrics && (
                 <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-semibold">
-                  <TableCell className="font-bold text-blue-900">
-                    RESUMO ({filteredAccounts.length} contas)
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatCurrency(summaryMetrics.spend)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-green-700 text-sm">
-                    {formatCurrency(summaryMetrics.revenue)}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold text-sm text-blue-900">
-                    {summaryMetrics.sales}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    <span className={summaryMetrics.profit > 0 ? 'text-green-700' : 'text-red-700'}>
-                      {formatCurrency(summaryMetrics.profit)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatCurrency(summaryMetrics.cpa)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatCurrency(summaryMetrics.cpm)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-semibold text-sm text-blue-900">
-                    {summaryMetrics.roas.toFixed(2)}x
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatPercentage(summaryMetrics.ctr)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatPercentage(summaryMetrics.clickCv)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatCurrency(summaryMetrics.epc)}
-                  </TableCell>
+                  {columnOrders.accounts.map((column) => {
+                    const isRightAligned = column !== 'name';
+                    
+                    return (
+                      <TableCell 
+                        key={column}
+                        className={`${isRightAligned ? 'text-right font-mono text-sm text-blue-900' : ''}`}
+                      >
+                        {column === 'name' && (
+                          <span className="font-bold text-blue-900">
+                            RESUMO ({filteredAccounts.length} contas)
+                          </span>
+                        )}
+                        {column === 'spend' && formatCurrency(summaryMetrics.spend)}
+                        {column === 'revenue' && (
+                          <span className="text-green-700">{formatCurrency(summaryMetrics.revenue)}</span>
+                        )}
+                        {column === 'sales' && (
+                          <span className="font-semibold">{summaryMetrics.sales}</span>
+                        )}
+                        {column === 'profit' && (
+                          <span className={summaryMetrics.profit > 0 ? 'text-green-700' : 'text-red-700'}>
+                            {formatCurrency(summaryMetrics.profit)}
+                          </span>
+                        )}
+                        {column === 'cpa' && formatCurrency(summaryMetrics.cpa)}
+                        {column === 'cpm' && formatCurrency(summaryMetrics.cpm)}
+                        {column === 'roas' && (
+                          <span className="font-semibold">{summaryMetrics.roas.toFixed(2)}x</span>
+                        )}
+                        {column === 'ctr' && formatPercentage(summaryMetrics.ctr)}
+                        {column === 'clickCv' && formatPercentage(summaryMetrics.clickCv)}
+                        {column === 'epc' && formatCurrency(summaryMetrics.epc)}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               )}
             </TableBody>
