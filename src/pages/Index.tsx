@@ -29,6 +29,7 @@ export default function Index() {
       title: "Dados atualizados",
       description: "As métricas foram atualizadas automaticamente.",
     });
+    window.location.reload();
   };
 
   const handleAccountSelect = (accountName: string) => {

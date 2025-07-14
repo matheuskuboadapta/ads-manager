@@ -193,7 +193,6 @@ const FilterBar = ({
                     {preset.label}
                   </SelectItem>
                 ))}
-                <SelectItem value="custom">Período personalizado</SelectItem>
               </SelectContent>
             </Select>
             
