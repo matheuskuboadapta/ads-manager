@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Plus, BarChart3, Edit2, Check, X } from 'lucide-react';
+import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { updateAdset, createAdset } from '@/utils/api';
@@ -314,12 +315,15 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                     />
                   </TableCell>
                   <TableCell className="font-medium">
-                    <div 
-                      className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors"
-                      onClick={() => onAdsetSelect(adset.name)}
-                    >
-                      <BarChart3 className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                      <span className="underline-offset-4 hover:underline truncate">{adset.name}</span>
+                    <div className="flex items-center space-x-2">
+                      <div 
+                        className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors flex-1"
+                        onClick={() => onAdsetSelect(adset.name)}
+                      >
+                        <BarChart3 className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                        <span className="underline-offset-4 hover:underline truncate">{adset.name}</span>
+                      </div>
+                      <CopyButton text={adset.name} />
                     </div>
                   </TableCell>
                   <TableCell className="text-right">

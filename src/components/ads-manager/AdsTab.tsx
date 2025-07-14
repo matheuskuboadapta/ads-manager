@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Megaphone, ExternalLink, Play } from 'lucide-react';
+import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { updateAd } from '@/utils/api';
@@ -200,8 +201,11 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
                         )}
                         {column === 'name' && (
                           <div className="flex items-center space-x-2">
-                            <Megaphone className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                            <span className="truncate">{ad.name}</span>
+                            <div className="flex items-center space-x-2 flex-1">
+                              <Megaphone className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                              <span className="truncate">{ad.name}</span>
+                            </div>
+                            <CopyButton text={ad.name} />
                           </div>
                         )}
                         {column === 'spend' && formatCurrency(ad.spend)}

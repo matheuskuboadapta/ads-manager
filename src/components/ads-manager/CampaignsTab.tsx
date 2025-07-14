@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Plus, Target } from 'lucide-react';
+import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { updateCampaign, createCampaign } from '@/utils/api';
@@ -292,15 +293,18 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                           />
                         )}
                         {column === 'name' && (
-                          <div 
-                            className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors"
-                            onClick={() => {
-                              console.log('Clicking on campaign:', campaign.name);
-                              onCampaignSelect(campaign.name);
-                            }}
-                          >
-                            <Target className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                            <span className="underline-offset-4 hover:underline truncate">{campaign.name}</span>
+                          <div className="flex items-center space-x-2">
+                            <div 
+                              className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors flex-1"
+                              onClick={() => {
+                                console.log('Clicking on campaign:', campaign.name);
+                                onCampaignSelect(campaign.name);
+                              }}
+                            >
+                              <Target className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                              <span className="underline-offset-4 hover:underline truncate">{campaign.name}</span>
+                            </div>
+                            <CopyButton text={campaign.name} />
                           </div>
                         )}
                         {column === 'spend' && formatCurrency(campaign.spend)}
