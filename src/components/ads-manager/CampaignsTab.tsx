@@ -12,10 +12,11 @@ import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { updateCampaign, createCampaign } from '@/utils/api';
 import { useCampaignsData } from '@/hooks/useAdsData';
-import FilterBar, { DateFilter } from './FilterBar';
+import FilterBar from './FilterBar';
 import { Button } from '@/components/ui/button';
 import ColumnOrderDialog from './ColumnOrderDialog';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
+import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 
 interface CampaignsTabProps {
   accountId: string | null;
@@ -25,23 +26,21 @@ interface CampaignsTabProps {
 const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newCampaign, setNewCampaign] = useState({ name: '', objective: 'CONVERSIONS' });
-  const [nameFilter, setNameFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState<DateFilter | null>(null);
   const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
+  const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
 
-  const { data: campaigns, isLoading, error } = useCampaignsData(accountId, dateFilter);
+  const { data: campaigns, isLoading, error } = useCampaignsData(accountId, settings.dateFilter);
 
   const filteredCampaigns = useMemo(() => {
     if (!campaigns) return [];
 
     return campaigns.filter(campaign => {
-      const matchesName = campaign.name.toLowerCase().includes(nameFilter.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || campaign.status === statusFilter;
+      const matchesName = campaign.name.toLowerCase().includes(settings.nameFilter.toLowerCase());
+      const matchesStatus = settings.statusFilter === 'all' || campaign.status === settings.statusFilter;
       return matchesName && matchesStatus;
     });
-  }, [campaigns, nameFilter, statusFilter]);
+  }, [campaigns, settings.nameFilter, settings.statusFilter]);
 
   // Cálculo das métricas de resumo
   const summaryMetrics = useMemo(() => {
@@ -238,12 +237,12 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
 
       <FilterBar
         activeTab="campaigns"
-        onNameFilter={setNameFilter}
-        onStatusFilter={setStatusFilter}
-        onDateFilter={setDateFilter}
-        nameFilter={nameFilter}
-        statusFilter={statusFilter}
-        dateFilter={dateFilter}
+        onNameFilter={updateNameFilter}
+        onStatusFilter={updateStatusFilter}
+        onDateFilter={updateDateFilter}
+        nameFilter={settings.nameFilter}
+        statusFilter={settings.statusFilter}
+        dateFilter={settings.dateFilter}
       />
 
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">

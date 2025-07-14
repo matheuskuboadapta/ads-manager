@@ -270,35 +270,56 @@ export const useAdsetsData = (campaignName?: string | null, dateFilter?: DateFil
 };
 
 export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilter | null) => {
-  const { data: adsData, isLoading, error } = useAdsData(dateFilter);
-
-  const adsListData = React.useMemo(() => {
-    if (!adsData) return [];
-
-    console.log('Processing ads data for adset:', adsetName);
-    
-    // Fetch video links from meta_ads_metrics table
-    const fetchVideoLink = async (adId: string) => {
-      try {
-        const { data } = await supabase
-          .from('meta_ads_metrics')
-          .select('preview_shareable_link')
-          .eq('ad_id', adId)
-          .limit(1)
-          .single();
-        
-        return data?.preview_shareable_link || null;
-      } catch (error) {
-        console.error('Error fetching video link:', error);
-        return null;
+  return useQuery({
+    queryKey: ['ads-list-data', adsetName, dateFilter],
+    queryFn: async () => {
+      console.log('Fetching ads list data with video links for adset:', adsetName);
+      
+      // Build query for meta_ads_view with date filter
+      let query = supabase.from('meta_ads_view').select('*');
+      
+      if (dateFilter) {
+        const fromDate = dateFilter.from.toISOString().split('T')[0];
+        const toDate = dateFilter.to.toISOString().split('T')[0];
+        query = query.gte('date_start', fromDate).lte('date_start', toDate);
       }
-    };
+      
+      if (adsetName) {
+        query = query.eq('adset_name', adsetName);
+      }
 
-    const adsMap = new Map();
+      const { data: adsData, error } = await query;
 
-    adsData
-      .filter(row => !adsetName || row.adset_name === adsetName)
-      .forEach(row => {
+      if (error) {
+        console.error('Error fetching ads data:', error);
+        throw error;
+      }
+
+      if (!adsData) return [];
+
+      // Get unique ad IDs
+      const adIds = [...new Set(adsData.map(row => row.ad_id).filter(Boolean))];
+      
+      // Fetch video links from meta_ads_metrics
+      const videoLinksMap = new Map();
+      if (adIds.length > 0) {
+        const { data: videoLinksData } = await supabase
+          .from('meta_ads_metrics')
+          .select('ad_id, preview_shareable_link')
+          .in('ad_id', adIds);
+        
+        if (videoLinksData) {
+          videoLinksData.forEach(row => {
+            if (row.preview_shareable_link) {
+              videoLinksMap.set(row.ad_id, row.preview_shareable_link);
+            }
+          });
+        }
+      }
+
+      const adsMap = new Map();
+
+      adsData.forEach(row => {
         if (!row.ad_name || !row.ad_id) return;
 
         const adKey = row.ad_id;
@@ -308,7 +329,7 @@ export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilte
             name: row.ad_name,
             status: row.effective_status || 'PAUSED',
             adFormat: 'Single Image',
-            videoLink: null, // Will be populated later
+            videoLink: videoLinksMap.get(row.ad_id) || null,
             spend: 0,
             revenue: 0,
             sales: 0,
@@ -327,37 +348,21 @@ export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilte
         ad.impressions += row.impressions || 0;
       });
 
-    const ads = Array.from(adsMap.values()).map(ad => ({
-      ...ad,
-      cpa: ad.sales > 0 ? ad.spend / ad.sales : 0,
-      cpm: ad.impressions > 0 ? (ad.spend / ad.impressions) * 1000 : 0,
-      cpc: ad.clicks > 0 ? ad.spend / ad.clicks : 0,
-      ctr: ad.impressions > 0 ? (ad.clicks / ad.impressions) * 100 : 0,
-      clickCv: ad.clicks > 0 ? (ad.sales / ad.clicks) * 100 : 0,
-      epc: ad.clicks > 0 ? ad.revenue / ad.clicks : 0,
-      roas: ad.spend > 0 ? ad.revenue / ad.spend : 0,
-    }));
+      const ads = Array.from(adsMap.values()).map(ad => ({
+        ...ad,
+        cpa: ad.sales > 0 ? ad.spend / ad.sales : 0,
+        cpm: ad.impressions > 0 ? (ad.spend / ad.impressions) * 1000 : 0,
+        cpc: ad.clicks > 0 ? ad.spend / ad.clicks : 0,
+        ctr: ad.impressions > 0 ? (ad.clicks / ad.impressions) * 100 : 0,
+        clickCv: ad.clicks > 0 ? (ad.sales / ad.clicks) * 100 : 0,
+        epc: ad.clicks > 0 ? ad.revenue / ad.clicks : 0,
+        roas: ad.spend > 0 ? ad.revenue / ad.spend : 0,
+      }));
 
-    // Fetch video links asynchronously
-    ads.forEach(async (ad) => {
-      try {
-        const { data } = await supabase
-          .from('meta_ads_metrics')
-          .select('preview_shareable_link')
-          .eq('ad_id', ad.id)
-          .limit(1)
-          .single();
-        
-        ad.videoLink = data?.preview_shareable_link || null;
-      } catch (error) {
-        console.error('Error fetching video link for ad:', ad.id, error);
-        ad.videoLink = null;
-      }
-    });
-
-    console.log('Processed ads:', ads.length);
-    return ads;
-  }, [adsData, adsetName]);
-
-  return { data: adsListData, isLoading, error };
+      console.log('Processed ads with video links:', ads.length);
+      return ads;
+    },
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 5 * 60 * 1000,
+  });
 };

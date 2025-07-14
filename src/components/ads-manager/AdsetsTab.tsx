@@ -11,9 +11,10 @@ import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { updateAdset, createAdset } from '@/utils/api';
 import { useAdsetsData } from '@/hooks/useAdsData';
-import FilterBar, { DateFilter } from './FilterBar';
+import FilterBar from './FilterBar';
 import ColumnOrderDialog from './ColumnOrderDialog';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
+import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 
 interface AdsetsTabProps {
   campaignId: string | null;
@@ -25,23 +26,21 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
   const [tempBudget, setTempBudget] = useState<string>('');
   const [newAdset, setNewAdset] = useState({ name: '', dailyBudget: '' });
-  const [nameFilter, setNameFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState<DateFilter | null>(null);
   const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
+  const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
 
-  const { data: adsets, isLoading, error } = useAdsetsData(campaignId, dateFilter);
+  const { data: adsets, isLoading, error } = useAdsetsData(campaignId, settings.dateFilter);
 
   const filteredAdsets = useMemo(() => {
     if (!adsets) return [];
 
     return adsets.filter(adset => {
-      const matchesName = adset.name.toLowerCase().includes(nameFilter.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || adset.status === statusFilter;
+      const matchesName = adset.name.toLowerCase().includes(settings.nameFilter.toLowerCase());
+      const matchesStatus = settings.statusFilter === 'all' || adset.status === settings.statusFilter;
       return matchesName && matchesStatus;
     });
-  }, [adsets, nameFilter, statusFilter]);
+  }, [adsets, settings.nameFilter, settings.statusFilter]);
 
   // Cálculo das métricas de resumo
   const summaryMetrics = useMemo(() => {
@@ -267,12 +266,12 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
 
       <FilterBar
         activeTab="adsets"
-        onNameFilter={setNameFilter}
-        onStatusFilter={setStatusFilter}
-        onDateFilter={setDateFilter}
-        nameFilter={nameFilter}
-        statusFilter={statusFilter}
-        dateFilter={dateFilter}
+        onNameFilter={updateNameFilter}
+        onStatusFilter={updateStatusFilter}
+        onDateFilter={updateDateFilter}
+        nameFilter={settings.nameFilter}
+        statusFilter={settings.statusFilter}
+        dateFilter={settings.dateFilter}
       />
 
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">

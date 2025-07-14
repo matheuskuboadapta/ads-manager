@@ -1,34 +1,33 @@
 
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { BarChart3 } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useAccountsData } from '@/hooks/useAdsData';
-import FilterBar, { DateFilter } from './FilterBar';
+import FilterBar from './FilterBar';
 import ColumnOrderDialog from './ColumnOrderDialog';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
+import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 
 interface AccountsTabProps {
   onAccountSelect: (accountId: string) => void;
 }
 
 const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
-  const [nameFilter, setNameFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [dateFilter, setDateFilter] = useState<DateFilter | null>(null);
   const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
+  const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
   
-  const { data: accounts, isLoading, error } = useAccountsData(dateFilter);
+  const { data: accounts, isLoading, error } = useAccountsData(settings.dateFilter);
 
   const filteredAccounts = useMemo(() => {
     if (!accounts) return [];
 
     return accounts.filter(account => {
-      const matchesName = account.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesName = account.name.toLowerCase().includes(settings.nameFilter.toLowerCase());
       return matchesName;
     });
-  }, [accounts, nameFilter]);
+  }, [accounts, settings.nameFilter]);
 
   // Cálculo das métricas de resumo
   const summaryMetrics = useMemo(() => {
@@ -107,12 +106,12 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
 
       <FilterBar
         activeTab="accounts"
-        onNameFilter={setNameFilter}
-        onStatusFilter={setStatusFilter}
-        onDateFilter={setDateFilter}
-        nameFilter={nameFilter}
-        statusFilter={statusFilter}
-        dateFilter={dateFilter}
+        onNameFilter={updateNameFilter}
+        onStatusFilter={updateStatusFilter}
+        onDateFilter={updateDateFilter}
+        nameFilter={settings.nameFilter}
+        statusFilter={settings.statusFilter}
+        dateFilter={settings.dateFilter}
       />
 
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">

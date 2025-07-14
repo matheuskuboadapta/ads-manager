@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
@@ -130,12 +130,12 @@ const FilterBar = ({
   };
 
   // Set default date filter to "Today" if none is set
-  useState(() => {
+  React.useEffect(() => {
     if (!dateFilter) {
       const today = getPresetDateRanges()[0]; // "Hoje"
       onDateFilter(today);
     }
-  });
+  }, [dateFilter, onDateFilter]);
 
   return (
     <div className="bg-white border border-slate-200 rounded-lg p-4 mb-6">

@@ -341,6 +341,7 @@ export type Database = {
           date_start: string | null
           effective_status: string | null
           impressions: number | null
+          preview_shareable_link: string | null
           profit: number | null
           real_revenue: number | null
           real_sales: number | null

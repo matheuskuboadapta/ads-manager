@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 // Definir as colunas padrão para cada tipo de tabela
 export const DEFAULT_COLUMN_ORDERS = {
@@ -81,35 +81,61 @@ export const COLUMN_LABELS: Record<string, string> = {
   videoLink: 'Vídeo'
 };
 
+const STORAGE_KEY = 'ads-manager-column-orders';
+
 export const useColumnOrder = () => {
   const [columnOrders, setColumnOrders] = useState(DEFAULT_COLUMN_ORDERS);
 
-  const updateColumnOrder = useCallback((tableType: keyof typeof DEFAULT_COLUMN_ORDERS, newOrder: string[]) => {
-    setColumnOrders(prev => ({
-      ...prev,
-      [tableType]: newOrder
-    }));
+  // Carregar ordens das colunas do localStorage ao inicializar
+  useEffect(() => {
+    try {
+      const savedOrders = localStorage.getItem(STORAGE_KEY);
+      if (savedOrders) {
+        const parsed = JSON.parse(savedOrders);
+        setColumnOrders(parsed);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar ordem das colunas:', error);
+    }
   }, []);
+
+  // Salvar no localStorage sempre que a ordem mudar
+  const saveColumnOrders = useCallback((newOrders: typeof DEFAULT_COLUMN_ORDERS) => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newOrders));
+      setColumnOrders(newOrders);
+    } catch (error) {
+      console.error('Erro ao salvar ordem das colunas:', error);
+    }
+  }, []);
+
+  const updateColumnOrder = useCallback((tableType: keyof typeof DEFAULT_COLUMN_ORDERS, newOrder: string[]) => {
+    const newOrders = {
+      ...columnOrders,
+      [tableType]: newOrder
+    };
+    saveColumnOrders(newOrders);
+  }, [columnOrders, saveColumnOrders]);
 
   const moveColumn = useCallback((tableType: keyof typeof DEFAULT_COLUMN_ORDERS, fromIndex: number, toIndex: number) => {
-    setColumnOrders(prev => {
-      const currentOrder = [...prev[tableType]];
-      const [movedColumn] = currentOrder.splice(fromIndex, 1);
-      currentOrder.splice(toIndex, 0, movedColumn);
-      
-      return {
-        ...prev,
-        [tableType]: currentOrder
-      };
-    });
-  }, []);
+    const currentOrder = [...columnOrders[tableType]];
+    const [movedColumn] = currentOrder.splice(fromIndex, 1);
+    currentOrder.splice(toIndex, 0, movedColumn);
+    
+    const newOrders = {
+      ...columnOrders,
+      [tableType]: currentOrder
+    };
+    saveColumnOrders(newOrders);
+  }, [columnOrders, saveColumnOrders]);
 
   const resetColumnOrder = useCallback((tableType: keyof typeof DEFAULT_COLUMN_ORDERS) => {
-    setColumnOrders(prev => ({
-      ...prev,
+    const newOrders = {
+      ...columnOrders,
       [tableType]: [...DEFAULT_COLUMN_ORDERS[tableType]]
-    }));
-  }, []);
+    };
+    saveColumnOrders(newOrders);
+  }, [columnOrders, saveColumnOrders]);
 
   return {
     columnOrders,
