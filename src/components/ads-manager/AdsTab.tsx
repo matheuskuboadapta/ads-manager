@@ -24,7 +24,7 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
   const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
 
-  const { data: ads, isLoading, error } = useAdsListData(adsetId, settings.dateFilter);
+  const { data: ads, isLoading, error, updateOptimistic, clearOptimistic } = useAdsListData(adsetId, settings.dateFilter);
 
   const filteredAds = useMemo(() => {
     if (!ads) return [];
@@ -62,6 +62,9 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
   }, [filteredAds]);
 
   const handleStatusChange = async (adId: string, newStatus: boolean) => {
+    // Atualização otimística - mostrar mudança imediatamente
+    updateOptimistic(adId, { status: newStatus ? 'ACTIVE' : 'PAUSED' });
+    
     try {
       await updateAd(adId, 'status', newStatus ? 'ACTIVE' : 'PAUSED');
       
@@ -70,6 +73,9 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
         description: `Anúncio ${newStatus ? 'ativado' : 'pausado'} com sucesso.`,
       });
     } catch (error) {
+      // Reverter a mudança otimística em caso de erro
+      clearOptimistic(adId);
+      
       toast({
         title: "Erro",
         description: "Falha ao atualizar status do anúncio.",

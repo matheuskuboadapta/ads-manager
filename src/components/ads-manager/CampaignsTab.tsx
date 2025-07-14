@@ -31,7 +31,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
 
-  const { data: campaigns, isLoading, error } = useCampaignsData(accountId, settings.dateFilter);
+  const { data: campaigns, isLoading, error, updateOptimistic, clearOptimistic } = useCampaignsData(accountId, settings.dateFilter);
 
   const filteredCampaigns = useMemo(() => {
     if (!campaigns) return [];
@@ -69,6 +69,9 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   }, [filteredCampaigns]);
 
   const handleStatusChange = async (campaign: any, newStatus: boolean) => {
+    // Atualização otimística - mostrar mudança imediatamente
+    updateOptimistic(campaign.firstAdId, { status: newStatus ? 'ACTIVE' : 'PAUSED' });
+    
     try {
       // Use firstAdId instead of realId to send the ad_id
       await updateCampaign(campaign.firstAdId, 'status', newStatus ? 'ACTIVE' : 'PAUSED');
@@ -78,6 +81,9 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
         description: `Campanha ${newStatus ? 'ativada' : 'pausada'} com sucesso.`,
       });
     } catch (error) {
+      // Reverter a mudança otimística em caso de erro
+      clearOptimistic(campaign.firstAdId);
+      
       toast({
         title: "Erro",
         description: "Falha ao atualizar status da campanha.",
@@ -87,6 +93,9 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   };
 
   const handleObjectiveChange = async (campaign: any, newObjective: string) => {
+    // Atualização otimística - mostrar mudança imediatamente
+    updateOptimistic(campaign.firstAdId, { objective: newObjective });
+    
     try {
       // Use firstAdId instead of realId to send the ad_id
       await updateCampaign(campaign.firstAdId, 'objective', newObjective);
@@ -96,6 +105,9 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
         description: "Objetivo da campanha alterado com sucesso.",
       });
     } catch (error) {
+      // Reverter a mudança otimística em caso de erro
+      clearOptimistic(campaign.firstAdId);
+      
       toast({
         title: "Erro",
         description: "Falha ao atualizar objetivo da campanha.",

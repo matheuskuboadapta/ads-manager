@@ -31,7 +31,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
   const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
 
-  const { data: adsets, isLoading, error } = useAdsetsData(campaignId, settings.dateFilter);
+  const { data: adsets, isLoading, error, updateOptimistic, clearOptimistic } = useAdsetsData(campaignId, settings.dateFilter);
 
   const filteredAdsets = useMemo(() => {
     if (!adsets) return [];
@@ -71,6 +71,9 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
   }, [filteredAdsets]);
 
   const handleStatusChange = async (adset: any, newStatus: boolean) => {
+    // Atualização otimística - mostrar mudança imediatamente
+    updateOptimistic(adset.firstAdId, { status: newStatus ? 'ACTIVE' : 'PAUSED' });
+    
     try {
       // Use firstAdId instead of realId to send the ad_id
       await updateAdset(adset.firstAdId, 'status', newStatus ? 'ACTIVE' : 'PAUSED');
@@ -80,6 +83,9 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
         description: `Conjunto ${newStatus ? 'ativado' : 'pausado'} com sucesso.`,
       });
     } catch (error) {
+      // Reverter a mudança otimística em caso de erro
+      clearOptimistic(adset.firstAdId);
+      
       toast({
         title: "Erro",
         description: "Falha ao atualizar status do conjunto.",
@@ -104,6 +110,9 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
       return;
     }
 
+    // Atualização otimística - mostrar mudança imediatamente
+    updateOptimistic(adset.firstAdId, { dailyBudget: newBudget });
+
     try {
       // Use firstAdId instead of realId to send the ad_id
       await updateAdset(adset.firstAdId, 'budget', newBudget);
@@ -114,6 +123,10 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
         description: "Orçamento diário alterado com sucesso.",
       });
     } catch (error) {
+      // Reverter a mudança otimística em caso de erro
+      clearOptimistic(adset.firstAdId);
+      setEditingBudget(null);
+      
       toast({
         title: "Erro",
         description: "Falha ao atualizar orçamento.",

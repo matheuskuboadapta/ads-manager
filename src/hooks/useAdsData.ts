@@ -110,6 +110,7 @@ export const useAccountsData = (dateFilter?: DateFilter | null) => {
 
 export const useCampaignsData = (accountName?: string | null, dateFilter?: DateFilter | null) => {
   const { data: adsData, isLoading, error } = useAdsData(dateFilter);
+  const [optimisticUpdates, setOptimisticUpdates] = React.useState<Record<string, any>>({});
 
   const campaignsData = React.useMemo(() => {
     if (!adsData) return [];
@@ -161,26 +162,46 @@ export const useCampaignsData = (accountName?: string | null, dateFilter?: DateF
     console.log('Unique campaigns found:', campaignsMap.size);
     console.log('Campaign names:', Array.from(campaignsMap.keys()));
 
-    const campaigns = Array.from(campaignsMap.values()).map(campaign => ({
-      ...campaign,
-      cpa: campaign.sales > 0 ? campaign.spend / campaign.sales : 0,
-      cpm: campaign.impressions > 0 ? (campaign.spend / campaign.impressions) * 1000 : 0,
-      cpc: campaign.clicks > 0 ? campaign.spend / campaign.clicks : 0,
-      ctr: campaign.impressions > 0 ? (campaign.clicks / campaign.impressions) * 100 : 0,
-      clickCv: campaign.clicks > 0 ? (campaign.sales / campaign.clicks) * 100 : 0,
-      epc: campaign.clicks > 0 ? campaign.revenue / campaign.clicks : 0,
-      roas: campaign.spend > 0 ? campaign.revenue / campaign.spend : 0,
-    }));
+    const campaigns = Array.from(campaignsMap.values()).map(campaign => {
+      const updates = optimisticUpdates[campaign.firstAdId] || {};
+      return {
+        ...campaign,
+        ...updates,
+        cpa: campaign.sales > 0 ? campaign.spend / campaign.sales : 0,
+        cpm: campaign.impressions > 0 ? (campaign.spend / campaign.impressions) * 1000 : 0,
+        cpc: campaign.clicks > 0 ? campaign.spend / campaign.clicks : 0,
+        ctr: campaign.impressions > 0 ? (campaign.clicks / campaign.impressions) * 100 : 0,
+        clickCv: campaign.clicks > 0 ? (campaign.sales / campaign.clicks) * 100 : 0,
+        epc: campaign.clicks > 0 ? campaign.revenue / campaign.clicks : 0,
+        roas: campaign.spend > 0 ? campaign.revenue / campaign.spend : 0,
+      };
+    });
 
     console.log('Processed campaigns:', campaigns.length);
     return campaigns;
-  }, [adsData, accountName]);
+  }, [adsData, accountName, optimisticUpdates]);
 
-  return { data: campaignsData, isLoading, error };
+  const updateOptimistic = React.useCallback((adId: string, updates: any) => {
+    setOptimisticUpdates(prev => ({
+      ...prev,
+      [adId]: { ...prev[adId], ...updates }
+    }));
+  }, []);
+
+  const clearOptimistic = React.useCallback((adId: string) => {
+    setOptimisticUpdates(prev => {
+      const newUpdates = { ...prev };
+      delete newUpdates[adId];
+      return newUpdates;
+    });
+  }, []);
+
+  return { data: campaignsData, isLoading, error, updateOptimistic, clearOptimistic };
 };
 
 export const useAdsetsData = (campaignName?: string | null, dateFilter?: DateFilter | null) => {
   const { data: adsData, isLoading, error } = useAdsData(dateFilter);
+  const [optimisticUpdates, setOptimisticUpdates] = React.useState<Record<string, any>>({});
 
   const adsetsData = React.useMemo(() => {
     if (!adsData) return [];
@@ -250,27 +271,48 @@ export const useAdsetsData = (campaignName?: string | null, dateFilter?: DateFil
     console.log('Unique adsets found:', adsetsMap.size);
     console.log('Adset names:', Array.from(adsetsMap.keys()));
 
-    const adsets = Array.from(adsetsMap.values()).map(adset => ({
-      ...adset,
-      cpa: adset.sales > 0 ? adset.spend / adset.sales : 0,
-      cpm: adset.impressions > 0 ? (adset.spend / adset.impressions) * 1000 : 0,
-      cpc: adset.clicks > 0 ? adset.spend / adset.clicks : 0,
-      ctr: adset.impressions > 0 ? (adset.clicks / adset.impressions) * 100 : 0,
-      clickCv: adset.clicks > 0 ? (adset.sales / adset.clicks) * 100 : 0,
-      epc: adset.clicks > 0 ? adset.revenue / adset.clicks : 0,
-      roas: adset.spend > 0 ? adset.revenue / adset.spend : 0,
-    }));
+    const adsets = Array.from(adsetsMap.values()).map(adset => {
+      const updates = optimisticUpdates[adset.firstAdId] || {};
+      return {
+        ...adset,
+        ...updates,
+        cpa: adset.sales > 0 ? adset.spend / adset.sales : 0,
+        cpm: adset.impressions > 0 ? (adset.spend / adset.impressions) * 1000 : 0,
+        cpc: adset.clicks > 0 ? adset.spend / adset.clicks : 0,
+        ctr: adset.impressions > 0 ? (adset.clicks / adset.impressions) * 100 : 0,
+        clickCv: adset.clicks > 0 ? (adset.sales / adset.clicks) * 100 : 0,
+        epc: adset.clicks > 0 ? adset.revenue / adset.clicks : 0,
+        roas: adset.spend > 0 ? adset.revenue / adset.spend : 0,
+      };
+    });
 
     console.log('Final processed adsets:', adsets.length);
     console.log('=== END ADSETS DATA PROCESSING ===');
     return adsets;
-  }, [adsData, campaignName]);
+  }, [adsData, campaignName, optimisticUpdates]);
 
-  return { data: adsetsData, isLoading, error };
+  const updateOptimistic = React.useCallback((adId: string, updates: any) => {
+    setOptimisticUpdates(prev => ({
+      ...prev,
+      [adId]: { ...prev[adId], ...updates }
+    }));
+  }, []);
+
+  const clearOptimistic = React.useCallback((adId: string) => {
+    setOptimisticUpdates(prev => {
+      const newUpdates = { ...prev };
+      delete newUpdates[adId];
+      return newUpdates;
+    });
+  }, []);
+
+  return { data: adsetsData, isLoading, error, updateOptimistic, clearOptimistic };
 };
 
 export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilter | null) => {
-  return useQuery({
+  const [optimisticUpdates, setOptimisticUpdates] = React.useState<Record<string, any>>({});
+
+  const query = useQuery({
     queryKey: ['ads-list-data', adsetName, dateFilter],
     queryFn: async () => {
       console.log('Fetching ads list data with video links for adset:', adsetName);
@@ -348,16 +390,20 @@ export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilte
         ad.impressions += row.impressions || 0;
       });
 
-      const ads = Array.from(adsMap.values()).map(ad => ({
-        ...ad,
-        cpa: ad.sales > 0 ? ad.spend / ad.sales : 0,
-        cpm: ad.impressions > 0 ? (ad.spend / ad.impressions) * 1000 : 0,
-        cpc: ad.clicks > 0 ? ad.spend / ad.clicks : 0,
-        ctr: ad.impressions > 0 ? (ad.clicks / ad.impressions) * 100 : 0,
-        clickCv: ad.clicks > 0 ? (ad.sales / ad.clicks) * 100 : 0,
-        epc: ad.clicks > 0 ? ad.revenue / ad.clicks : 0,
-        roas: ad.spend > 0 ? ad.revenue / ad.spend : 0,
-      }));
+      const ads = Array.from(adsMap.values()).map(ad => {
+        const updates = optimisticUpdates[ad.id] || {};
+        return {
+          ...ad,
+          ...updates,
+          cpa: ad.sales > 0 ? ad.spend / ad.sales : 0,
+          cpm: ad.impressions > 0 ? (ad.spend / ad.impressions) * 1000 : 0,
+          cpc: ad.clicks > 0 ? ad.spend / ad.clicks : 0,
+          ctr: ad.impressions > 0 ? (ad.clicks / ad.impressions) * 100 : 0,
+          clickCv: ad.clicks > 0 ? (ad.sales / ad.clicks) * 100 : 0,
+          epc: ad.clicks > 0 ? ad.revenue / ad.clicks : 0,
+          roas: ad.spend > 0 ? ad.revenue / ad.spend : 0,
+        };
+      });
 
       console.log('Processed ads with video links:', ads.length);
       return ads;
@@ -365,4 +411,25 @@ export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilte
     staleTime: 5 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
   });
+
+  const updateOptimistic = React.useCallback((adId: string, updates: any) => {
+    setOptimisticUpdates(prev => ({
+      ...prev,
+      [adId]: { ...prev[adId], ...updates }
+    }));
+  }, []);
+
+  const clearOptimistic = React.useCallback((adId: string) => {
+    setOptimisticUpdates(prev => {
+      const newUpdates = { ...prev };
+      delete newUpdates[adId];
+      return newUpdates;
+    });
+  }, []);
+
+  return { 
+    ...query, 
+    updateOptimistic, 
+    clearOptimistic 
+  };
 };
