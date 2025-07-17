@@ -43,8 +43,9 @@ serve(async (req) => {
     let processedInsights = result;
     try {
       const parsedResult = JSON.parse(result);
-      if (Array.isArray(parsedResult) && parsedResult.length > 0 && parsedResult[0].text) {
-        processedInsights = parsedResult[0].text;
+      // Verificar se o resultado contém a propriedade "text"
+      if (parsedResult && parsedResult.text) {
+        processedInsights = parsedResult.text;
       }
     } catch (parseError) {
       console.log('Resposta não é JSON válido, usando texto original');
