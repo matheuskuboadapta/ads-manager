@@ -17,23 +17,18 @@ serve(async (req) => {
 
     console.log('Recebendo requisição AI Insights:', { level, id });
 
-    const requestBody = [
-      {
-        query: {
-          level,
-          id
-        }
-      }
-    ];
+    // Construir URL com query parameters para GET request
+    const webhookUrl = new URL('https://mkthooks.adaptahub.org/webhook/ai-insights-for-ads');
+    webhookUrl.searchParams.set('level', level);
+    webhookUrl.searchParams.set('id', id);
 
-    console.log('Enviando para webhook externo:', requestBody);
+    console.log('Enviando para webhook externo (GET):', webhookUrl.toString());
 
-    const response = await fetch('https://mkthooks.adaptahub.org/webhook/6538c9ef-9473-49f1-8905-9e33a74beec2', {
-      method: 'POST',
+    const response = await fetch(webhookUrl.toString(), {
+      method: 'GET',
       headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody)
+        'Accept': 'application/json',
+      }
     });
 
     if (!response.ok) {
