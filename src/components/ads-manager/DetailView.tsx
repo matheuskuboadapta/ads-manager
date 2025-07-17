@@ -16,11 +16,15 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
   const { data: chartData, isLoading, error } = useDetailMetrics(type, name);
   const [aiInsights, setAiInsights] = useState<string>('');
   const [aiLoading, setAiLoading] = useState<boolean>(false);
+  const [aiError, setAiError] = useState<boolean>(false);
 
   useEffect(() => {
+    // Reset states quando mudar id/type
+    setAiInsights('');
+    setAiError(false);
+    
     const fetchAiInsights = async () => {
       setAiLoading(true);
-      setAiInsights('');
       
       try {
         const requestBody = [
@@ -36,6 +40,7 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
 
         const response = await fetch('https://mkthooks.adaptahub.org/webhook/6538c9ef-9473-49f1-8905-9e33a74beec2', {
           method: 'POST',
+          mode: 'cors',
           headers: {
             'Content-Type': 'application/json',
           },
@@ -49,15 +54,22 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
         const result = await response.text();
         console.log('Resposta AI Insights:', result);
         setAiInsights(result);
+        setAiError(false);
       } catch (error) {
         console.error('Erro ao buscar AI insights:', error);
-        setAiInsights('Erro ao carregar insights da IA');
+        setAiError(true);
+        setAiInsights('Não foi possível carregar os insights da IA no momento. O serviço pode estar temporariamente indisponível.');
       } finally {
         setAiLoading(false);
       }
     };
 
-    fetchAiInsights();
+    // Delay de 500ms para evitar múltiplas requisições rapidamente
+    const timeoutId = setTimeout(() => {
+      fetchAiInsights();
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
   }, [type, id]);
 
   const chartConfig = {
@@ -254,6 +266,16 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-purple-600 mr-2" />
                   <span className="text-slate-600">Gerando insights com IA...</span>
+                </div>
+              ) : aiError ? (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Brain className="h-4 w-4 text-amber-600" />
+                    <span className="font-medium text-amber-900">Serviço temporariamente indisponível</span>
+                  </div>
+                  <p className="text-amber-800 text-xs">
+                    Os insights da IA não puderam ser carregados. Isso pode acontecer quando o serviço está sendo atualizado ou temporariamente fora do ar.
+                  </p>
                 </div>
               ) : (
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
