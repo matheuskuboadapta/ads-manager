@@ -19,6 +19,7 @@ export const DEFAULT_COLUMN_ORDERS = {
   campaigns: [
     'status',
     'name',
+    'dailyBudget',
     'spend',
     'revenue', 
     'sales',

@@ -324,22 +324,10 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
               {filteredAdsets.map((adset) => (
                 <TableRow key={adset.id} className="hover:bg-slate-50">
                   <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Switch
-                        checked={adset.statusFinal === 'ATIVO'}
-                        onCheckedChange={(checked) => handleStatusChange(adset, checked)}
-                      />
-                      {adset.isAdsetLevelBudget && (
-                        <div className="text-xs text-muted-foreground">
-                          Orçamento: {formatCurrency(adset.dailyBudget)}/dia
-                        </div>
-                      )}
-                      {!adset.isAdsetLevelBudget && (
-                        <div className="text-xs text-yellow-600">
-                          Orçamento a nível de campanha
-                        </div>
-                      )}
-                    </div>
+                    <Switch
+                      checked={adset.statusFinal === 'ATIVO'}
+                      onCheckedChange={(checked) => handleStatusChange(adset, checked)}
+                    />
                   </TableCell>
                   <TableCell className="font-medium">
                     <div className="flex items-center space-x-2">
@@ -353,10 +341,10 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                       <CopyButton text={adset.name} />
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell>
                     {adset.isAdsetLevelBudget ? (
                       editingBudget === adset.id ? (
-                        <div className="flex items-center justify-end space-x-1">
+                        <div className="flex items-center justify-start space-x-1">
                           <Input
                             type="number"
                             value={tempBudget}
@@ -382,7 +370,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                           </Button>
                         </div>
                       ) : (
-                        <div className="flex items-center justify-end space-x-1">
+                        <div className="flex items-center justify-start space-x-1">
                           <span className="font-mono text-sm">{formatCurrency(adset.dailyBudget)}</span>
                           <Button
                             size="sm"
@@ -395,10 +383,8 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                         </div>
                       )
                     ) : (
-                      <div className="flex items-center justify-end">
-                        <span className="font-mono text-sm text-muted-foreground">
-                          {formatCurrency(adset.dailyBudget)}
-                        </span>
+                      <div className="text-xs text-yellow-600">
+                        Orçamento a nível de campanha
                       </div>
                     )}
                   </TableCell>

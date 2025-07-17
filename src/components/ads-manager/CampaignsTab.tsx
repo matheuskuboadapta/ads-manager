@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Target } from 'lucide-react';
+import { Plus, Target, Edit2 } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
@@ -268,35 +268,36 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50">
-                {columnOrders.campaigns.map((column) => {
-                  const isRightAligned = !['status', 'name'].includes(column);
-                  return (
-                    <TableHead 
-                      key={column}
-                      className={`font-semibold min-w-[80px] ${isRightAligned ? 'text-right' : ''} ${column === 'name' ? 'min-w-[200px]' : ''}`}
-                    >
-                      {column === 'status' && 'Status'}
-                      {column === 'name' && 'Nome da Campanha'}
-                      {column === 'spend' && 'Valor Gasto'}
-                      {column === 'revenue' && 'Faturamento'}
-                      {column === 'sales' && 'Vendas'}
-                      {column === 'profit' && 'Profit'}
-                      {column === 'cpa' && 'CPA'}
-                      {column === 'cpm' && 'CPM'}
-                      {column === 'roas' && 'ROAS'}
-                      {column === 'ctr' && 'CTR'}
-                      {column === 'clickCv' && 'Click CV'}
-                      {column === 'epc' && 'EPC'}
-                    </TableHead>
-                  );
-                })}
+                  {columnOrders.campaigns.map((column) => {
+                    const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
+                    return (
+                      <TableHead 
+                        key={column}
+                        className={`font-semibold min-w-[80px] ${isRightAligned ? 'text-right' : ''} ${column === 'name' ? 'min-w-[200px]' : ''} ${column === 'dailyBudget' ? 'min-w-[150px]' : ''}`}
+                      >
+                        {column === 'status' && 'Status'}
+                        {column === 'name' && 'Nome da Campanha'}
+                        {column === 'dailyBudget' && 'Orçamento Diário'}
+                        {column === 'spend' && 'Valor Gasto'}
+                        {column === 'revenue' && 'Faturamento'}
+                        {column === 'sales' && 'Vendas'}
+                        {column === 'profit' && 'Profit'}
+                        {column === 'cpa' && 'CPA'}
+                        {column === 'cpm' && 'CPM'}
+                        {column === 'roas' && 'ROAS'}
+                        {column === 'ctr' && 'CTR'}
+                        {column === 'clickCv' && 'Click CV'}
+                        {column === 'epc' && 'EPC'}
+                      </TableHead>
+                    );
+                  })}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredCampaigns.map((campaign) => (
                 <TableRow key={campaign.id} className="hover:bg-slate-50">
                   {columnOrders.campaigns.map((column) => {
-                    const isRightAligned = !['status', 'name'].includes(column);
+                    const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
                     
                     return (
                       <TableCell 
@@ -304,22 +305,10 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                         className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'name' ? 'font-medium' : ''}`}
                       >
                         {column === 'status' && (
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              checked={campaign.statusFinal === 'ATIVO'}
-                              onCheckedChange={(checked) => handleStatusChange(campaign, checked)}
-                            />
-                            {!campaign.isAdsetLevelBudget && (
-                              <div className="text-xs text-muted-foreground">
-                                Orçamento: {formatCurrency(campaign.dailyBudget)}/dia
-                              </div>
-                            )}
-                            {campaign.isAdsetLevelBudget && (
-                              <div className="text-xs text-yellow-600">
-                                Orçamento a nível de conjunto
-                              </div>
-                            )}
-                          </div>
+                          <Switch
+                            checked={campaign.statusFinal === 'ATIVO'}
+                            onCheckedChange={(checked) => handleStatusChange(campaign, checked)}
+                          />
                         )}
                         {column === 'name' && (
                           <div className="flex items-center space-x-2">
@@ -334,6 +323,26 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                               <span className="underline-offset-4 hover:underline truncate">{campaign.name}</span>
                             </div>
                             <CopyButton text={campaign.name} />
+                          </div>
+                        )}
+                        {column === 'dailyBudget' && (
+                          <div>
+                            {!campaign.isAdsetLevelBudget ? (
+                              <div className="flex items-center justify-start space-x-2">
+                                <span className="font-mono text-sm">{formatCurrency(campaign.dailyBudget)}</span>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Edit2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-yellow-600">
+                                Orçamento a nível de conjunto
+                              </div>
+                            )}
                           </div>
                         )}
                         {column === 'spend' && formatCurrency(campaign.spend)}
@@ -364,7 +373,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
               {summaryMetrics && (
                 <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-semibold">
                   {columnOrders.campaigns.map((column) => {
-                    const isRightAligned = !['status', 'name'].includes(column);
+                    const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
                     
                     return (
                       <TableCell 
@@ -377,6 +386,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                             RESUMO ({filteredCampaigns.length} campanhas)
                           </span>
                         )}
+                        {column === 'dailyBudget' && ''}
                         {column === 'spend' && formatCurrency(summaryMetrics.spend)}
                         {column === 'revenue' && (
                           <span className="text-green-700">{formatCurrency(summaryMetrics.revenue)}</span>
