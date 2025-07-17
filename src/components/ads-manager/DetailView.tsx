@@ -29,6 +29,10 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
         
         console.log('Fetching AI insights for ad_id:', id);
         
+        // Create an abort controller for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+        
         const response = await fetch('https://mkthooks.adaptahub.org/webhook/6538c9ef-9473-49f1-8905-9e33a74beec2', {
           method: 'POST',
           headers: {
@@ -36,8 +40,12 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
           },
           body: JSON.stringify({
             ad_id: id
-          })
+          }),
+          signal: controller.signal,
+          mode: 'cors', // Explicitly set CORS mode
         });
+        
+        clearTimeout(timeoutId);
         
         if (!response.ok) {
           throw new Error(`Erro ${response.status}: ${response.statusText}`);
@@ -45,10 +53,22 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
         
         const insights = await response.text();
         console.log('AI insights received:', insights);
-        setAiInsights(insights);
+        setAiInsights(insights || 'Nenhum insight disponível no momento.');
       } catch (err) {
         console.error('Error fetching AI insights:', err);
-        setAiInsightsError(err instanceof Error ? err.message : 'Erro desconhecido');
+        
+        let errorMessage = 'Erro desconhecido';
+        if (err instanceof Error) {
+          if (err.name === 'AbortError') {
+            errorMessage = 'Timeout: O servidor demorou muito para responder';
+          } else if (err.message === 'Failed to fetch') {
+            errorMessage = 'Não foi possível conectar ao servidor de IA. Verifique sua conexão ou tente novamente.';
+          } else {
+            errorMessage = err.message;
+          }
+        }
+        
+        setAiInsightsError(errorMessage);
       } finally {
         setAiInsightsLoading(false);
       }
