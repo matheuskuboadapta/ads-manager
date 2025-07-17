@@ -28,10 +28,10 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
       setAiLoading(true);
       
       try {
-        console.log('Enviando requisição AI Insights:', { level: type, id });
+        console.log('Enviando requisição AI Insights:', { level: type, id, name });
 
         const { data, error } = await supabase.functions.invoke('ai-insights', {
-          body: { level: type, id }
+          body: { level: type, id, name }
         });
 
         if (error) {

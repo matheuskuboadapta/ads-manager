@@ -13,14 +13,15 @@ serve(async (req) => {
   }
 
   try {
-    const { level, id } = await req.json();
+    const { level, id, name } = await req.json();
 
-    console.log('Recebendo requisição AI Insights:', { level, id });
+    console.log('Recebendo requisição AI Insights:', { level, id, name });
 
     // Construir URL com query parameters para GET request
+    // Usar o nome da campanha ao invés do ID
     const webhookUrl = new URL('https://mkthooks.adaptahub.org/webhook/ai-insights-for-ads');
     webhookUrl.searchParams.set('level', level);
-    webhookUrl.searchParams.set('id', id);
+    webhookUrl.searchParams.set('id', name); // Usar o nome ao invés do ID
 
     console.log('Enviando para webhook externo (GET):', webhookUrl.toString());
 
