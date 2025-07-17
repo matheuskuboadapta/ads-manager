@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Settings, GripVertical, RotateCcw } from 'lucide-react';
+import { Eye, GripVertical, RotateCcw } from 'lucide-react';
 import { COLUMN_LABELS } from '@/hooks/useColumnOrder';
 
 interface ColumnOrderDialogProps {
@@ -62,7 +62,7 @@ const ColumnOrderDialog = ({ columnOrder, onColumnOrderChange, onReset }: Column
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="flex items-center space-x-2">
-          <Settings className="h-4 w-4" />
+          <Eye className="h-4 w-4" />
           <span>Configurar Colunas</span>
         </Button>
       </DialogTrigger>

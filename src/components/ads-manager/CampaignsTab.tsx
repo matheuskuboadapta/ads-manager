@@ -317,7 +317,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50">
+              <TableRow className="bg-slate-50 border-b-slate-200">
                   {columnOrders.campaigns.map((column) => {
                     const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
                     return (

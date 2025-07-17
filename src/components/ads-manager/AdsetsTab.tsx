@@ -296,7 +296,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50">
+              <TableRow className="bg-slate-50 border-b-slate-200">
                 {columnOrders.adsets.map((column) => {
                   const isRightAligned = !['status', 'name'].includes(column);
                   return (
