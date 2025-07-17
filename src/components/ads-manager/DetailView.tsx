@@ -32,15 +32,22 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
           }
         ];
 
+        console.log('Enviando requisição AI Insights:', requestBody);
+
         const response = await fetch('https://mkthooks.adaptahub.org/webhook/6538c9ef-9473-49f1-8905-9e33a74beec2', {
-          method: 'GET',
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(requestBody)
         });
 
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const result = await response.text();
+        console.log('Resposta AI Insights:', result);
         setAiInsights(result);
       } catch (error) {
         console.error('Erro ao buscar AI insights:', error);
