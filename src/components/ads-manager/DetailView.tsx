@@ -25,7 +25,15 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
         setAiInsightsLoading(true);
         setAiInsightsError('');
         
-        const response = await fetch('https://mkthooks.adaptahub.org/webhook/6538c9ef-9473-49f1-8905-9e33a74beec2');
+        const response = await fetch('https://mkthooks.adaptahub.org/webhook/6538c9ef-9473-49f1-8905-9e33a74beec2', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ad_id: id
+          })
+        });
         
         if (!response.ok) {
           throw new Error('Erro ao carregar insights da IA');
