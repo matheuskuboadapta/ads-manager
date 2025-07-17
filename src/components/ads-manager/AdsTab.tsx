@@ -1,10 +1,10 @@
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Megaphone, ExternalLink, Play } from 'lucide-react';
+import { Megaphone, ExternalLink, Play, ChevronDown, ChevronRight } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
@@ -14,12 +14,14 @@ import FilterBar from './FilterBar';
 import ColumnOrderDialog from './ColumnOrderDialog';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
+import DetailView from './DetailView';
 
 interface AdsTabProps {
   adsetId: string | null;
 }
 
 const AdsTab = ({ adsetId }: AdsTabProps) => {
+  const [expandedAd, setExpandedAd] = useState<string | null>(null);
   const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
@@ -195,7 +197,8 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
             </TableHeader>
             <TableBody>
               {filteredAds.map((ad) => (
-                <TableRow key={ad.id} className="hover:bg-slate-50">
+                <>
+                  <TableRow key={ad.id} className="hover:bg-slate-50">
                   {columnOrders.ads.map((column) => {
                     const isRightAligned = !['status', 'name', 'videoLink'].includes(column);
                     
@@ -212,6 +215,16 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
                         )}
                         {column === 'name' && (
                           <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => setExpandedAd(expandedAd === ad.id ? null : ad.id)}
+                              className="flex items-center justify-center w-6 h-6 hover:bg-gray-100 rounded transition-colors"
+                            >
+                              {expandedAd === ad.id ? (
+                                <ChevronDown className="h-4 w-4 text-gray-600" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 text-gray-600" />
+                              )}
+                            </button>
                             <div className="flex items-center space-x-2 flex-1">
                               <Megaphone className="h-4 w-4 text-blue-600 flex-shrink-0" />
                               <span className="truncate">{ad.name}</span>
@@ -258,7 +271,19 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
                       </TableCell>
                     );
                   })}
-                </TableRow>
+                  </TableRow>
+                  {expandedAd === ad.id && (
+                    <TableRow>
+                      <TableCell colSpan={columnOrders.ads.length} className="p-0">
+                        <DetailView 
+                          type="ad" 
+                          name={ad.name} 
+                          id={ad.id} 
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </>
               ))}
               {summaryMetrics && (
                 <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-semibold">

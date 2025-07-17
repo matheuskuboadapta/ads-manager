@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Target, Edit2, Check, X } from 'lucide-react';
+import { Plus, Target, Edit2, Check, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import ColumnOrderDialog from './ColumnOrderDialog';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
+import DetailView from './DetailView';
 
 interface CampaignsTabProps {
   accountId: string | null;
@@ -29,6 +30,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
   const [tempBudget, setTempBudget] = useState<string>('');
   const [newCampaign, setNewCampaign] = useState({ name: '', objective: 'CONVERSIONS' });
+  const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
   const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
@@ -343,7 +345,8 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
             </TableHeader>
             <TableBody>
               {filteredCampaigns.map((campaign) => (
-                <TableRow key={campaign.id} className="hover:bg-slate-50">
+                <>
+                  <TableRow key={campaign.id} className="hover:bg-slate-50">
                   {columnOrders.campaigns.map((column) => {
                     const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
                     
@@ -360,6 +363,16 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                         )}
                         {column === 'name' && (
                           <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => setExpandedCampaign(expandedCampaign === campaign.id ? null : campaign.id)}
+                              className="flex items-center justify-center w-6 h-6 hover:bg-gray-100 rounded transition-colors"
+                            >
+                              {expandedCampaign === campaign.id ? (
+                                <ChevronDown className="h-4 w-4 text-gray-600" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 text-gray-600" />
+                              )}
+                            </button>
                             <div 
                               className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors flex-1"
                               onClick={() => {
@@ -445,7 +458,19 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                       </TableCell>
                     );
                   })}
-                </TableRow>
+                  </TableRow>
+                  {expandedCampaign === campaign.id && (
+                    <TableRow>
+                      <TableCell colSpan={columnOrders.campaigns.length} className="p-0">
+                        <DetailView 
+                          type="campaign" 
+                          name={campaign.name} 
+                          id={campaign.id} 
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </>
               ))}
               {summaryMetrics && (
                 <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-semibold">

@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, BarChart3, Edit2, Check, X } from 'lucide-react';
+import { Plus, BarChart3, Edit2, Check, X, ChevronDown, ChevronRight } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
@@ -16,6 +16,7 @@ import FilterBar from './FilterBar';
 import ColumnOrderDialog from './ColumnOrderDialog';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
+import DetailView from './DetailView';
 
 interface AdsetsTabProps {
   campaignId: string | null;
@@ -27,6 +28,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
   const [tempBudget, setTempBudget] = useState<string>('');
   const [newAdset, setNewAdset] = useState({ name: '', dailyBudget: '' });
+  const [expandedAdset, setExpandedAdset] = useState<string | null>(null);
   const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
@@ -322,7 +324,8 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
             </TableHeader>
             <TableBody>
               {filteredAdsets.map((adset) => (
-                <TableRow key={adset.id} className="hover:bg-slate-50">
+                <>
+                  <TableRow key={adset.id} className="hover:bg-slate-50">
                   <TableCell>
                     <Switch
                       checked={adset.statusFinal === 'ATIVO'}
@@ -331,6 +334,16 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                   </TableCell>
                   <TableCell className="font-medium">
                     <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setExpandedAdset(expandedAdset === adset.id ? null : adset.id)}
+                        className="flex items-center justify-center w-6 h-6 hover:bg-gray-100 rounded transition-colors"
+                      >
+                        {expandedAdset === adset.id ? (
+                          <ChevronDown className="h-4 w-4 text-gray-600" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-gray-600" />
+                        )}
+                      </button>
                       <div 
                         className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors flex-1"
                         onClick={() => onAdsetSelect(adset.name)}
@@ -420,7 +433,19 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                   <TableCell className="text-right font-mono text-sm">
                     {formatCurrency(adset.epc)}
                   </TableCell>
-                </TableRow>
+                  </TableRow>
+                  {expandedAdset === adset.id && (
+                    <TableRow>
+                      <TableCell colSpan={columnOrders.adsets.length} className="p-0">
+                        <DetailView 
+                          type="adset" 
+                          name={adset.name} 
+                          id={adset.id} 
+                        />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </>
               ))}
               {summaryMetrics && (
                 <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-semibold">
