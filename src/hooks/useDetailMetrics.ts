@@ -63,16 +63,10 @@ const useDetailMetrics = (type: 'campaign' | 'adset' | 'ad', name: string) => {
         const date = format(subDays(today, i), 'yyyy-MM-dd');
         const metrics = dailyMetrics.get(date) || { spend: 0, sales: 0 };
         
-        // Para CPA, mostrar valor mesmo quando não há vendas (será alto, indicando baixa eficiência)
-        // Se não há gasto, CPA é 0. Se há gasto mas sem vendas, mostra um valor alto indicativo
+        // Para CPA, só mostrar quando há vendas
         let cpa = 0;
-        if (metrics.spend > 0) {
-          if (metrics.sales > 0) {
-            cpa = Number((metrics.spend / metrics.sales).toFixed(2));
-          } else {
-            // Quando há gasto mas sem vendas, usar um valor alto para mostrar ineficiência
-            cpa = metrics.spend; // CPA = gasto total (sem conversões)
-          }
+        if (metrics.spend > 0 && metrics.sales > 0) {
+          cpa = Number((metrics.spend / metrics.sales).toFixed(2));
         }
         
         result.push({

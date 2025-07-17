@@ -98,42 +98,69 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="#64748b"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis 
-                    stroke="#64748b"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `R$${value}`}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar 
-                    dataKey="spend" 
-                    fill="#000000" 
-                    radius={[4, 4, 0, 0]}
-                    name="Gasto"
-                  >
-                    <LabelList 
-                      dataKey="spend" 
-                      position="top" 
-                      fontSize={10} 
-                      fill="#000000"
-                      formatter={(value: number) => value > 0 ? `R$${value}` : ''}
-                    />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-2">
+                <ChartContainer config={chartConfig} className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="#64748b"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis 
+                        stroke="#64748b"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(value) => `R$${value}`}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar 
+                        dataKey="spend" 
+                        fill="#000000" 
+                        radius={[4, 4, 0, 0]}
+                        name="Gasto"
+                      >
+                        <LabelList 
+                          dataKey="spend" 
+                          position="top" 
+                          fontSize={12} 
+                          fill="#000000"
+                          fontWeight="600"
+                          formatter={(value: number) => value > 0 ? `R$${value}` : ''}
+                        />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
+              <div className="col-span-1">
+                <div className="text-xs font-semibold text-slate-700 mb-2">Resumo Diário</div>
+                <div className="space-y-1 max-h-64 overflow-y-auto">
+                  {chartData.map((item, index) => {
+                    const prevValue = index > 0 ? chartData[index - 1].spend : item.spend;
+                    const variation = prevValue > 0 ? ((item.spend - prevValue) / prevValue * 100) : 0;
+                    return (
+                      <div key={item.date} className="flex justify-between items-center text-xs p-1 border-b border-slate-100">
+                        <span className="font-medium">{item.date}</span>
+                        <div className="text-right">
+                          <div>R${item.spend}</div>
+                          {index > 0 && (
+                            <div className={`text-xs ${variation >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {variation >= 0 ? '+' : ''}{variation.toFixed(1)}%
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -146,42 +173,69 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ChartContainer config={chartConfig} className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="#64748b"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis 
-                    stroke="#64748b"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `R$${value}`}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar 
-                    dataKey="cpa" 
-                    fill="#000000" 
-                    radius={[4, 4, 0, 0]}
-                    name="CPA"
-                  >
-                    <LabelList 
-                      dataKey="cpa" 
-                      position="top" 
-                      fontSize={10} 
-                      fill="#000000"
-                      formatter={(value: number) => value > 0 ? `R$${value}` : ''}
-                    />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="col-span-2">
+                <ChartContainer config={chartConfig} className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                      <XAxis 
+                        dataKey="date" 
+                        stroke="#64748b"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis 
+                        stroke="#64748b"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(value) => `R$${value}`}
+                      />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Bar 
+                        dataKey="cpa" 
+                        fill="#000000" 
+                        radius={[4, 4, 0, 0]}
+                        name="CPA"
+                      >
+                        <LabelList 
+                          dataKey="cpa" 
+                          position="top" 
+                          fontSize={12} 
+                          fill="#000000"
+                          fontWeight="600"
+                          formatter={(value: number) => value > 0 ? `R$${value}` : ''}
+                        />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </div>
+              <div className="col-span-1">
+                <div className="text-xs font-semibold text-slate-700 mb-2">Resumo Diário</div>
+                <div className="space-y-1 max-h-64 overflow-y-auto">
+                  {chartData.map((item, index) => {
+                    const prevValue = index > 0 ? chartData[index - 1].cpa : item.cpa;
+                    const variation = prevValue > 0 ? ((item.cpa - prevValue) / prevValue * 100) : 0;
+                    return (
+                      <div key={item.date} className="flex justify-between items-center text-xs p-1 border-b border-slate-100">
+                        <span className="font-medium">{item.date}</span>
+                        <div className="text-right">
+                          <div>{item.cpa > 0 ? `R$${item.cpa}` : 'N/A'}</div>
+                          {index > 0 && item.cpa > 0 && prevValue > 0 && (
+                            <div className={`text-xs ${variation >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                              {variation >= 0 ? '+' : ''}{variation.toFixed(1)}%
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
