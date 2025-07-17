@@ -89,8 +89,8 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Contas Publicitárias</h2>
-          <p className="text-slate-600">Visualize e gerencie suas contas do Meta Ads</p>
+          <h2 className="text-2xl font-bold text-foreground">Contas Publicitárias</h2>
+          <p className="text-muted-foreground">Visualize e gerencie suas contas do Meta Ads</p>
         </div>
         <div className="flex items-center space-x-3">
           <Badge variant="secondary" className="px-3 py-1">

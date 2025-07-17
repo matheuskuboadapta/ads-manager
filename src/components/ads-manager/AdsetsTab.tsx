@@ -223,7 +223,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Conjuntos de Anúncios</h2>
+          <h2 className="text-2xl font-bold text-foreground">Conjuntos de Anúncios</h2>
           <p className="text-slate-600">Configure orçamentos e públicos-alvo</p>
         </div>
         <div className="flex items-center space-x-3">

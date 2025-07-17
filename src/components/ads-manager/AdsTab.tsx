@@ -126,8 +126,8 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Anúncios</h2>
-          <p className="text-slate-600">Visualize o desempenho individual dos anúncios</p>
+          <h2 className="text-2xl font-bold text-foreground">Anúncios</h2>
+          <p className="text-muted-foreground">Visualize o desempenho individual dos anúncios</p>
         </div>
         <div className="flex items-center space-x-3">
           <Badge variant="secondary" className="px-3 py-1">

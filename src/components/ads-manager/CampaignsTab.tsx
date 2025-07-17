@@ -239,8 +239,8 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Campanhas</h2>
-          <p className="text-slate-600">Gerencie suas campanhas publicitárias</p>
+          <h2 className="text-2xl font-bold text-foreground">Campanhas</h2>
+          <p className="text-muted-foreground">Gerencie suas campanhas publicitárias</p>
         </div>
         <div className="flex items-center space-x-3">
           <Badge variant="secondary" className="px-3 py-1">
