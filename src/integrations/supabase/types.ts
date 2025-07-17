@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_rules: {
+        Row: {
+          actions: Json
+          conditions: Json
+          created_at: string | null
+          description: string | null
+          id: number
+          is_active: boolean | null
+          level: string
+          name: string
+          sql_query: string | null
+          target_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          actions: Json
+          conditions: Json
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          is_active?: boolean | null
+          level: string
+          name: string
+          sql_query?: string | null
+          target_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          actions?: Json
+          conditions?: Json
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          is_active?: boolean | null
+          level?: string
+          name?: string
+          sql_query?: string | null
+          target_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       meta_ads_activies: {
         Row: {
           account_name: string | null
