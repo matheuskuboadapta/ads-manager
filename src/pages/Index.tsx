@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Users, Target, BarChart3, Megaphone, Sun, Moon } from 'lucide-react';
+import { RefreshCw, Users, Target, BarChart3, Megaphone, Sun, Moon, Settings } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -11,6 +11,7 @@ import AccountsTab from '@/components/ads-manager/AccountsTab';
 import CampaignsTab from '@/components/ads-manager/CampaignsTab';
 import AdsetsTab from '@/components/ads-manager/AdsetsTab';
 import AdsTab from '@/components/ads-manager/AdsTab';
+import RulesTab from '@/components/ads-manager/RulesTab';
 
 export default function Index() {
   const [activeTab, setActiveTab] = useState('accounts');
@@ -174,7 +175,7 @@ export default function Index() {
       {/* Main Content */}
       <main className="p-6">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-[400px]">
+          <TabsList className="grid w-full grid-cols-5 lg:w-[500px]">
             <TabsTrigger value="accounts" className="flex items-center space-x-2">
               <Users className="h-4 w-4" />
               <span className="hidden sm:inline">Contas</span>
@@ -190,6 +191,10 @@ export default function Index() {
             <TabsTrigger value="ads" className="flex items-center space-x-2">
               <Megaphone className="h-4 w-4" />
               <span className="hidden sm:inline">Anúncios</span>
+            </TabsTrigger>
+            <TabsTrigger value="rules" className="flex items-center space-x-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Regras</span>
             </TabsTrigger>
           </TabsList>
 
@@ -207,6 +212,10 @@ export default function Index() {
 
           <TabsContent value="ads" className="space-y-4">
             <AdsTab adsetId={selectedAdset} />
+          </TabsContent>
+
+          <TabsContent value="rules" className="space-y-4">
+            <RulesTab />
           </TabsContent>
         </Tabs>
       </main>
