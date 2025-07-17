@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { ChartContainer } from '@/components/ui/chart';
 import { formatCurrency } from '@/utils/formatters';
-import { TrendingUp, DollarSign } from 'lucide-react';
+import { TrendingUp, DollarSign, Loader2 } from 'lucide-react';
+import useDetailMetrics from '@/hooks/useDetailMetrics';
 
 interface DetailViewProps {
   type: 'campaign' | 'adset' | 'ad';
@@ -12,29 +12,7 @@ interface DetailViewProps {
 }
 
 const DetailView = ({ type, name, id }: DetailViewProps) => {
-  // Dados mockados para os últimos 7 dias
-  // Em produção, isso viria de uma API real
-  const chartData = useMemo(() => {
-    const today = new Date();
-    const data = [];
-    
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      
-      // Simulando dados variados para demonstração
-      const baseSpend = 30 + Math.random() * 40;
-      const baseCpa = 8 + Math.random() * 12;
-      
-      data.push({
-        date: date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-        spend: Number(baseSpend.toFixed(2)),
-        cpa: Number(baseCpa.toFixed(2))
-      });
-    }
-    
-    return data;
-  }, []);
+  const { data: chartData, isLoading, error } = useDetailMetrics(type, name);
 
   const chartConfig = {
     spend: {
@@ -65,6 +43,39 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
     }
     return null;
   };
+
+  if (isLoading) {
+    return (
+      <div className="bg-slate-50 border-t border-slate-200 p-6">
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
+          <span className="text-slate-600">Carregando métricas...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-slate-50 border-t border-slate-200 p-6">
+        <div className="text-center py-8">
+          <p className="text-red-600 mb-2">Erro ao carregar métricas</p>
+          <p className="text-slate-500 text-sm">Tente novamente mais tarde</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!chartData || chartData.length === 0) {
+    return (
+      <div className="bg-slate-50 border-t border-slate-200 p-6">
+        <div className="text-center py-8">
+          <p className="text-slate-600 mb-2">Nenhum dado encontrado</p>
+          <p className="text-slate-500 text-sm">Não há métricas disponíveis para os últimos 7 dias</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-slate-50 border-t border-slate-200 p-6">
