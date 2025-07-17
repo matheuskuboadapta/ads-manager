@@ -4,6 +4,7 @@ import { ChartContainer } from '@/components/ui/chart';
 import { formatCurrency } from '@/utils/formatters';
 import { TrendingUp, DollarSign, Loader2, Brain } from 'lucide-react';
 import useDetailMetrics from '@/hooks/useDetailMetrics';
+import { useState, useEffect } from 'react';
 
 interface DetailViewProps {
   type: 'campaign' | 'adset' | 'ad';
@@ -13,6 +14,44 @@ interface DetailViewProps {
 
 const DetailView = ({ type, name, id }: DetailViewProps) => {
   const { data: chartData, isLoading, error } = useDetailMetrics(type, name);
+  const [aiInsights, setAiInsights] = useState<string>('');
+  const [aiLoading, setAiLoading] = useState<boolean>(false);
+
+  useEffect(() => {
+    const fetchAiInsights = async () => {
+      setAiLoading(true);
+      setAiInsights('');
+      
+      try {
+        const requestBody = [
+          {
+            query: {
+              level: type,
+              id: id
+            }
+          }
+        ];
+
+        const response = await fetch('https://mkthooks.adaptahub.org/webhook/6538c9ef-9473-49f1-8905-9e33a74beec2', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody)
+        });
+
+        const result = await response.text();
+        setAiInsights(result);
+      } catch (error) {
+        console.error('Erro ao buscar AI insights:', error);
+        setAiInsights('Erro ao carregar insights da IA');
+      } finally {
+        setAiLoading(false);
+      }
+    };
+
+    fetchAiInsights();
+  }, [type, id]);
 
   const chartConfig = {
     spend: {
@@ -204,28 +243,18 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4 text-sm">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <h4 className="font-semibold text-blue-900 mb-2">📈 Análise de Performance</h4>
-                <p className="text-blue-800">
-                  Com base nos dados dos últimos 7 dias, identifiquei padrões interessantes na performance desta campanha.
-                </p>
-              </div>
-
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <h4 className="font-semibold text-green-900 mb-2">💡 Recomendações</h4>
-                <ul className="text-green-800 space-y-1">
-                  <li>• Otimize o orçamento nos dias de melhor performance</li>
-                  <li>• Monitore o CPA para manter a rentabilidade</li>
-                  <li>• Considere ajustar o targeting baseado nos insights</li>
-                </ul>
-              </div>
-
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <h4 className="font-semibold text-amber-900 mb-2">⚠️ Alertas</h4>
-                <p className="text-amber-800">
-                  Funcionalidade em desenvolvimento. Em breve, insights personalizados com IA estarão disponíveis.
-                </p>
-              </div>
+              {aiLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-purple-600 mr-2" />
+                  <span className="text-slate-600">Gerando insights com IA...</span>
+                </div>
+              ) : (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                  <pre className="whitespace-pre-wrap text-slate-700 font-mono text-xs leading-relaxed">
+                    {aiInsights || 'Aguardando análise da IA...'}
+                  </pre>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
