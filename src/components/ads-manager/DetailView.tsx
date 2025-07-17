@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { ChartContainer } from '@/components/ui/chart';
 import { formatCurrency } from '@/utils/formatters';
 import { TrendingUp, DollarSign, Loader2 } from 'lucide-react';
@@ -17,11 +17,11 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
   const chartConfig = {
     spend: {
       label: "Gasto",
-      color: "hsl(var(--primary))",
+      color: "#000000",
     },
     cpa: {
       label: "CPA", 
-      color: "hsl(var(--secondary))",
+      color: "#000000",
     },
   };
 
@@ -119,10 +119,18 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
                   <Tooltip content={<CustomTooltip />} />
                   <Bar 
                     dataKey="spend" 
-                    fill="hsl(var(--primary))" 
+                    fill="#000000" 
                     radius={[4, 4, 0, 0]}
                     name="Gasto"
-                  />
+                  >
+                    <LabelList 
+                      dataKey="spend" 
+                      position="top" 
+                      fontSize={10} 
+                      fill="#000000"
+                      formatter={(value: number) => value > 0 ? `R$${value}` : ''}
+                    />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -159,10 +167,18 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
                   <Tooltip content={<CustomTooltip />} />
                   <Bar 
                     dataKey="cpa" 
-                    fill="hsl(var(--secondary))" 
+                    fill="#000000" 
                     radius={[4, 4, 0, 0]}
                     name="CPA"
-                  />
+                  >
+                    <LabelList 
+                      dataKey="cpa" 
+                      position="top" 
+                      fontSize={10} 
+                      fill="#000000"
+                      formatter={(value: number) => value > 0 ? `R$${value}` : ''}
+                    />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
