@@ -22,8 +22,12 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
   useEffect(() => {
     const fetchAiInsights = async () => {
       try {
+        // Reset states before each attempt
         setAiInsightsLoading(true);
         setAiInsightsError('');
+        setAiInsights('');
+        
+        console.log('Fetching AI insights for ad_id:', id);
         
         const response = await fetch('https://mkthooks.adaptahub.org/webhook/6538c9ef-9473-49f1-8905-9e33a74beec2', {
           method: 'POST',
@@ -36,20 +40,25 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
         });
         
         if (!response.ok) {
-          throw new Error('Erro ao carregar insights da IA');
+          throw new Error(`Erro ${response.status}: ${response.statusText}`);
         }
         
         const insights = await response.text();
+        console.log('AI insights received:', insights);
         setAiInsights(insights);
       } catch (err) {
+        console.error('Error fetching AI insights:', err);
         setAiInsightsError(err instanceof Error ? err.message : 'Erro desconhecido');
       } finally {
         setAiInsightsLoading(false);
       }
     };
 
-    fetchAiInsights();
-  }, [type, name, id]);
+    // Always fetch when component mounts or when props change
+    if (id) {
+      fetchAiInsights();
+    }
+  }, [type, name, id]); // Dependencies ensure refetch on any change
 
   const chartConfig = {
     spend: {
