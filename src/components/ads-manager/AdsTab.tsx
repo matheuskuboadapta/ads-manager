@@ -31,7 +31,9 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
 
     return ads.filter(ad => {
       const matchesName = ad.name.toLowerCase().includes(settings.nameFilter.toLowerCase());
-      const matchesStatus = settings.statusFilter === 'all' || ad.status === settings.statusFilter;
+      const matchesStatus = settings.statusFilter === 'all' || 
+        (settings.statusFilter === 'ACTIVE' && ad.statusFinal === 'ATIVO') ||
+        (settings.statusFilter === 'PAUSED' && ad.statusFinal === 'DESATIVADO');
       return matchesName && matchesStatus;
     });
   }, [ads, settings.nameFilter, settings.statusFilter]);
@@ -61,12 +63,15 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
     };
   }, [filteredAds]);
 
-  const handleStatusChange = async (adId: string, newStatus: boolean) => {
+  const handleStatusChange = async (ad: any, newStatus: boolean) => {
     // Atualização otimística - mostrar mudança imediatamente
-    updateOptimistic(adId, { status: newStatus ? 'ACTIVE' : 'PAUSED' });
+    updateOptimistic(ad.id, { 
+      status: newStatus ? 'ACTIVE' : 'PAUSED',
+      statusFinal: newStatus ? 'ATIVO' : 'DESATIVADO'
+    });
     
     try {
-      await updateAd(adId, 'status', newStatus ? 'ACTIVE' : 'PAUSED');
+      await updateAd(ad.id, 'status', newStatus ? 'ATIVO' : 'DESATIVADO');
       
       toast({
         title: "Status atualizado",
@@ -74,7 +79,7 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
       });
     } catch (error) {
       // Reverter a mudança otimística em caso de erro
-      clearOptimistic(adId);
+      clearOptimistic(ad.id);
       
       toast({
         title: "Erro",
@@ -201,8 +206,8 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
                       >
                         {column === 'status' && (
                           <Switch
-                            checked={ad.status === 'ACTIVE'}
-                            onCheckedChange={(checked) => handleStatusChange(ad.id, checked)}
+                            checked={ad.statusFinal === 'ATIVO'}
+                            onCheckedChange={(checked) => handleStatusChange(ad, checked)}
                           />
                         )}
                         {column === 'name' && (

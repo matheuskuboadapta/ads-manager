@@ -9,17 +9,20 @@ interface AdsViewData {
   ad_id: string | null;
   ad_name: string | null;
   adset_name: string | null;
-  adset_status: string | null;
   campaign_name: string | null;
-  campaign_status: string | null;
   clicks: number | null;
   date_start: string | null;
-  effective_status: string | null;
   impressions: number | null;
   profit: number | null;
   real_revenue: number | null;
   real_sales: number | null;
   spend: number | null;
+  // New status columns
+  ad_status_final: string | null;
+  adset_status_final: string | null;
+  campaign_status_final: string | null;
+  is_adset_level_budget: boolean | null;
+  daily_budget_per_row: number | null;
 }
 
 export const useAdsData = (dateFilter?: DateFilter | null) => {
@@ -132,21 +135,24 @@ export const useCampaignsData = (accountName?: string | null, dateFilter?: DateF
 
         const campaignKey = row.campaign_name;
         if (!campaignsMap.has(campaignKey)) {
-          campaignsMap.set(campaignKey, {
-            id: `camp_${campaignKey.toLowerCase().replace(/\s+/g, '_')}`,
-            realId: `campaign_${Math.random().toString(36).substr(2, 9)}`,
-            name: row.campaign_name,
-            objective: 'CONVERSIONS',
-            status: row.campaign_status || 'PAUSED',
-            spend: 0,
-            revenue: 0,
-            sales: 0,
-            profit: 0,
-            clicks: 0,
-            impressions: 0,
-            // Store the first ad_id found for this campaign
-            firstAdId: row.ad_id,
-          });
+        campaignsMap.set(campaignKey, {
+          id: `camp_${campaignKey.toLowerCase().replace(/\s+/g, '_')}`,
+          realId: `campaign_${Math.random().toString(36).substr(2, 9)}`,
+          name: row.campaign_name,
+          objective: 'CONVERSIONS',
+          status: row.campaign_status_final === 'ATIVO' ? 'ACTIVE' : 'PAUSED',
+          statusFinal: row.campaign_status_final,
+          isAdsetLevelBudget: row.is_adset_level_budget,
+          dailyBudget: row.daily_budget_per_row || 0,
+          spend: 0,
+          revenue: 0,
+          sales: 0,
+          profit: 0,
+          clicks: 0,
+          impressions: 0,
+          // Store the first ad_id found for this campaign
+          firstAdId: row.ad_id,
+        });
         }
 
         const campaign = campaignsMap.get(campaignKey);
@@ -246,8 +252,10 @@ export const useAdsetsData = (campaignName?: string | null, dateFilter?: DateFil
           id: `adset_${adsetKey.toLowerCase().replace(/\s+/g, '_')}`,
           realId: `adset_${Math.random().toString(36).substr(2, 9)}`,
           name: row.adset_name,
-          status: row.adset_status || 'PAUSED',
-          dailyBudget: 200,
+          status: row.adset_status_final === 'ATIVO' ? 'ACTIVE' : 'PAUSED',
+          statusFinal: row.adset_status_final,
+          isAdsetLevelBudget: row.is_adset_level_budget,
+          dailyBudget: row.daily_budget_per_row || 0,
           spend: 0,
           revenue: 0,
           sales: 0,
@@ -369,7 +377,8 @@ export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilte
           adsMap.set(adKey, {
             id: row.ad_id,
             name: row.ad_name,
-            status: row.effective_status || 'PAUSED',
+            status: row.ad_status_final === 'ATIVO' ? 'ACTIVE' : 'PAUSED',
+            statusFinal: row.ad_status_final,
             adFormat: 'Single Image',
             videoLink: videoLinksMap.get(row.ad_id) || null,
             spend: 0,

@@ -71,9 +71,11 @@ export type Database = {
           account_name: string | null
           ad_id: string
           ad_name: string | null
+          adset_budget: number | null
           adset_id: string | null
           adset_name: string | null
           adset_status: string | null
+          campaign_budget: number | null
           campaign_id: string | null
           campaign_name: string | null
           campaign_status: string | null
@@ -106,9 +108,11 @@ export type Database = {
           account_name?: string | null
           ad_id: string
           ad_name?: string | null
+          adset_budget?: number | null
           adset_id?: string | null
           adset_name?: string | null
           adset_status?: string | null
+          campaign_budget?: number | null
           campaign_id?: string | null
           campaign_name?: string | null
           campaign_status?: string | null
@@ -141,9 +145,11 @@ export type Database = {
           account_name?: string | null
           ad_id?: string
           ad_name?: string | null
+          adset_budget?: number | null
           adset_id?: string | null
           adset_name?: string | null
           adset_status?: string | null
+          campaign_budget?: number | null
           campaign_id?: string | null
           campaign_name?: string | null
           campaign_status?: string | null
@@ -333,14 +339,20 @@ export type Database = {
           account_name: string | null
           ad_id: string | null
           ad_name: string | null
+          ad_status_final: string | null
+          ad_status_native: string | null
           adset_name: string | null
-          adset_status: string | null
+          adset_status_final: string | null
+          adset_status_native: string | null
           campaign_name: string | null
-          campaign_status: string | null
+          campaign_status_final: string | null
+          campaign_status_native: string | null
           clicks: number | null
+          daily_budget: number | null
+          daily_budget_per_row: number | null
           date_start: string | null
-          effective_status: string | null
           impressions: number | null
+          is_adset_level_budget: boolean | null
           preview_shareable_link: string | null
           profit: number | null
           real_revenue: number | null

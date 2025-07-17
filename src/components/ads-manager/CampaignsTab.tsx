@@ -38,7 +38,9 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
 
     return campaigns.filter(campaign => {
       const matchesName = campaign.name.toLowerCase().includes(settings.nameFilter.toLowerCase());
-      const matchesStatus = settings.statusFilter === 'all' || campaign.status === settings.statusFilter;
+      const matchesStatus = settings.statusFilter === 'all' || 
+        (settings.statusFilter === 'ACTIVE' && campaign.statusFinal === 'ATIVO') ||
+        (settings.statusFilter === 'PAUSED' && campaign.statusFinal === 'DESATIVADA');
       return matchesName && matchesStatus;
     });
   }, [campaigns, settings.nameFilter, settings.statusFilter]);
@@ -70,11 +72,14 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
 
   const handleStatusChange = async (campaign: any, newStatus: boolean) => {
     // Atualização otimística - mostrar mudança imediatamente
-    updateOptimistic(campaign.firstAdId, { status: newStatus ? 'ACTIVE' : 'PAUSED' });
+    updateOptimistic(campaign.firstAdId, { 
+      status: newStatus ? 'ACTIVE' : 'PAUSED',
+      statusFinal: newStatus ? 'ATIVO' : 'DESATIVADA'
+    });
     
     try {
       // Use firstAdId instead of realId to send the ad_id
-      await updateCampaign(campaign.firstAdId, 'status', newStatus ? 'ACTIVE' : 'PAUSED');
+      await updateCampaign(campaign.firstAdId, 'status', newStatus ? 'ATIVO' : 'DESATIVADA');
       
       toast({
         title: "Status atualizado",
@@ -299,10 +304,22 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                         className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'name' ? 'font-medium' : ''}`}
                       >
                         {column === 'status' && (
-                          <Switch
-                            checked={campaign.status === 'ACTIVE'}
-                            onCheckedChange={(checked) => handleStatusChange(campaign, checked)}
-                          />
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              checked={campaign.statusFinal === 'ATIVO'}
+                              onCheckedChange={(checked) => handleStatusChange(campaign, checked)}
+                            />
+                            {!campaign.isAdsetLevelBudget && (
+                              <div className="text-xs text-muted-foreground">
+                                Orçamento: {formatCurrency(campaign.dailyBudget)}/dia
+                              </div>
+                            )}
+                            {campaign.isAdsetLevelBudget && (
+                              <div className="text-xs text-yellow-600">
+                                Orçamento a nível de conjunto
+                              </div>
+                            )}
+                          </div>
                         )}
                         {column === 'name' && (
                           <div className="flex items-center space-x-2">

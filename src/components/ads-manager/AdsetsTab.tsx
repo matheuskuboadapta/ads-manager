@@ -38,7 +38,9 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
 
     return adsets.filter(adset => {
       const matchesName = adset.name.toLowerCase().includes(settings.nameFilter.toLowerCase());
-      const matchesStatus = settings.statusFilter === 'all' || adset.status === settings.statusFilter;
+      const matchesStatus = settings.statusFilter === 'all' || 
+        (settings.statusFilter === 'ACTIVE' && adset.statusFinal === 'ATIVO') ||
+        (settings.statusFilter === 'PAUSED' && adset.statusFinal === 'DESATIVADA');
       return matchesName && matchesStatus;
     });
   }, [adsets, settings.nameFilter, settings.statusFilter]);
@@ -322,10 +324,22 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
               {filteredAdsets.map((adset) => (
                 <TableRow key={adset.id} className="hover:bg-slate-50">
                   <TableCell>
-                    <Switch
-                      checked={adset.status === 'ACTIVE'}
-                      onCheckedChange={(checked) => handleStatusChange(adset, checked)}
-                    />
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        checked={adset.statusFinal === 'ATIVO'}
+                        onCheckedChange={(checked) => handleStatusChange(adset, checked)}
+                      />
+                      {adset.isAdsetLevelBudget && (
+                        <div className="text-xs text-muted-foreground">
+                          Orçamento: {formatCurrency(adset.dailyBudget)}/dia
+                        </div>
+                      )}
+                      {!adset.isAdsetLevelBudget && (
+                        <div className="text-xs text-yellow-600">
+                          Orçamento a nível de campanha
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="font-medium">
                     <div className="flex items-center space-x-2">
@@ -340,43 +354,51 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    {editingBudget === adset.id ? (
-                      <div className="flex items-center justify-end space-x-1">
-                        <Input
-                          type="number"
-                          value={tempBudget}
-                          onChange={(e) => setTempBudget(e.target.value)}
-                          className="w-20 h-7 text-xs"
-                          min="1"
-                          step="0.01"
-                        />
-                        <Button
-                          size="sm"
-                          onClick={() => handleBudgetSave(adset)}
-                          className="h-7 w-7 p-0"
-                        >
-                          <Check className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={handleBudgetCancel}
-                          className="h-7 w-7 p-0"
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </div>
+                    {adset.isAdsetLevelBudget ? (
+                      editingBudget === adset.id ? (
+                        <div className="flex items-center justify-end space-x-1">
+                          <Input
+                            type="number"
+                            value={tempBudget}
+                            onChange={(e) => setTempBudget(e.target.value)}
+                            className="w-20 h-7 text-xs"
+                            min="1"
+                            step="0.01"
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => handleBudgetSave(adset)}
+                            className="h-7 w-7 p-0"
+                          >
+                            <Check className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleBudgetCancel}
+                            className="h-7 w-7 p-0"
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end space-x-1">
+                          <span className="font-mono text-sm">{formatCurrency(adset.dailyBudget)}</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleBudgetEdit(adset.id, adset.dailyBudget)}
+                            className="h-6 w-6 p-0"
+                          >
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )
                     ) : (
-                      <div className="flex items-center justify-end space-x-1">
-                        <span className="font-mono text-sm">{formatCurrency(adset.dailyBudget)}</span>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleBudgetEdit(adset.id, adset.dailyBudget)}
-                          className="h-6 w-6 p-0"
-                        >
-                          <Edit2 className="h-3 w-3" />
-                        </Button>
+                      <div className="flex items-center justify-end">
+                        <span className="font-mono text-sm text-muted-foreground">
+                          {formatCurrency(adset.dailyBudget)}
+                        </span>
                       </div>
                     )}
                   </TableCell>
