@@ -5,6 +5,7 @@ import { formatCurrency } from '@/utils/formatters';
 import { TrendingUp, DollarSign, Loader2, Brain } from 'lucide-react';
 import useDetailMetrics from '@/hooks/useDetailMetrics';
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DetailViewProps {
   type: 'campaign' | 'adset' | 'ad';
@@ -27,33 +28,18 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
       setAiLoading(true);
       
       try {
-        const requestBody = [
-          {
-            query: {
-              level: type,
-              id: id
-            }
-          }
-        ];
+        console.log('Enviando requisição AI Insights:', { level: type, id });
 
-        console.log('Enviando requisição AI Insights:', requestBody);
-
-        const response = await fetch('https://mkthooks.adaptahub.org/webhook/6538c9ef-9473-49f1-8905-9e33a74beec2', {
-          method: 'POST',
-          mode: 'cors',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody)
+        const { data, error } = await supabase.functions.invoke('ai-insights', {
+          body: { level: type, id }
         });
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+        if (error) {
+          throw new Error(error.message);
         }
 
-        const result = await response.text();
-        console.log('Resposta AI Insights:', result);
-        setAiInsights(result);
+        console.log('Resposta AI Insights:', data);
+        setAiInsights(data.insights || 'Nenhum insight disponível');
         setAiError(false);
       } catch (error) {
         console.error('Erro ao buscar AI insights:', error);
