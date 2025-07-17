@@ -63,6 +63,14 @@ export const DEFAULT_COLUMN_ORDERS = {
   ]
 };
 
+// Colunas ocultas padrão (vazias)
+export const DEFAULT_HIDDEN_COLUMNS = {
+  accounts: [] as string[],
+  campaigns: [] as string[],
+  adsets: [] as string[],
+  ads: [] as string[]
+};
+
 export const COLUMN_LABELS: Record<string, string> = {
   status: 'Status',
   name: 'Nome',
@@ -83,9 +91,11 @@ export const COLUMN_LABELS: Record<string, string> = {
 };
 
 const STORAGE_KEY = 'ads-manager-column-orders';
+const HIDDEN_COLUMNS_KEY = 'ads-manager-hidden-columns';
 
 export const useColumnOrder = () => {
   const [columnOrders, setColumnOrders] = useState(DEFAULT_COLUMN_ORDERS);
+  const [hiddenColumns, setHiddenColumns] = useState(DEFAULT_HIDDEN_COLUMNS);
 
   // Carregar ordens das colunas do localStorage ao inicializar
   useEffect(() => {
@@ -95,8 +105,14 @@ export const useColumnOrder = () => {
         const parsed = JSON.parse(savedOrders);
         setColumnOrders(parsed);
       }
+
+      const savedHidden = localStorage.getItem(HIDDEN_COLUMNS_KEY);
+      if (savedHidden) {
+        const parsed = JSON.parse(savedHidden);
+        setHiddenColumns(parsed);
+      }
     } catch (error) {
-      console.error('Erro ao carregar ordem das colunas:', error);
+      console.error('Erro ao carregar configurações das colunas:', error);
     }
   }, []);
 
@@ -110,6 +126,16 @@ export const useColumnOrder = () => {
     }
   }, []);
 
+  // Salvar colunas ocultas no localStorage
+  const saveHiddenColumns = useCallback((newHidden: typeof DEFAULT_HIDDEN_COLUMNS) => {
+    try {
+      localStorage.setItem(HIDDEN_COLUMNS_KEY, JSON.stringify(newHidden));
+      setHiddenColumns(newHidden);
+    } catch (error) {
+      console.error('Erro ao salvar colunas ocultas:', error);
+    }
+  }, []);
+
   const updateColumnOrder = useCallback((tableType: keyof typeof DEFAULT_COLUMN_ORDERS, newOrder: string[]) => {
     const newOrders = {
       ...columnOrders,
@@ -117,6 +143,32 @@ export const useColumnOrder = () => {
     };
     saveColumnOrders(newOrders);
   }, [columnOrders, saveColumnOrders]);
+
+  const toggleColumnVisibility = useCallback((tableType: keyof typeof DEFAULT_COLUMN_ORDERS, column: string) => {
+    const currentHidden = hiddenColumns[tableType];
+    const isHidden = currentHidden.includes(column);
+    
+    const newHidden = {
+      ...hiddenColumns,
+      [tableType]: isHidden 
+        ? currentHidden.filter(col => col !== column)
+        : [...currentHidden, column]
+    };
+    
+    saveHiddenColumns(newHidden);
+  }, [hiddenColumns, saveHiddenColumns]);
+
+  const getVisibleColumns = useCallback((tableType: keyof typeof DEFAULT_COLUMN_ORDERS) => {
+    return columnOrders[tableType].filter(column => !hiddenColumns[tableType].includes(column));
+  }, [columnOrders, hiddenColumns]);
+
+  const getAllColumns = useCallback((tableType: keyof typeof DEFAULT_COLUMN_ORDERS) => {
+    return columnOrders[tableType];
+  }, [columnOrders]);
+
+  const isColumnVisible = useCallback((tableType: keyof typeof DEFAULT_COLUMN_ORDERS, column: string) => {
+    return !hiddenColumns[tableType].includes(column);
+  }, [hiddenColumns]);
 
   const moveColumn = useCallback((tableType: keyof typeof DEFAULT_COLUMN_ORDERS, fromIndex: number, toIndex: number) => {
     const currentOrder = [...columnOrders[tableType]];
@@ -135,12 +187,22 @@ export const useColumnOrder = () => {
       ...columnOrders,
       [tableType]: [...DEFAULT_COLUMN_ORDERS[tableType]]
     };
+    const newHidden = {
+      ...hiddenColumns,
+      [tableType]: [...DEFAULT_HIDDEN_COLUMNS[tableType]]
+    };
     saveColumnOrders(newOrders);
-  }, [columnOrders, saveColumnOrders]);
+    saveHiddenColumns(newHidden);
+  }, [columnOrders, hiddenColumns, saveColumnOrders, saveHiddenColumns]);
 
   return {
     columnOrders,
+    hiddenColumns,
     updateColumnOrder,
+    toggleColumnVisibility,
+    getVisibleColumns,
+    getAllColumns,
+    isColumnVisible,
     moveColumn,
     resetColumnOrder
   };

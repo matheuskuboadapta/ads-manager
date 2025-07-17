@@ -15,7 +15,7 @@ interface AccountsTabProps {
 }
 
 const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
-  const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
+  const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
   
   const { data: accounts, isLoading, error } = useAccountsData(settings.dateFilter);
@@ -97,9 +97,13 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
             {filteredAccounts.length} contas
           </Badge>
           <ColumnOrderDialog
-            columnOrder={columnOrders.accounts}
+            tableType="accounts"
+            columnOrder={getVisibleColumns('accounts')}
             onColumnOrderChange={(newOrder) => updateColumnOrder('accounts', newOrder)}
             onReset={() => resetColumnOrder('accounts')}
+            getAllColumns={() => getAllColumns('accounts')}
+            isColumnVisible={(column) => isColumnVisible('accounts', column)}
+            toggleColumnVisibility={(column) => toggleColumnVisibility('accounts', column)}
           />
         </div>
       </div>
@@ -119,7 +123,7 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50">
-                {columnOrders.accounts.map((column) => {
+                {getVisibleColumns('accounts').map((column) => {
                   const isRightAligned = column !== 'name';
                   return (
                     <TableHead 
@@ -145,7 +149,7 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
             <TableBody>
               {filteredAccounts.map((account) => (
                 <TableRow key={account.id} className="hover:bg-slate-50">
-                  {columnOrders.accounts.map((column) => {
+                  {getVisibleColumns('accounts').map((column) => {
                     const isRightAligned = column !== 'name';
                     
                     return (
@@ -189,7 +193,7 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
               ))}
               {summaryMetrics && (
                 <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-semibold">
-                  {columnOrders.accounts.map((column) => {
+                  {getVisibleColumns('accounts').map((column) => {
                     const isRightAligned = column !== 'name';
                     
                     return (

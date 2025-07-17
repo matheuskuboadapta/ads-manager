@@ -30,7 +30,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
   const [newAdset, setNewAdset] = useState({ name: '', dailyBudget: '' });
   const [expandedAdset, setExpandedAdset] = useState<string | null>(null);
   const { toast } = useToast();
-  const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
+  const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
 
   const { data: adsets, isLoading, error, updateOptimistic, clearOptimistic } = useAdsetsData(campaignId, settings.dateFilter);
@@ -231,9 +231,13 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
             {filteredAdsets.length} conjuntos
           </Badge>
           <ColumnOrderDialog
-            columnOrder={columnOrders.adsets}
+            tableType="adsets"
+            columnOrder={getVisibleColumns('adsets')}
             onColumnOrderChange={(newOrder) => updateColumnOrder('adsets', newOrder)}
             onReset={() => resetColumnOrder('adsets')}
+            getAllColumns={() => getAllColumns('adsets')}
+            isColumnVisible={(column) => isColumnVisible('adsets', column)}
+            toggleColumnVisibility={(column) => toggleColumnVisibility('adsets', column)}
           />
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
@@ -297,7 +301,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 border-b-slate-200">
-                {columnOrders.adsets.map((column) => {
+                {getVisibleColumns('adsets').map((column) => {
                   const isRightAligned = !['status', 'name'].includes(column);
                   return (
                     <TableHead 
@@ -326,117 +330,118 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
               {filteredAdsets.map((adset) => (
                 <>
                   <TableRow key={adset.id} className="hover:bg-slate-50">
-                  <TableCell>
-                    <Switch
-                      checked={adset.statusFinal === 'ATIVO'}
-                      onCheckedChange={(checked) => handleStatusChange(adset, checked)}
-                    />
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => setExpandedAdset(expandedAdset === adset.id ? null : adset.id)}
-                        className="flex items-center justify-center w-6 h-6 hover:bg-gray-100 rounded transition-colors"
+                  {getVisibleColumns('adsets').map((column) => {
+                    const isRightAligned = !['status', 'name'].includes(column);
+                    
+                    return (
+                      <TableCell 
+                        key={column}
+                        className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'name' ? 'font-medium' : ''}`}
                       >
-                        {expandedAdset === adset.id ? (
-                          <ChevronDown className="h-4 w-4 text-gray-600" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4 text-gray-600" />
-                        )}
-                      </button>
-                      <div 
-                        className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors flex-1"
-                        onClick={() => onAdsetSelect(adset.name)}
-                      >
-                        <BarChart3 className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                        <span className="underline-offset-4 hover:underline truncate">{adset.name}</span>
-                      </div>
-                      <CopyButton text={adset.name} />
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {adset.isAdsetLevelBudget ? (
-                      editingBudget === adset.id ? (
-                        <div className="flex items-center justify-start space-x-1">
-                          <Input
-                            type="number"
-                            value={tempBudget}
-                            onChange={(e) => setTempBudget(e.target.value)}
-                            className="w-20 h-7 text-xs"
-                            min="1"
-                            step="0.01"
+                        {column === 'status' && (
+                          <Switch
+                            checked={adset.statusFinal === 'ATIVO'}
+                            onCheckedChange={(checked) => handleStatusChange(adset, checked)}
                           />
-                          <Button
-                            size="sm"
-                            onClick={() => handleBudgetSave(adset)}
-                            className="h-7 w-7 p-0"
-                          >
-                            <Check className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleBudgetCancel}
-                            className="h-7 w-7 p-0"
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-start space-x-1">
-                          <span className="font-mono text-sm">{formatCurrency(adset.dailyBudget)}</span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleBudgetEdit(adset.id, adset.dailyBudget)}
-                            className="h-6 w-6 p-0"
-                          >
-                            <Edit2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      )
-                    ) : (
-                      <div className="text-xs text-yellow-600">
-                        Orçamento a nível de campanha
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatCurrency(adset.spend)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-green-600 text-sm">
-                    {formatCurrency(adset.revenue)}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold text-sm">
-                    {adset.sales}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    <span className={adset.profit > 0 ? 'text-green-600' : 'text-red-600'}>
-                      {formatCurrency(adset.profit)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatCurrency(adset.cpa)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatCurrency(adset.cpm)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-semibold text-sm">
-                    {adset.roas.toFixed(2)}x
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatPercentage(adset.ctr)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatPercentage(adset.clickCv)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    {formatCurrency(adset.epc)}
-                  </TableCell>
+                        )}
+                        {column === 'name' && (
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => setExpandedAdset(expandedAdset === adset.id ? null : adset.id)}
+                              className="flex items-center justify-center w-6 h-6 hover:bg-gray-100 rounded transition-colors"
+                            >
+                              {expandedAdset === adset.id ? (
+                                <ChevronDown className="h-4 w-4 text-gray-600" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 text-gray-600" />
+                              )}
+                            </button>
+                            <div 
+                              className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors flex-1"
+                              onClick={() => onAdsetSelect(adset.name)}
+                            >
+                              <BarChart3 className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                              <span className="underline-offset-4 hover:underline truncate">{adset.name}</span>
+                            </div>
+                            <CopyButton text={adset.name} />
+                          </div>
+                        )}
+                        {column === 'dailyBudget' && (
+                          <div>
+                            {adset.isAdsetLevelBudget ? (
+                              editingBudget === adset.id ? (
+                                <div className="flex items-center justify-start space-x-1">
+                                  <Input
+                                    type="number"
+                                    value={tempBudget}
+                                    onChange={(e) => setTempBudget(e.target.value)}
+                                    className="w-20 h-7 text-xs"
+                                    min="1"
+                                    step="0.01"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleBudgetSave(adset)}
+                                    className="h-7 w-7 p-0"
+                                  >
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleBudgetCancel}
+                                    className="h-7 w-7 p-0"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-start space-x-1">
+                                  <span className="font-mono text-sm">{formatCurrency(adset.dailyBudget)}</span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleBudgetEdit(adset.id, adset.dailyBudget)}
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    <Edit2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )
+                            ) : (
+                              <div className="text-xs text-yellow-600">
+                                Orçamento a nível de campanha
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {column === 'spend' && formatCurrency(adset.spend)}
+                        {column === 'revenue' && (
+                          <span className="text-green-600">{formatCurrency(adset.revenue)}</span>
+                        )}
+                        {column === 'sales' && (
+                          <span className="font-semibold">{adset.sales}</span>
+                        )}
+                        {column === 'profit' && (
+                          <span className={adset.profit > 0 ? 'text-green-600' : 'text-red-600'}>
+                            {formatCurrency(adset.profit)}
+                          </span>
+                        )}
+                        {column === 'cpa' && formatCurrency(adset.cpa)}
+                        {column === 'cpm' && formatCurrency(adset.cpm)}
+                        {column === 'roas' && (
+                          <span className="font-semibold">{adset.roas.toFixed(2)}x</span>
+                        )}
+                        {column === 'ctr' && formatPercentage(adset.ctr)}
+                        {column === 'clickCv' && formatPercentage(adset.clickCv)}
+                        {column === 'epc' && formatCurrency(adset.epc)}
+                      </TableCell>
+                    );
+                  })}
                   </TableRow>
                   {expandedAdset === adset.id && (
                     <TableRow>
-                      <TableCell colSpan={columnOrders.adsets.length} className="p-0">
+                      <TableCell colSpan={getVisibleColumns('adsets').length} className="p-0">
                         <DetailView 
                           type="adset" 
                           name={adset.name} 
@@ -449,45 +454,44 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
               ))}
               {summaryMetrics && (
                 <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-semibold">
-                  <TableCell></TableCell>
-                  <TableCell className="font-bold text-blue-900">
-                    RESUMO ({filteredAdsets.length} conjuntos)
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatCurrency(summaryMetrics.dailyBudget)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatCurrency(summaryMetrics.spend)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-green-700 text-sm">
-                    {formatCurrency(summaryMetrics.revenue)}
-                  </TableCell>
-                  <TableCell className="text-right font-semibold text-sm text-blue-900">
-                    {summaryMetrics.sales}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm">
-                    <span className={summaryMetrics.profit > 0 ? 'text-green-700' : 'text-red-700'}>
-                      {formatCurrency(summaryMetrics.profit)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatCurrency(summaryMetrics.cpa)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatCurrency(summaryMetrics.cpm)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-semibold text-sm text-blue-900">
-                    {summaryMetrics.roas.toFixed(2)}x
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatPercentage(summaryMetrics.ctr)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatPercentage(summaryMetrics.clickCv)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-sm text-blue-900">
-                    {formatCurrency(summaryMetrics.epc)}
-                  </TableCell>
+                  {getVisibleColumns('adsets').map((column) => {
+                    const isRightAligned = !['status', 'name'].includes(column);
+                    
+                    return (
+                      <TableCell 
+                        key={column}
+                        className={`${isRightAligned ? 'text-right font-mono text-sm text-blue-900' : ''}`}
+                      >
+                        {column === 'status' && ''}
+                        {column === 'name' && (
+                          <span className="font-bold text-blue-900">
+                            RESUMO ({filteredAdsets.length} conjuntos)
+                          </span>
+                        )}
+                        {column === 'dailyBudget' && formatCurrency(summaryMetrics.dailyBudget)}
+                        {column === 'spend' && formatCurrency(summaryMetrics.spend)}
+                        {column === 'revenue' && (
+                          <span className="text-green-700">{formatCurrency(summaryMetrics.revenue)}</span>
+                        )}
+                        {column === 'sales' && (
+                          <span className="font-semibold">{summaryMetrics.sales}</span>
+                        )}
+                        {column === 'profit' && (
+                          <span className={summaryMetrics.profit > 0 ? 'text-green-700' : 'text-red-700'}>
+                            {formatCurrency(summaryMetrics.profit)}
+                          </span>
+                        )}
+                        {column === 'cpa' && formatCurrency(summaryMetrics.cpa)}
+                        {column === 'cpm' && formatCurrency(summaryMetrics.cpm)}
+                        {column === 'roas' && (
+                          <span className="font-semibold">{summaryMetrics.roas.toFixed(2)}x</span>
+                        )}
+                        {column === 'ctr' && formatPercentage(summaryMetrics.ctr)}
+                        {column === 'clickCv' && formatPercentage(summaryMetrics.clickCv)}
+                        {column === 'epc' && formatCurrency(summaryMetrics.epc)}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               )}
             </TableBody>

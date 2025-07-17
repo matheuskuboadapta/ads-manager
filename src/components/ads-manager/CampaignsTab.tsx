@@ -32,7 +32,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   const [newCampaign, setNewCampaign] = useState({ name: '', objective: 'CONVERSIONS' });
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
   const { toast } = useToast();
-  const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
+  const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
 
   const { data: campaigns, isLoading, error, updateOptimistic, clearOptimistic } = useCampaignsData(accountId, settings.dateFilter);
@@ -247,9 +247,13 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
             {filteredCampaigns.length} campanhas
           </Badge>
           <ColumnOrderDialog
-            columnOrder={columnOrders.campaigns}
+            tableType="campaigns"
+            columnOrder={getVisibleColumns('campaigns')}
             onColumnOrderChange={(newOrder) => updateColumnOrder('campaigns', newOrder)}
             onReset={() => resetColumnOrder('campaigns')}
+            getAllColumns={() => getAllColumns('campaigns')}
+            isColumnVisible={(column) => isColumnVisible('campaigns', column)}
+            toggleColumnVisibility={(column) => toggleColumnVisibility('campaigns', column)}
           />
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
@@ -318,7 +322,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 border-b-slate-200">
-                  {columnOrders.campaigns.map((column) => {
+                  {getVisibleColumns('campaigns').map((column) => {
                     const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
                     return (
                       <TableHead 
@@ -347,7 +351,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
               {filteredCampaigns.map((campaign) => (
                 <>
                   <TableRow key={campaign.id} className="hover:bg-slate-50">
-                  {columnOrders.campaigns.map((column) => {
+                  {getVisibleColumns('campaigns').map((column) => {
                     const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
                     
                     return (
@@ -461,7 +465,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                   </TableRow>
                   {expandedCampaign === campaign.id && (
                     <TableRow>
-                      <TableCell colSpan={columnOrders.campaigns.length} className="p-0">
+                      <TableCell colSpan={getVisibleColumns('campaigns').length} className="p-0">
                         <DetailView 
                           type="campaign" 
                           name={campaign.name} 
@@ -474,7 +478,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
               ))}
               {summaryMetrics && (
                 <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-semibold">
-                  {columnOrders.campaigns.map((column) => {
+                  {getVisibleColumns('campaigns').map((column) => {
                     const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
                     
                     return (

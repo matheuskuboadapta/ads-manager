@@ -23,7 +23,7 @@ interface AdsTabProps {
 const AdsTab = ({ adsetId }: AdsTabProps) => {
   const [expandedAd, setExpandedAd] = useState<string | null>(null);
   const { toast } = useToast();
-  const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
+  const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
 
   const { data: ads, isLoading, error, updateOptimistic, clearOptimistic } = useAdsListData(adsetId, settings.dateFilter);
@@ -134,9 +134,13 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
             {filteredAds.length} anúncios
           </Badge>
           <ColumnOrderDialog
-            columnOrder={columnOrders.ads}
+            tableType="ads"
+            columnOrder={getVisibleColumns('ads')}
             onColumnOrderChange={(newOrder) => updateColumnOrder('ads', newOrder)}
             onReset={() => resetColumnOrder('ads')}
+            getAllColumns={() => getAllColumns('ads')}
+            isColumnVisible={(column) => isColumnVisible('ads', column)}
+            toggleColumnVisibility={(column) => toggleColumnVisibility('ads', column)}
           />
         </div>
       </div>
@@ -170,7 +174,7 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 border-b-slate-200">
-                {columnOrders.ads.map((column) => {
+                {getVisibleColumns('ads').map((column) => {
                   const isRightAligned = !['status', 'name', 'videoLink'].includes(column);
                   return (
                     <TableHead 
@@ -199,7 +203,7 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
               {filteredAds.map((ad) => (
                 <>
                   <TableRow key={ad.id} className="hover:bg-slate-50">
-                  {columnOrders.ads.map((column) => {
+                  {getVisibleColumns('ads').map((column) => {
                     const isRightAligned = !['status', 'name', 'videoLink'].includes(column);
                     
                     return (
@@ -274,7 +278,7 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
                   </TableRow>
                   {expandedAd === ad.id && (
                     <TableRow>
-                      <TableCell colSpan={columnOrders.ads.length} className="p-0">
+                      <TableCell colSpan={getVisibleColumns('ads').length} className="p-0">
                         <DetailView 
                           type="ad" 
                           name={ad.name} 
@@ -287,7 +291,7 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
               ))}
               {summaryMetrics && (
                 <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-semibold">
-                  {columnOrders.ads.map((column) => {
+                  {getVisibleColumns('ads').map((column) => {
                     const isRightAligned = !['status', 'name', 'videoLink'].includes(column);
                     
                     return (
