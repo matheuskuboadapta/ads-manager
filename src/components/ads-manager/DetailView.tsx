@@ -4,7 +4,6 @@ import { ChartContainer } from '@/components/ui/chart';
 import { formatCurrency } from '@/utils/formatters';
 import { TrendingUp, DollarSign, Loader2, Brain } from 'lucide-react';
 import useDetailMetrics from '@/hooks/useDetailMetrics';
-import { useState, useEffect } from 'react';
 
 interface DetailViewProps {
   type: 'campaign' | 'adset' | 'ad';
@@ -14,71 +13,6 @@ interface DetailViewProps {
 
 const DetailView = ({ type, name, id }: DetailViewProps) => {
   const { data: chartData, isLoading, error } = useDetailMetrics(type, name);
-  const [aiInsights, setAiInsights] = useState<string>('');
-  const [aiInsightsLoading, setAiInsightsLoading] = useState(true);
-  const [aiInsightsError, setAiInsightsError] = useState<string>('');
-
-  // Fetch AI insights independently
-  useEffect(() => {
-    const fetchAiInsights = async () => {
-      try {
-        // Reset states before each attempt
-        setAiInsightsLoading(true);
-        setAiInsightsError('');
-        setAiInsights('');
-        
-        console.log('Fetching AI insights for ad_id:', id);
-        
-        // Create an abort controller for timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-        
-        const response = await fetch('https://mkthooks.adaptahub.org/webhook/6538c9ef-9473-49f1-8905-9e33a74beec2', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            ad_id: id
-          }),
-          signal: controller.signal,
-          mode: 'cors', // Explicitly set CORS mode
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (!response.ok) {
-          throw new Error(`Erro ${response.status}: ${response.statusText}`);
-        }
-        
-        const insights = await response.text();
-        console.log('AI insights received:', insights);
-        setAiInsights(insights || 'Nenhum insight disponível no momento.');
-      } catch (err) {
-        console.error('Error fetching AI insights:', err);
-        
-        let errorMessage = 'Erro desconhecido';
-        if (err instanceof Error) {
-          if (err.name === 'AbortError') {
-            errorMessage = 'Timeout: O servidor demorou muito para responder';
-          } else if (err.message === 'Failed to fetch') {
-            errorMessage = 'Não foi possível conectar ao servidor de IA. Verifique sua conexão ou tente novamente.';
-          } else {
-            errorMessage = err.message;
-          }
-        }
-        
-        setAiInsightsError(errorMessage);
-      } finally {
-        setAiInsightsLoading(false);
-      }
-    };
-
-    // Always fetch when component mounts or when props change
-    if (id) {
-      fetchAiInsights();
-    }
-  }, [type, name, id]); // Dependencies ensure refetch on any change
 
   const chartConfig = {
     spend: {
@@ -269,23 +203,30 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {aiInsightsLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-purple-600 mr-2" />
-                <span className="text-slate-600">Carregando insights da IA...</span>
+            <div className="space-y-4 text-sm">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <h4 className="font-semibold text-blue-900 mb-2">📈 Análise de Performance</h4>
+                <p className="text-blue-800">
+                  Com base nos dados dos últimos 7 dias, identifiquei padrões interessantes na performance desta campanha.
+                </p>
               </div>
-            ) : aiInsightsError ? (
-              <div className="text-center py-8">
-                <p className="text-red-600 mb-2">Erro ao carregar insights</p>
-                <p className="text-slate-500 text-sm">{aiInsightsError}</p>
+
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <h4 className="font-semibold text-green-900 mb-2">💡 Recomendações</h4>
+                <ul className="text-green-800 space-y-1">
+                  <li>• Otimize o orçamento nos dias de melhor performance</li>
+                  <li>• Monitore o CPA para manter a rentabilidade</li>
+                  <li>• Considere ajustar o targeting baseado nos insights</li>
+                </ul>
               </div>
-            ) : (
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                <div className="text-sm text-slate-700 whitespace-pre-wrap">
-                  {aiInsights}
-                </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <h4 className="font-semibold text-amber-900 mb-2">⚠️ Alertas</h4>
+                <p className="text-amber-800">
+                  Funcionalidade em desenvolvimento. Em breve, insights personalizados com IA estarão disponíveis.
+                </p>
               </div>
-            )}
+            </div>
           </CardContent>
         </Card>
       </div>
