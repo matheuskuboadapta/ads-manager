@@ -265,9 +265,16 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
                 </div>
               ) : (
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                  <pre className="whitespace-pre-wrap text-slate-700 font-mono text-xs leading-relaxed">
-                    {aiInsights || 'Aguardando análise da IA...'}
-                  </pre>
+                  <div className="text-slate-700 text-sm leading-relaxed space-y-3">
+                    {aiInsights ? 
+                      aiInsights.split('\n').map((line, index) => (
+                        <p key={index} className={line.trim() ? '' : 'h-2'}>
+                          {line.trim() || '\u00A0'}
+                        </p>
+                      )) 
+                      : 'Aguardando análise da IA...'
+                    }
+                  </div>
                 </div>
               )}
             </div>

@@ -39,7 +39,18 @@ serve(async (req) => {
     const result = await response.text();
     console.log('Resposta do webhook:', result);
 
-    return new Response(JSON.stringify({ insights: result }), {
+    // Processar a resposta JSON para extrair o texto
+    let processedInsights = result;
+    try {
+      const parsedResult = JSON.parse(result);
+      if (Array.isArray(parsedResult) && parsedResult.length > 0 && parsedResult[0].text) {
+        processedInsights = parsedResult[0].text;
+      }
+    } catch (parseError) {
+      console.log('Resposta não é JSON válido, usando texto original');
+    }
+
+    return new Response(JSON.stringify({ insights: processedInsights }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
