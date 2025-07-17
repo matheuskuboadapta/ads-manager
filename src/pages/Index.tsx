@@ -135,17 +135,17 @@ export default function Index() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4">
+      <header className="bg-card border-b border-border px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="bg-blue-600 p-2 rounded-lg">
-              <BarChart3 className="h-6 w-6 text-white" />
+            <div className="bg-primary p-2 rounded-lg">
+              <BarChart3 className="h-6 w-6 text-primary-foreground" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900">Adapta Ads Manager</h1>
-              <p className="text-slate-600 text-sm">Gerenciamento de campanhas publicitárias</p>
+              <h1 className="text-xl font-bold text-foreground">Adapta Ads Manager</h1>
+              <p className="text-muted-foreground text-sm">Gerenciamento de campanhas publicitárias</p>
             </div>
           </div>
           <div className="flex items-center space-x-4">
@@ -160,7 +160,7 @@ export default function Index() {
                 <Moon className="h-4 w-4" />
               )}
             </Button>
-            <Badge variant="outline" className="text-slate-600">
+            <Badge variant="outline" className="text-muted-foreground">
               Última atualização: {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </Badge>
             <Button onClick={handleRefresh} variant="outline" size="sm">

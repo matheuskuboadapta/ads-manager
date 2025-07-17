@@ -72,8 +72,8 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-md">
-          <p className="font-semibold text-gray-700">{`Data: ${label}`}</p>
+        <div className="bg-card p-3 border border-border rounded-lg shadow-md">
+          <p className="font-semibold text-foreground">{`Data: ${label}`}</p>
           {payload.map((entry: any, index: number) => (
             <p key={index} style={{ color: entry.color }} className="text-sm">
               {entry.dataKey === 'spend' 
@@ -90,10 +90,10 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
 
   if (isLoading) {
     return (
-      <div className="bg-slate-50 border-t border-slate-200 p-6">
+      <div className="bg-muted border-t border-border p-6">
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
-          <span className="text-slate-600">Carregando métricas...</span>
+          <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+          <span className="text-muted-foreground">Carregando métricas...</span>
         </div>
       </div>
     );
@@ -101,10 +101,10 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
 
   if (error) {
     return (
-      <div className="bg-slate-50 border-t border-slate-200 p-6">
+      <div className="bg-muted border-t border-border p-6">
         <div className="text-center py-8">
-          <p className="text-red-600 mb-2">Erro ao carregar métricas</p>
-          <p className="text-slate-500 text-sm">Tente novamente mais tarde</p>
+          <p className="text-destructive mb-2">Erro ao carregar métricas</p>
+          <p className="text-muted-foreground text-sm">Tente novamente mais tarde</p>
         </div>
       </div>
     );
@@ -112,10 +112,10 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
 
   if (!chartData || chartData.length === 0) {
     return (
-      <div className="bg-slate-50 border-t border-slate-200 p-6">
+      <div className="bg-muted border-t border-border p-6">
         <div className="text-center py-8">
-          <p className="text-slate-600 mb-2">Nenhum dado encontrado</p>
-          <p className="text-slate-500 text-sm">Não há métricas disponíveis para os últimos 7 dias</p>
+          <p className="text-muted-foreground mb-2">Nenhum dado encontrado</p>
+          <p className="text-muted-foreground text-sm">Não há métricas disponíveis para os últimos 7 dias</p>
         </div>
       </div>
     );
@@ -129,12 +129,12 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
     : 0;
 
   return (
-    <div className="bg-slate-50 border-t border-slate-200 p-6">
+    <div className="bg-muted border-t border-border p-6">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-slate-900 mb-1">
+        <h3 className="text-lg font-semibold text-foreground mb-1">
           Detalhes - {name}
         </h3>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted-foreground">
           Evolução das métricas nos últimos 7 dias
         </p>
       </div>
@@ -144,7 +144,7 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <DollarSign className="h-4 w-4 text-blue-600" />
+              <DollarSign className="h-4 w-4 text-primary" />
               Evolução do Gasto - {formatCurrency(totalSpend)}
             </CardTitle>
           </CardHeader>
@@ -152,16 +152,16 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
             <ChartContainer config={chartConfig} className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis 
                     dataKey="date" 
-                    stroke="#64748b"
+                    stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                   />
                   <YAxis 
-                    stroke="#64748b"
+                    stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
@@ -170,7 +170,7 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
                   <Tooltip content={<CustomTooltip />} />
                   <Bar 
                     dataKey="spend" 
-                    fill="#000000" 
+                    fill="hsl(var(--primary))" 
                     radius={[4, 4, 0, 0]}
                     name="Gasto"
                   >
@@ -178,7 +178,7 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
                       dataKey="spend" 
                       position="top" 
                       fontSize={12} 
-                      fill="#000000"
+                      fill="hsl(var(--primary))"
                       fontWeight="600"
                       formatter={(value: number) => value > 0 ? `R$${value}` : ''}
                     />
@@ -193,7 +193,7 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingUp className="h-4 w-4 text-green-600" />
+              <TrendingUp className="h-4 w-4 text-success" />
               Evolução do CPA - {averageCpa > 0 ? formatCurrency(averageCpa) : 'N/A'}
             </CardTitle>
           </CardHeader>
@@ -201,16 +201,16 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
             <ChartContainer config={chartConfig} className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis 
                     dataKey="date" 
-                    stroke="#64748b"
+                    stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
                   />
                   <YAxis 
-                    stroke="#64748b"
+                    stroke="hsl(var(--muted-foreground))"
                     fontSize={12}
                     tickLine={false}
                     axisLine={false}
@@ -219,7 +219,7 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
                   <Tooltip content={<CustomTooltip />} />
                   <Bar 
                     dataKey="cpa" 
-                    fill="#000000" 
+                    fill="hsl(var(--success))" 
                     radius={[4, 4, 0, 0]}
                     name="CPA"
                   >
@@ -227,7 +227,7 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
                       dataKey="cpa" 
                       position="top" 
                       fontSize={12} 
-                      fill="#000000"
+                      fill="hsl(var(--success))"
                       fontWeight="600"
                       formatter={(value: number) => value > 0 ? `R$${value}` : ''}
                     />
@@ -242,7 +242,7 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <Brain className="h-4 w-4 text-purple-600" />
+              <Brain className="h-4 w-4 text-primary" />
               AI Insights
             </CardTitle>
           </CardHeader>
@@ -250,22 +250,22 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
             <div className="space-y-4 text-sm">
               {aiLoading ? (
                 <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-purple-600 mr-2" />
-                  <span className="text-slate-600">Gerando insights com IA...</span>
+                  <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+                  <span className="text-muted-foreground">Gerando insights com IA...</span>
                 </div>
               ) : aiError ? (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="bg-muted border border-border rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Brain className="h-4 w-4 text-amber-600" />
-                    <span className="font-medium text-amber-900">Serviço temporariamente indisponível</span>
+                    <Brain className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium text-muted-foreground">Serviço temporariamente indisponível</span>
                   </div>
-                  <p className="text-amber-800 text-xs">
+                  <p className="text-muted-foreground text-xs">
                     Os insights da IA não puderam ser carregados. Isso pode acontecer quando o serviço está sendo atualizado ou temporariamente fora do ar.
                   </p>
                 </div>
               ) : (
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-                  <div className="text-slate-700 text-sm leading-relaxed space-y-3">
+                <div className="bg-muted border border-border rounded-lg p-4">
+                  <div className="text-muted-foreground text-sm leading-relaxed space-y-3">
                     {aiInsights ? 
                       aiInsights.split('\n').map((line, index) => (
                         <p key={index} className={line.trim() ? '' : 'h-2'}>
