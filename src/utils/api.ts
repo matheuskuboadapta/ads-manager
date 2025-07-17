@@ -43,8 +43,8 @@ const makeRequest = async (payload: UpdatePayload | CreatePayload): Promise<Resp
 
 export const updateCampaign = async (
   campaignId: string, 
-  field: 'status' | 'objective', 
-  value: string
+  field: 'status' | 'objective' | 'budget', 
+  value: string | number
 ): Promise<void> => {
   console.log('Updating campaign:', { campaignId, field, value });
   

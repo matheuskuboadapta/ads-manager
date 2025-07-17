@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Target, Edit2 } from 'lucide-react';
+import { Plus, Target, Edit2, Check, X } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
@@ -26,6 +26,8 @@ interface CampaignsTabProps {
 
 const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<string | null>(null);
+  const [tempBudget, setTempBudget] = useState<string>('');
   const [newCampaign, setNewCampaign] = useState({ name: '', objective: 'CONVERSIONS' });
   const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder } = useColumnOrder();
@@ -119,6 +121,52 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleBudgetEdit = (campaignId: string, currentBudget: number) => {
+    setEditingBudget(campaignId);
+    setTempBudget(currentBudget.toString());
+  };
+
+  const handleBudgetSave = async (campaign: any) => {
+    const newBudget = parseFloat(tempBudget);
+    if (isNaN(newBudget) || newBudget <= 0) {
+      toast({
+        title: "Erro",
+        description: "Valor de orçamento inválido.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Atualização otimística - mostrar mudança imediatamente
+    updateOptimistic(campaign.firstAdId, { dailyBudget: newBudget });
+
+    try {
+      // Use firstAdId instead of realId to send the ad_id
+      await updateCampaign(campaign.firstAdId, 'budget', newBudget);
+      
+      setEditingBudget(null);
+      toast({
+        title: "Orçamento atualizado",
+        description: "Orçamento diário alterado com sucesso.",
+      });
+    } catch (error) {
+      // Reverter a mudança otimística em caso de erro
+      clearOptimistic(campaign.firstAdId);
+      setEditingBudget(null);
+      
+      toast({
+        title: "Erro",
+        description: "Falha ao atualizar orçamento.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleBudgetCancel = () => {
+    setEditingBudget(null);
+    setTempBudget('');
   };
 
   const handleCreateCampaign = async () => {
@@ -328,16 +376,45 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                         {column === 'dailyBudget' && (
                           <div>
                             {!campaign.isAdsetLevelBudget ? (
-                              <div className="flex items-center justify-start space-x-2">
-                                <span className="font-mono text-sm">{formatCurrency(campaign.dailyBudget)}</span>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <Edit2 className="h-3 w-3" />
-                                </Button>
-                              </div>
+                              editingBudget === campaign.id ? (
+                                <div className="flex items-center justify-start space-x-1">
+                                  <Input
+                                    type="number"
+                                    value={tempBudget}
+                                    onChange={(e) => setTempBudget(e.target.value)}
+                                    className="w-20 h-7 text-xs"
+                                    min="1"
+                                    step="0.01"
+                                  />
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleBudgetSave(campaign)}
+                                    className="h-7 w-7 p-0"
+                                  >
+                                    <Check className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleBudgetCancel}
+                                    className="h-7 w-7 p-0"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-start space-x-1">
+                                  <span className="font-mono text-sm">{formatCurrency(campaign.dailyBudget)}</span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleBudgetEdit(campaign.id, campaign.dailyBudget)}
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    <Edit2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )
                             ) : (
                               <div className="text-xs text-yellow-600">
                                 Orçamento a nível de conjunto
