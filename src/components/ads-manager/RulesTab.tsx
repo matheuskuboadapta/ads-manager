@@ -173,13 +173,25 @@ const RulesTab = () => {
       return;
     }
 
-    // Prepare data for API
+    // Prepare data for API - Convert arrays to object format
+    const conditionsObject: { [key: string]: any } = {};
+    conditions.forEach((condition, index) => {
+      const { id, ...conditionData } = condition;
+      conditionsObject[index.toString()] = conditionData;
+    });
+
+    const actionsObject: { [key: string]: any } = {};
+    actions.forEach((action, index) => {
+      const { id, ...actionData } = action;
+      actionsObject[index.toString()] = actionData;
+    });
+
     const ruleData = {
       name: ruleName,
       is_active: true, // Sempre inicia como ativa
       level: ruleLevel,
-      conditions: conditions.map(({ id, ...rest }) => rest),
-      actions: actions.map(({ id, ...rest }) => rest),
+      conditions: conditionsObject,
+      actions: actionsObject,
       target_id: null
     };
 
@@ -624,68 +636,76 @@ const RulesTab = () => {
                       disabled={false}
                     />
                   </TableCell>
-                  <TableCell>
-                    <div className="max-w-xs">
-                      {rule.conditions && typeof rule.conditions === 'object' ? (
-                        <div className="text-sm space-y-1">
-                          {Array.isArray(rule.conditions) ? (
-                            rule.conditions.map((condition: any, index: number) => (
-                              <div key={index} className="bg-muted/50 p-2 rounded text-xs">
-                                {condition.metric} {condition.operator} {condition.value}
-                                {index < rule.conditions.length - 1 && (
-                                  <span className="text-muted-foreground ml-1">{condition.logic}</span>
-                                )}
-                              </div>
-                            ))
-                          ) : (
-                            <div className="bg-muted/50 p-2 rounded text-xs">
-                              {(rule.conditions as any).metric} {(rule.conditions as any).operator} {(rule.conditions as any).value}
-                              {(rule.conditions as any).logic && (
-                                <span className="text-muted-foreground ml-1">{(rule.conditions as any).logic}</span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">0 condições</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="max-w-xs">
-                      {rule.actions && typeof rule.actions === 'object' ? (
-                        <div className="text-sm space-y-1">
-                          {Array.isArray(rule.actions) ? (
-                            rule.actions.map((action: any, index: number) => (
-                              <div key={index} className="bg-muted/50 p-2 rounded text-xs">
-                                {action.action_type} (#{action.order})
-                                {action.params && Object.keys(action.params).length > 0 && (
-                                  <div className="text-muted-foreground mt-1">
-                                    {Object.entries(action.params).map(([key, value]) => (
-                                      <div key={key}>{key}: {value as string}</div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            ))
-                          ) : (
-                            <div className="bg-muted/50 p-2 rounded text-xs">
-                              {(rule.actions as any).action_type}
-                              {(rule.actions as any).params && Object.keys((rule.actions as any).params).length > 0 && (
-                                <div className="text-muted-foreground mt-1">
-                                  {Object.entries((rule.actions as any).params).map(([key, value]) => (
-                                    <div key={key}>{key}: {value as string}</div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">0 ações</span>
-                      )}
-                    </div>
-                  </TableCell>
+                   <TableCell>
+                     <div className="max-w-xs">
+                       {rule.conditions && typeof rule.conditions === 'object' ? (
+                         <div className="text-sm space-y-1">
+                           {Array.isArray(rule.conditions) ? (
+                             // Legacy array format support
+                             rule.conditions.map((condition: any, index: number) => (
+                               <div key={index} className="bg-muted/50 p-2 rounded text-xs">
+                                 {condition.metric} {condition.operator} {condition.value}
+                                 {index < rule.conditions.length - 1 && (
+                                   <span className="text-muted-foreground ml-1">{condition.logic}</span>
+                                 )}
+                               </div>
+                             ))
+                           ) : (
+                             // New object format with string keys
+                             Object.entries(rule.conditions).map(([key, condition]: [string, any], index, entries) => (
+                               <div key={key} className="bg-muted/50 p-2 rounded text-xs">
+                                 {condition.metric} {condition.operator} {condition.value}
+                                 {index < entries.length - 1 && (
+                                   <span className="text-muted-foreground ml-1">{condition.logic}</span>
+                                 )}
+                               </div>
+                             ))
+                           )}
+                         </div>
+                       ) : (
+                         <span className="text-muted-foreground">0 condições</span>
+                       )}
+                     </div>
+                   </TableCell>
+                   <TableCell>
+                     <div className="max-w-xs">
+                       {rule.actions && typeof rule.actions === 'object' ? (
+                         <div className="text-sm space-y-1">
+                           {Array.isArray(rule.actions) ? (
+                             // Legacy array format support
+                             rule.actions.map((action: any, index: number) => (
+                               <div key={index} className="bg-muted/50 p-2 rounded text-xs">
+                                 {action.action_type} (#{action.order})
+                                 {action.params && Object.keys(action.params).length > 0 && (
+                                   <div className="text-muted-foreground mt-1">
+                                     {Object.entries(action.params).map(([key, value]) => (
+                                       <div key={key}>{key}: {value as string}</div>
+                                     ))}
+                                   </div>
+                                 )}
+                               </div>
+                             ))
+                           ) : (
+                             // New object format with string keys
+                             Object.entries(rule.actions).map(([key, action]: [string, any]) => (
+                               <div key={key} className="bg-muted/50 p-2 rounded text-xs">
+                                 {action.action_type} (#{action.order})
+                                 {action.params && Object.keys(action.params).length > 0 && (
+                                   <div className="text-muted-foreground mt-1">
+                                     {Object.entries(action.params).map(([paramKey, value]) => (
+                                       <div key={paramKey}>{paramKey}: {value as string}</div>
+                                     ))}
+                                   </div>
+                                 )}
+                               </div>
+                             ))
+                           )}
+                         </div>
+                       ) : (
+                         <span className="text-muted-foreground">0 ações</span>
+                       )}
+                     </div>
+                   </TableCell>
                   <TableCell>
                     {rule.created_at ? new Date(rule.created_at).toLocaleString('pt-BR') : 'N/A'}
                   </TableCell>
