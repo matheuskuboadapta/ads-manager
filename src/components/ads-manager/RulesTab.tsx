@@ -54,13 +54,13 @@ const RulesTab = () => {
 
   const handleToggleRule = async (ruleId: number, isActive: boolean) => {
     try {
-      const response = await fetch('https://mkthooks.adaptahub.org/webhook/adapta-ads-rules-toggle', {
+      const response = await fetch('https://mkthooks.adaptahub.org/webhook/adapta-ads-rules', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          rule_id: ruleId,
+          id: ruleId,
           is_active: isActive
         })
       });
@@ -603,7 +603,7 @@ const RulesTab = () => {
               <TableHead>Condições</TableHead>
               <TableHead>Ações</TableHead>
               <TableHead className="w-[180px]">Data de Criação</TableHead>
-              <TableHead className="w-[100px]">Ações</TableHead>
+              
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -618,16 +618,11 @@ const RulesTab = () => {
                      rule.level === 'ad' ? 'Anúncio' : rule.level}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant={rule.is_active ? "default" : "secondary"}>
-                        {rule.is_active ? 'Ativa' : 'Inativa'}
-                      </Badge>
-                      <Switch
-                        checked={rule.is_active}
-                        onCheckedChange={(checked) => handleToggleRule(rule.id, checked)}
-                        disabled={false}
-                      />
-                    </div>
+                    <Switch
+                      checked={rule.is_active}
+                      onCheckedChange={(checked) => handleToggleRule(rule.id, checked)}
+                      disabled={false}
+                    />
                   </TableCell>
                   <TableCell>
                     <div className="max-w-xs">
@@ -694,14 +689,11 @@ const RulesTab = () => {
                   <TableCell>
                     {rule.created_at ? new Date(rule.created_at).toLocaleString('pt-BR') : 'N/A'}
                   </TableCell>
-                  <TableCell>
-                    {/* Espaço para outras ações futuras */}
-                  </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
                   Nenhuma regra encontrada. Crie uma nova regra para começar.
                 </TableCell>
               </TableRow>
