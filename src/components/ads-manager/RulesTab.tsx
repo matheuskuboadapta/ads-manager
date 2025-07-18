@@ -618,22 +618,38 @@ const RulesTab = () => {
                      rule.level === 'ad' ? 'Anúncio' : rule.level}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={rule.is_active ? "default" : "secondary"}>
-                      {rule.is_active ? 'Ativa' : 'Inativa'}
-                    </Badge>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant={rule.is_active ? "default" : "secondary"}>
+                        {rule.is_active ? 'Ativa' : 'Inativa'}
+                      </Badge>
+                      <Switch
+                        checked={rule.is_active}
+                        onCheckedChange={(checked) => handleToggleRule(rule.id, checked)}
+                        disabled={false}
+                      />
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="max-w-xs">
-                      {Array.isArray(rule.conditions) && rule.conditions.length > 0 ? (
+                      {rule.conditions && typeof rule.conditions === 'object' ? (
                         <div className="text-sm space-y-1">
-                          {rule.conditions.map((condition: any, index: number) => (
-                            <div key={index} className="bg-muted/50 p-2 rounded text-xs">
-                              {condition.metric} {condition.operator} {condition.value}
-                              {index < rule.conditions.length - 1 && (
-                                <span className="text-muted-foreground ml-1">{condition.logic}</span>
+                          {Array.isArray(rule.conditions) ? (
+                            rule.conditions.map((condition: any, index: number) => (
+                              <div key={index} className="bg-muted/50 p-2 rounded text-xs">
+                                {condition.metric} {condition.operator} {condition.value}
+                                {index < rule.conditions.length - 1 && (
+                                  <span className="text-muted-foreground ml-1">{condition.logic}</span>
+                                )}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="bg-muted/50 p-2 rounded text-xs">
+                              {(rule.conditions as any).metric} {(rule.conditions as any).operator} {(rule.conditions as any).value}
+                              {(rule.conditions as any).logic && (
+                                <span className="text-muted-foreground ml-1">{(rule.conditions as any).logic}</span>
                               )}
                             </div>
-                          ))}
+                          )}
                         </div>
                       ) : (
                         <span className="text-muted-foreground">0 condições</span>
@@ -642,20 +658,33 @@ const RulesTab = () => {
                   </TableCell>
                   <TableCell>
                     <div className="max-w-xs">
-                      {Array.isArray(rule.actions) && rule.actions.length > 0 ? (
+                      {rule.actions && typeof rule.actions === 'object' ? (
                         <div className="text-sm space-y-1">
-                          {rule.actions.map((action: any, index: number) => (
-                            <div key={index} className="bg-muted/50 p-2 rounded text-xs">
-                              {action.action_type} (#{action.order})
-                              {action.params && Object.keys(action.params).length > 0 && (
+                          {Array.isArray(rule.actions) ? (
+                            rule.actions.map((action: any, index: number) => (
+                              <div key={index} className="bg-muted/50 p-2 rounded text-xs">
+                                {action.action_type} (#{action.order})
+                                {action.params && Object.keys(action.params).length > 0 && (
+                                  <div className="text-muted-foreground mt-1">
+                                    {Object.entries(action.params).map(([key, value]) => (
+                                      <div key={key}>{key}: {value as string}</div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="bg-muted/50 p-2 rounded text-xs">
+                              {(rule.actions as any).action_type}
+                              {(rule.actions as any).params && Object.keys((rule.actions as any).params).length > 0 && (
                                 <div className="text-muted-foreground mt-1">
-                                  {Object.entries(action.params).map(([key, value]) => (
+                                  {Object.entries((rule.actions as any).params).map(([key, value]) => (
                                     <div key={key}>{key}: {value as string}</div>
                                   ))}
                                 </div>
                               )}
                             </div>
-                          ))}
+                          )}
                         </div>
                       ) : (
                         <span className="text-muted-foreground">0 ações</span>
@@ -666,11 +695,7 @@ const RulesTab = () => {
                     {rule.created_at ? new Date(rule.created_at).toLocaleString('pt-BR') : 'N/A'}
                   </TableCell>
                   <TableCell>
-                    <Switch
-                      checked={rule.is_active}
-                      onCheckedChange={(checked) => handleToggleRule(rule.id, checked)}
-                      disabled={false}
-                    />
+                    {/* Espaço para outras ações futuras */}
                   </TableCell>
                 </TableRow>
               ))
