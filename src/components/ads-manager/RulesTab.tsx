@@ -52,9 +52,42 @@ const RulesTab = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
 
+  const handleToggleRule = async (ruleId: number, isActive: boolean) => {
+    try {
+      const response = await fetch('https://mkthooks.adaptahub.org/webhook/adapta-ads-rules-toggle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          rule_id: ruleId,
+          is_active: isActive
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao alterar status da regra');
+      }
+
+      toast({
+        title: isActive ? "Regra ativada" : "Regra desativada",
+        description: `A regra foi ${isActive ? 'ativada' : 'desativada'} com sucesso.`
+      });
+      
+      // Refetch rules to update the list
+      refetch();
+    } catch (error) {
+      console.error('Error toggling rule:', error);
+      toast({
+        title: "Erro ao alterar regra",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao alterar o status da regra",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Form state
   const [ruleName, setRuleName] = useState('');
-  const [isActive, setIsActive] = useState(true);
   const [ruleLevel, setRuleLevel] = useState('');
   const [conditions, setConditions] = useState<Condition[]>([
     { id: 'cond_' + Date.now(), metric: '', operator: '', value: '', logic: 'AND' }
@@ -62,7 +95,6 @@ const RulesTab = () => {
   const [actions, setActions] = useState<Action[]>([
     { id: 'act_' + Date.now(), action_type: '', params: {}, order: 1 }
   ]);
-  const [targetId, setTargetId] = useState('');
 
   const handleAddCondition = () => {
     setConditions([
@@ -78,6 +110,11 @@ const RulesTab = () => {
   };
 
   const handleConditionChange = (id: string, field: keyof Condition, value: string) => {
+    // Se for o campo value, aplica formatação para números e vírgulas
+    if (field === 'value') {
+      value = value.replace(/[^0-9,]/g, '');
+    }
+    
     setConditions(
       conditions.map(condition =>
         condition.id === id ? { ...condition, [field]: value } : condition
@@ -118,11 +155,9 @@ const RulesTab = () => {
 
   const resetForm = () => {
     setRuleName('');
-    setIsActive(true);
     setRuleLevel('');
     setConditions([{ id: 'cond_' + Date.now(), metric: '', operator: '', value: '', logic: 'AND' }]);
     setActions([{ id: 'act_' + Date.now(), action_type: '', params: {}, order: 1 }]);
-    setTargetId('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -141,11 +176,11 @@ const RulesTab = () => {
     // Prepare data for API
     const ruleData = {
       name: ruleName,
-      is_active: isActive,
+      is_active: true, // Sempre inicia como ativa
       level: ruleLevel,
       conditions: conditions.map(({ id, ...rest }) => rest),
       actions: actions.map(({ id, ...rest }) => rest),
-      target_id: targetId || null
+      target_id: null
     };
 
     try {
@@ -301,27 +336,17 @@ const RulesTab = () => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="rule-name">
-                      Nome da Regra <span className="text-destructive">*</span>
-                    </Label>
-                    <Input
-                      id="rule-name"
-                      placeholder="Ex: Pausar AdSet se CPC Alto"
-                      value={ruleName}
-                      onChange={(e) => setRuleName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Label htmlFor="is-active">Ativa?</Label>
-                    <Switch
-                      id="is-active"
-                      checked={isActive}
-                      onCheckedChange={setIsActive}
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="rule-name">
+                    Nome da Regra <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="rule-name"
+                    placeholder="Ex: Pausar AdSet se CPC Alto"
+                    value={ruleName}
+                    onChange={(e) => setRuleName(e.target.value)}
+                    required
+                  />
                 </div>
 
                 <div>
@@ -391,11 +416,11 @@ const RulesTab = () => {
                                 <SelectValue placeholder="Selecionar" />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="cpc">CPC</SelectItem>
-                                <SelectItem value="impressions">Impressões</SelectItem>
                                 <SelectItem value="clicks">Cliques</SelectItem>
-                                <SelectItem value="conversions">Conversões</SelectItem>
-                                <SelectItem value="spend">Gasto</SelectItem>
+                                <SelectItem value="conversions">Vendas</SelectItem>
+                                <SelectItem value="roas">ROAS</SelectItem>
+                                <SelectItem value="cpa">CPA</SelectItem>
+                                <SelectItem value="spend">Gastos</SelectItem>
                               </SelectContent>
                             </Select>
                           </div>
@@ -424,7 +449,7 @@ const RulesTab = () => {
                             <Label htmlFor={`value-${condition.id}`}>Valor</Label>
                             <Input
                               id={`value-${condition.id}`}
-                              placeholder="Ex: 4.5"
+                              placeholder="Ex: 2,4"
                               value={condition.value}
                               onChange={(e) =>
                                 handleConditionChange(condition.id, 'value', e.target.value)
@@ -553,15 +578,6 @@ const RulesTab = () => {
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="target-id">ID do Alvo (Opcional)</Label>
-                  <Input
-                    id="target-id"
-                    placeholder="Ex: adset_123456 (deixe vazio se aplicar a múltiplos)"
-                    value={targetId}
-                    onChange={(e) => setTargetId(e.target.value)}
-                  />
-                </div>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -587,6 +603,7 @@ const RulesTab = () => {
               <TableHead>Condições</TableHead>
               <TableHead>Ações</TableHead>
               <TableHead className="w-[180px]">Data de Criação</TableHead>
+              <TableHead className="w-[100px]">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -606,19 +623,60 @@ const RulesTab = () => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {Array.isArray(rule.conditions) ? rule.conditions.length : 0} condições
+                    <div className="max-w-xs">
+                      {Array.isArray(rule.conditions) && rule.conditions.length > 0 ? (
+                        <div className="text-sm space-y-1">
+                          {rule.conditions.map((condition: any, index: number) => (
+                            <div key={index} className="bg-muted/50 p-2 rounded text-xs">
+                              {condition.metric} {condition.operator} {condition.value}
+                              {index < rule.conditions.length - 1 && (
+                                <span className="text-muted-foreground ml-1">{condition.logic}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">0 condições</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
-                    {Array.isArray(rule.actions) ? rule.actions.length : 0} ações
+                    <div className="max-w-xs">
+                      {Array.isArray(rule.actions) && rule.actions.length > 0 ? (
+                        <div className="text-sm space-y-1">
+                          {rule.actions.map((action: any, index: number) => (
+                            <div key={index} className="bg-muted/50 p-2 rounded text-xs">
+                              {action.action_type} (#{action.order})
+                              {action.params && Object.keys(action.params).length > 0 && (
+                                <div className="text-muted-foreground mt-1">
+                                  {Object.entries(action.params).map(([key, value]) => (
+                                    <div key={key}>{key}: {value as string}</div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">0 ações</span>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     {rule.created_at ? new Date(rule.created_at).toLocaleString('pt-BR') : 'N/A'}
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={rule.is_active}
+                      onCheckedChange={(checked) => handleToggleRule(rule.id, checked)}
+                      disabled={false}
+                    />
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
                   Nenhuma regra encontrada. Crie uma nova regra para começar.
                 </TableCell>
               </TableRow>
