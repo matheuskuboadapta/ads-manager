@@ -92,9 +92,12 @@ const RulesTab = () => {
   const [conditions, setConditions] = useState<Condition[]>([
     { id: 'cond_' + Date.now(), metric: '', operator: '', value: '', logic: 'AND' }
   ]);
-  const [actions, setActions] = useState<Action[]>([
-    { id: 'act_' + Date.now(), action_type: '', params: {}, order: 1 }
-  ]);
+  const [action, setAction] = useState<Action>({
+    id: 'act_' + Date.now(),
+    action_type: '',
+    params: {},
+    order: 1
+  });
 
   const handleAddCondition = () => {
     setConditions([
@@ -122,42 +125,22 @@ const RulesTab = () => {
     );
   };
 
-  const handleAddAction = () => {
-    setActions([
-      ...actions,
-      { id: 'act_' + Date.now(), action_type: '', params: {}, order: actions.length + 1 }
-    ]);
+  const handleActionChange = (field: keyof Action, value: string | number) => {
+    setAction(prevAction => ({ ...prevAction, [field]: value }));
   };
 
-  const handleRemoveAction = (id: string) => {
-    if (actions.length > 1) {
-      setActions(actions.filter(action => action.id !== id));
-    }
-  };
-
-  const handleActionChange = (id: string, field: keyof Action, value: string | number) => {
-    setActions(
-      actions.map(action =>
-        action.id === id ? { ...action, [field]: value } : action
-      )
-    );
-  };
-
-  const handleActionParamChange = (id: string, paramKey: string, value: string) => {
-    setActions(
-      actions.map(action =>
-        action.id === id
-          ? { ...action, params: { ...action.params, [paramKey]: value } }
-          : action
-      )
-    );
+  const handleActionParamChange = (paramKey: string, value: string) => {
+    setAction(prevAction => ({
+      ...prevAction,
+      params: { ...prevAction.params, [paramKey]: value }
+    }));
   };
 
   const resetForm = () => {
     setRuleName('');
     setRuleLevel('');
     setConditions([{ id: 'cond_' + Date.now(), metric: '', operator: '', value: '', logic: 'AND' }]);
-    setActions([{ id: 'act_' + Date.now(), action_type: '', params: {}, order: 1 }]);
+    setAction({ id: 'act_' + Date.now(), action_type: '', params: {}, order: 1 });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -181,10 +164,8 @@ const RulesTab = () => {
     });
 
     const actionsObject: { [key: string]: any } = {};
-    actions.forEach((action, index) => {
-      const { id, ...actionData } = action;
-      actionsObject[index.toString()] = actionData;
-    });
+    const { id, ...actionData } = action;
+    actionsObject["0"] = actionData;
 
     const ruleData = {
       name: ruleName,
@@ -230,27 +211,27 @@ const RulesTab = () => {
     }
   };
 
-  const renderActionParams = (action: Action) => {
+  const renderActionParams = () => {
     switch (action.action_type) {
       case 'pause':
         return (
           <>
             <div>
-              <Label htmlFor={`target-${action.id}`}>Alvo</Label>
+              <Label htmlFor="target">Alvo</Label>
               <Input
-                id={`target-${action.id}`}
+                id="target"
                 placeholder="Ex: adset"
                 value={action.params.target || ''}
-                onChange={(e) => handleActionParamChange(action.id, 'target', e.target.value)}
+                onChange={(e) => handleActionParamChange('target', e.target.value)}
               />
             </div>
             <div>
-              <Label htmlFor={`reason-${action.id}`}>Motivo</Label>
+              <Label htmlFor="reason">Motivo</Label>
               <Input
-                id={`reason-${action.id}`}
+                id="reason"
                 placeholder="Ex: CPC excedido"
                 value={action.params.reason || ''}
-                onChange={(e) => handleActionParamChange(action.id, 'reason', e.target.value)}
+                onChange={(e) => handleActionParamChange('reason', e.target.value)}
               />
             </div>
           </>
@@ -259,22 +240,22 @@ const RulesTab = () => {
         return (
           <>
             <div>
-              <Label htmlFor={`email-${action.id}`}>Email</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
-                id={`email-${action.id}`}
+                id="email"
                 type="email"
                 placeholder="Ex: usuario@exemplo.com"
                 value={action.params.email || ''}
-                onChange={(e) => handleActionParamChange(action.id, 'email', e.target.value)}
+                onChange={(e) => handleActionParamChange('email', e.target.value)}
               />
             </div>
             <div>
-              <Label htmlFor={`message-${action.id}`}>Mensagem</Label>
+              <Label htmlFor="message">Mensagem</Label>
               <Textarea
-                id={`message-${action.id}`}
+                id="message"
                 placeholder="Ex: Alerta de alto CPC na campanha"
                 value={action.params.message || ''}
-                onChange={(e) => handleActionParamChange(action.id, 'message', e.target.value)}
+                onChange={(e) => handleActionParamChange('message', e.target.value)}
               />
             </div>
           </>
@@ -282,27 +263,27 @@ const RulesTab = () => {
       case 'edit_budget':
         return (
           <div>
-            <Label htmlFor={`budget-${action.id}`}>Novo Orçamento</Label>
+            <Label htmlFor="budget">Novo Orçamento</Label>
             <Input
-              id={`budget-${action.id}`}
+              id="budget"
               type="number"
               min="0"
               step="0.01"
               placeholder="Ex: 100.00"
               value={action.params.new_budget || ''}
-              onChange={(e) => handleActionParamChange(action.id, 'new_budget', e.target.value)}
+              onChange={(e) => handleActionParamChange('new_budget', e.target.value)}
             />
           </div>
         );
       case 'edit_status':
         return (
           <div>
-            <Label htmlFor={`status-${action.id}`}>Novo Status</Label>
+            <Label htmlFor="status">Novo Status</Label>
             <Select
               value={action.params.new_status || ''}
-              onValueChange={(value) => handleActionParamChange(action.id, 'new_status', value)}
+              onValueChange={(value) => handleActionParamChange('new_status', value)}
             >
-              <SelectTrigger id={`status-${action.id}`}>
+              <SelectTrigger id="status">
                 <SelectValue placeholder="Selecione um status" />
               </SelectTrigger>
               <SelectContent>
@@ -506,7 +487,7 @@ const RulesTab = () => {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <Label className="text-lg font-medium">
-                      Ações <span className="text-destructive">*</span>
+                      Ação <span className="text-destructive">*</span>
                     </Label>
                     <TooltipProvider>
                       <Tooltip>
@@ -516,77 +497,38 @@ const RulesTab = () => {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent className="max-w-sm">
-                          <p>Ações a serem executadas se as condições forem atendidas, em ordem. Params variam por tipo.</p>
+                          <p>Ação a ser executada se as condições forem atendidas. Parâmetros variam por tipo.</p>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </div>
                   <div className="space-y-4 border rounded-md p-4 bg-muted/30">
-                    {actions.map((action, index) => (
-                      <div key={action.id} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="text-sm font-medium">Ação {index + 1}</div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveAction(action.id)}
-                            disabled={actions.length === 1}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <Label htmlFor={`action-type-${action.id}`}>Tipo de Ação</Label>
-                            <Select
-                              value={action.action_type}
-                              onValueChange={(value) =>
-                                handleActionChange(action.id, 'action_type', value)
-                              }
-                              required
-                            >
-                              <SelectTrigger id={`action-type-${action.id}`}>
-                                <SelectValue placeholder="Selecionar" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="pause">Pausar</SelectItem>
-                                <SelectItem value="notify">Notificar</SelectItem>
-                                <SelectItem value="edit_budget">Editar Orçamento</SelectItem>
-                                <SelectItem value="edit_status">Editar Status</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <Label htmlFor={`order-${action.id}`}>Ordem de Execução</Label>
-                            <Input
-                              id={`order-${action.id}`}
-                              type="number"
-                              min="1"
-                              placeholder="Ex: 1"
-                              value={action.order}
-                              onChange={(e) =>
-                                handleActionChange(action.id, 'order', parseInt(e.target.value) || 1)
-                              }
-                              required
-                            />
-                          </div>
-                        </div>
-                        {action.action_type && (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {renderActionParams(action)}
-                          </div>
-                        )}
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">Configuração da Ação</div>
+                      <div>
+                        <Label htmlFor="action-type">Tipo de Ação</Label>
+                        <Select
+                          value={action.action_type}
+                          onValueChange={(value) => handleActionChange('action_type', value)}
+                          required
+                        >
+                          <SelectTrigger id="action-type">
+                            <SelectValue placeholder="Selecionar" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pause">Pausar</SelectItem>
+                            <SelectItem value="notify">Notificar</SelectItem>
+                            <SelectItem value="edit_budget">Editar Orçamento</SelectItem>
+                            <SelectItem value="edit_status">Editar Status</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                    ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full"
-                      onClick={handleAddAction}
-                    >
-                      <Plus className="h-4 w-4 mr-2" /> Adicionar Ação
-                    </Button>
+                      {action.action_type && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {renderActionParams()}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
