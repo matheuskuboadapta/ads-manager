@@ -275,25 +275,6 @@ const RulesTab = () => {
             />
           </div>
         );
-      case 'edit_status':
-        return (
-          <div>
-            <Label htmlFor="status">Novo Status</Label>
-            <Select
-              value={action.params.new_status || ''}
-              onValueChange={(value) => handleActionParamChange('new_status', value)}
-            >
-              <SelectTrigger id="status">
-                <SelectValue placeholder="Selecione um status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Ativo</SelectItem>
-                <SelectItem value="paused">Pausado</SelectItem>
-                <SelectItem value="archived">Arquivado</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        );
       default:
         return null;
     }
@@ -519,7 +500,6 @@ const RulesTab = () => {
                             <SelectItem value="pause">Pausar</SelectItem>
                             <SelectItem value="notify">Notificar</SelectItem>
                             <SelectItem value="edit_budget">Editar Orçamento</SelectItem>
-                            <SelectItem value="edit_status">Editar Status</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
