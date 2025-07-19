@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -82,8 +81,8 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
     });
     
     try {
-      // Use firstAdId instead of realId to send the ad_id
-      await updateCampaign(campaign.firstAdId, 'status', newStatus ? 'ATIVO' : 'DESATIVADA');
+      // Use campaign_id for campaign level updates
+      await updateCampaign(campaign.campaign_id, 'status', newStatus ? 'ATIVO' : 'DESATIVADA');
       
       toast({
         title: "Status atualizado",
@@ -106,8 +105,8 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
     updateOptimistic(campaign.firstAdId, { objective: newObjective });
     
     try {
-      // Use firstAdId instead of realId to send the ad_id
-      await updateCampaign(campaign.firstAdId, 'objective', newObjective);
+      // Use campaign_id for campaign level updates
+      await updateCampaign(campaign.campaign_id, 'objective', newObjective);
       
       toast({
         title: "Objetivo atualizado",
@@ -145,8 +144,8 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
     updateOptimistic(campaign.firstAdId, { dailyBudget: newBudget });
 
     try {
-      // Use firstAdId instead of realId to send the ad_id
-      await updateCampaign(campaign.firstAdId, 'budget', newBudget);
+      // Use campaign_id for campaign level updates
+      await updateCampaign(campaign.campaign_id, 'budget', newBudget);
       
       setEditingBudget(null);
       toast({
@@ -469,7 +468,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                         <DetailView 
                           type="campaign" 
                           name={campaign.name} 
-                          id={campaign.id} 
+                          id={campaign.campaign_id} 
                         />
                       </TableCell>
                     </TableRow>

@@ -1,3 +1,4 @@
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -11,12 +12,12 @@ interface AdLog {
   level: string;
 }
 
-export const useAdLogs = (adId: string) => {
+export const useAdLogs = (objectId: string) => {
   return useQuery({
-    queryKey: ['ad-logs', adId],
+    queryKey: ['ad-logs', objectId],
     queryFn: async (): Promise<AdLog[]> => {
       const { data, error } = await supabase.rpc('get_ad_logs', { 
-        ad_id: adId 
+        ad_id: objectId 
       }) as { data: AdLog[] | null; error: any };
 
       if (error) {
@@ -26,6 +27,6 @@ export const useAdLogs = (adId: string) => {
 
       return data || [];
     },
-    enabled: !!adId,
+    enabled: !!objectId,
   });
 };

@@ -1,3 +1,4 @@
+
 import { Clock, User, Activity, BarChart3 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAdLogs } from '@/hooks/useAdLogs';
@@ -5,12 +6,12 @@ import { formatCurrency } from '@/utils/formatters';
 import { Loader2 } from 'lucide-react';
 
 interface LogsViewProps {
-  adId: string;
-  adName: string;
+  objectId: string;
+  objectName: string;
 }
 
-const LogsView = ({ adId, adName }: LogsViewProps) => {
-  const { data: logs, isLoading, error } = useAdLogs(adId);
+const LogsView = ({ objectId, objectName }: LogsViewProps) => {
+  const { data: logs, isLoading, error } = useAdLogs(objectId);
 
   if (isLoading) {
     return (
@@ -41,7 +42,7 @@ const LogsView = ({ adId, adName }: LogsViewProps) => {
           <Activity className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <p className="text-muted-foreground mb-2">Nenhum histórico encontrado</p>
           <p className="text-muted-foreground text-sm">
-            Não há registros de edições para este anúncio
+            Não há registros de edições para este item
           </p>
         </div>
       </div>
@@ -136,7 +137,7 @@ const LogsView = ({ adId, adName }: LogsViewProps) => {
     <div className="bg-muted border-t border-border p-6">
       <div className="mb-4">
         <h3 className="text-lg font-semibold text-foreground mb-1">
-          Histórico de Edições - {adName}
+          Histórico de Edições - {objectName}
         </h3>
         <p className="text-sm text-muted-foreground">
           Registro de todas as modificações realizadas
