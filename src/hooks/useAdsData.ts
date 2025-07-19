@@ -135,9 +135,13 @@ export const useCampaignsData = (accountName?: string | null, dateFilter?: DateF
 
         const campaignKey = row.campaign_name;
         if (!campaignsMap.has(campaignKey)) {
+        // Extract campaign_id from ad_id (assuming ad_id format contains campaign info)
+        // For now, we'll use a more meaningful campaign ID
+        const campaignId = `campaign_${campaignKey.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+        
         campaignsMap.set(campaignKey, {
           id: `camp_${campaignKey.toLowerCase().replace(/\s+/g, '_')}`,
-          realId: `campaign_${Math.random().toString(36).substr(2, 9)}`,
+          realId: campaignId,
           name: row.campaign_name,
           objective: 'CONVERSIONS',
           status: row.campaign_status_final === 'ATIVO' ? 'ACTIVE' : 'PAUSED',
@@ -248,9 +252,12 @@ export const useAdsetsData = (campaignName?: string | null, dateFilter?: DateFil
       const adsetKey = row.adset_name;
       if (!adsetsMap.has(adsetKey)) {
         console.log('Creating new adset:', adsetKey);
+        // Extract adset_id from ad_id or create a meaningful one
+        const adsetId = `adset_${adsetKey.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+        
         adsetsMap.set(adsetKey, {
           id: `adset_${adsetKey.toLowerCase().replace(/\s+/g, '_')}`,
-          realId: `adset_${Math.random().toString(36).substr(2, 9)}`,
+          realId: adsetId,
           name: row.adset_name,
           status: row.adset_status_final === 'ATIVO' ? 'ACTIVE' : 'PAUSED',
           statusFinal: row.adset_status_final,

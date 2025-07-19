@@ -79,8 +79,8 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
     updateOptimistic(adset.firstAdId, { status: newStatus ? 'ACTIVE' : 'PAUSED' });
     
     try {
-      // Use firstAdId instead of realId to send the ad_id
-      await updateAdset(adset.firstAdId, 'status', newStatus ? 'ACTIVE' : 'PAUSED');
+      // Use realId to send the correct adset_id
+      await updateAdset(adset.realId, 'status', newStatus ? 'ACTIVE' : 'PAUSED');
       
       toast({
         title: "Status atualizado",
@@ -118,8 +118,8 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
     updateOptimistic(adset.firstAdId, { dailyBudget: newBudget });
 
     try {
-      // Use firstAdId instead of realId to send the ad_id
-      await updateAdset(adset.firstAdId, 'budget', newBudget);
+      // Use realId to send the correct adset_id
+      await updateAdset(adset.realId, 'budget', newBudget);
       
       setEditingBudget(null);
       toast({
@@ -445,7 +445,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                         <DetailView 
                           type="adset" 
                           name={adset.name} 
-                          id={adset.id} 
+                          id={adset.realId} 
                         />
                       </TableCell>
                     </TableRow>
