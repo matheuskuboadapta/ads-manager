@@ -25,7 +25,15 @@ export const useAdLogs = (objectId: string) => {
         throw error;
       }
 
-      return data || [];
+      // Parse metrics_details if it's a JSON string
+      const processedData = (data || []).map(log => ({
+        ...log,
+        metrics_details: typeof log.metrics_details === 'string' 
+          ? JSON.parse(log.metrics_details) 
+          : log.metrics_details
+      }));
+
+      return processedData;
     },
     enabled: !!objectId,
   });
