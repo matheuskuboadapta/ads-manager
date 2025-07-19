@@ -74,6 +74,12 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   }, [filteredCampaigns]);
 
   const handleStatusChange = async (campaign: any, newStatus: boolean) => {
+    console.log('=== CAMPAIGN STATUS UPDATE DEBUG ===');
+    console.log('Campaign object:', campaign);
+    console.log('Campaign ID being used:', campaign.campaign_id);
+    console.log('New status:', newStatus ? 'ATIVO' : 'DESATIVADA');
+    console.log('===================================');
+    
     // Atualização otimística - mostrar mudança imediatamente
     updateOptimistic(campaign.firstAdId, { 
       status: newStatus ? 'ACTIVE' : 'PAUSED',
@@ -81,14 +87,18 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
     });
     
     try {
-      // Use campaign_id for campaign level updates
-      await updateCampaign(campaign.campaign_id, 'status', newStatus ? 'ATIVO' : 'DESATIVADA');
+      // Garantindo que o campaign_id está sendo passado corretamente
+      const campaignIdToUse = campaign.campaign_id;
+      console.log('Calling updateCampaign with ID:', campaignIdToUse);
+      
+      await updateCampaign(campaignIdToUse, 'status', newStatus ? 'ATIVO' : 'DESATIVADA');
       
       toast({
         title: "Status atualizado",
         description: `Campanha ${newStatus ? 'ativada' : 'pausada'} com sucesso.`,
       });
     } catch (error) {
+      console.error('Error updating campaign status:', error);
       // Reverter a mudança otimística em caso de erro
       clearOptimistic(campaign.firstAdId);
       
@@ -101,18 +111,28 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   };
 
   const handleObjectiveChange = async (campaign: any, newObjective: string) => {
+    console.log('=== CAMPAIGN OBJECTIVE UPDATE DEBUG ===');
+    console.log('Campaign object:', campaign);
+    console.log('Campaign ID being used:', campaign.campaign_id);
+    console.log('New objective:', newObjective);
+    console.log('====================================');
+    
     // Atualização otimística - mostrar mudança imediatamente
     updateOptimistic(campaign.firstAdId, { objective: newObjective });
     
     try {
-      // Use campaign_id for campaign level updates
-      await updateCampaign(campaign.campaign_id, 'objective', newObjective);
+      // Garantindo que o campaign_id está sendo passado corretamente
+      const campaignIdToUse = campaign.campaign_id;
+      console.log('Calling updateCampaign with ID:', campaignIdToUse);
+      
+      await updateCampaign(campaignIdToUse, 'objective', newObjective);
       
       toast({
         title: "Objetivo atualizado",
         description: "Objetivo da campanha alterado com sucesso.",
       });
     } catch (error) {
+      console.error('Error updating campaign objective:', error);
       // Reverter a mudança otimística em caso de erro
       clearOptimistic(campaign.firstAdId);
       
@@ -140,12 +160,21 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
       return;
     }
 
+    console.log('=== CAMPAIGN BUDGET UPDATE DEBUG ===');
+    console.log('Campaign object:', campaign);
+    console.log('Campaign ID being used:', campaign.campaign_id);
+    console.log('New budget:', newBudget);
+    console.log('=================================');
+
     // Atualização otimística - mostrar mudança imediatamente
     updateOptimistic(campaign.firstAdId, { dailyBudget: newBudget });
 
     try {
-      // Use campaign_id for campaign level updates
-      await updateCampaign(campaign.campaign_id, 'budget', newBudget);
+      // Garantindo que o campaign_id está sendo passado corretamente
+      const campaignIdToUse = campaign.campaign_id;
+      console.log('Calling updateCampaign with ID:', campaignIdToUse);
+      
+      await updateCampaign(campaignIdToUse, 'budget', newBudget);
       
       setEditingBudget(null);
       toast({
@@ -153,6 +182,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
         description: "Orçamento diário alterado com sucesso.",
       });
     } catch (error) {
+      console.error('Error updating campaign budget:', error);
       // Reverter a mudança otimística em caso de erro
       clearOptimistic(campaign.firstAdId);
       setEditingBudget(null);
