@@ -17,7 +17,7 @@ export const useAdLogs = (adId: string) => {
     queryFn: async (): Promise<AdLog[]> => {
       const { data, error } = await supabase.rpc('get_ad_logs', { 
         ad_id: adId 
-      });
+      }) as { data: AdLog[] | null; error: any };
 
       if (error) {
         console.error('Error fetching ad logs:', error);

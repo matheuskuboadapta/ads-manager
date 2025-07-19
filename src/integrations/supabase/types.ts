@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      ad_metrics_logs: {
+        Row: {
+          edit_details: Json
+          level: string
+          log_created_at: string | null
+          log_id: number
+          metrics_details: Json
+          object_id: string
+          user: string
+        }
+        Insert: {
+          edit_details: Json
+          level: string
+          log_created_at?: string | null
+          log_id?: number
+          metrics_details: Json
+          object_id: string
+          user: string
+        }
+        Update: {
+          edit_details?: Json
+          level?: string
+          log_created_at?: string | null
+          log_id?: number
+          metrics_details?: Json
+          object_id?: string
+          user?: string
+        }
+        Relationships: []
+      }
       ad_rules: {
         Row: {
           actions: Json
@@ -53,6 +83,51 @@ export type Database = {
           sql_query?: string | null
           target_id?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      ad_rules_logs: {
+        Row: {
+          created_at: string | null
+          details: string
+          id: number
+          new_rule: boolean | null
+          user: string
+        }
+        Insert: {
+          created_at?: string | null
+          details: string
+          id?: number
+          new_rule?: boolean | null
+          user: string
+        }
+        Update: {
+          created_at?: string | null
+          details?: string
+          id?: number
+          new_rule?: boolean | null
+          user?: string
+        }
+        Relationships: []
+      }
+      ad_tasks: {
+        Row: {
+          created_at: string | null
+          details: Json
+          execute_at: string | null
+          id: number
+        }
+        Insert: {
+          created_at?: string | null
+          details: Json
+          execute_at?: string | null
+          id?: number
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json
+          execute_at?: string | null
+          id?: number
         }
         Relationships: []
       }
@@ -383,9 +458,11 @@ export type Database = {
           ad_name: string | null
           ad_status_final: string | null
           ad_status_native: string | null
+          adset_id: string | null
           adset_name: string | null
           adset_status_final: string | null
           adset_status_native: string | null
+          campaign_id: string | null
           campaign_name: string | null
           campaign_status_final: string | null
           campaign_status_native: string | null
@@ -429,7 +506,18 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      get_ad_logs: {
+        Args: { ad_id: string }
+        Returns: {
+          log_id: number
+          log_created_at: string
+          edit_details: string
+          metrics_details: Json
+          user: string
+          object_id: string
+          level: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
