@@ -52,13 +52,12 @@ export const updateCampaign = async (
   
   const payload: UpdatePayload = {
     type: 'campaign',
-    object: campaignId, // Garantindo que o campaign_id seja usado como object
+    object: campaignId,
     field,
     value
   };
 
   console.log('Campaign payload before sending:', payload);
-  console.log('Campaign ID being sent as object:', campaignId);
 
   const response = await makeRequest(payload);
   
