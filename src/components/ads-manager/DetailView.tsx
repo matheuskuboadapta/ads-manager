@@ -309,7 +309,7 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
         </TabsContent>
 
         <TabsContent value="logs" className="mt-0">
-          <LogsView adId={id} adName={name} />
+          <LogsView objectId={id} objectName={name} />
         </TabsContent>
       </Tabs>
     </div>
