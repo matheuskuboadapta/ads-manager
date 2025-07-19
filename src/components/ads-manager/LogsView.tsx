@@ -94,41 +94,67 @@ const LogsView = ({ objectId, objectName }: LogsViewProps) => {
       return <p className="text-muted-foreground text-xs">Nenhuma métrica disponível</p>;
     }
 
-    const relevantMetrics = ['spend', 'impressions', 'clicks', 'cpm', 'ctr'];
-    const availableMetrics = relevantMetrics.filter(key => metrics[key] !== undefined && metrics[key] !== null);
+    // Definir todas as métricas possíveis na ordem das colunas da tabela
+    const metricsMap = [
+      { key: 'spend', label: 'Valor Gasto', format: 'currency' },
+      { key: 'daily_budget_per_row', label: 'Orçamento Diário', format: 'currency' },
+      { key: 'impressions', label: 'Impressões', format: 'number' },
+      { key: 'clicks', label: 'Cliques', format: 'number' },
+      { key: 'cpm', label: 'CPM', format: 'currency' },
+      { key: 'ctr', label: 'CTR', format: 'percentage' },
+      { key: 'cpa', label: 'CPA', format: 'currency' },
+      { key: 'roas', label: 'ROAS', format: 'multiplier' },
+    ];
+
+    // Filtrar apenas as métricas que existem no objeto
+    const availableMetrics = metricsMap.filter(metric => 
+      metrics[metric.key] !== undefined && 
+      metrics[metric.key] !== null && 
+      metrics[metric.key] !== ''
+    );
 
     if (availableMetrics.length === 0) {
       return <p className="text-muted-foreground text-xs">Nenhuma métrica disponível</p>;
     }
 
-    return (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
-        {availableMetrics.map(key => {
-          let value = metrics[key];
-          let label = key.toUpperCase();
-          
-          if (key === 'spend') {
-            value = formatCurrency(value);
-            label = 'Gasto';
-          } else if (key === 'impressions') {
-            value = Number(value).toLocaleString('pt-BR');
-            label = 'Impressões';
-          } else if (key === 'clicks') {
-            value = Number(value).toLocaleString('pt-BR');
-            label = 'Cliques';
-          } else if (key === 'cpm') {
-            value = formatCurrency(value);
-          } else if (key === 'ctr') {
-            value = `${(Number(value) * 100).toFixed(2)}%`;
-          }
+    const formatValue = (value: any, format: string) => {
+      const numValue = Number(value);
+      
+      switch (format) {
+        case 'currency':
+          return formatCurrency(numValue);
+        case 'number':
+          return numValue.toLocaleString('pt-BR');
+        case 'percentage':
+          return `${(numValue * 100).toFixed(2)}%`;
+        case 'multiplier':
+          return `${numValue.toFixed(2)}x`;
+        default:
+          return value;
+      }
+    };
 
-          return (
-            <div key={key} className="text-center">
-              <p className="font-medium text-foreground">{value}</p>
-              <p className="text-muted-foreground">{label}</p>
+    return (
+      <div className="grid gap-3">
+        {/* Header row alinhado com as colunas da tabela */}
+        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 text-xs font-medium text-muted-foreground border-b pb-2">
+          {availableMetrics.map(metric => (
+            <div key={metric.key} className="text-center">
+              {metric.label}
             </div>
-          );
-        })}
+          ))}
+        </div>
+        
+        {/* Values row */}
+        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 text-xs">
+          {availableMetrics.map(metric => (
+            <div key={metric.key} className="text-center">
+              <span className="font-medium text-foreground">
+                {formatValue(metrics[metric.key], metric.format)}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     );
   };
