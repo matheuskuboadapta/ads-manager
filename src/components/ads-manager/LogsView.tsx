@@ -136,29 +136,27 @@ const LogsView = ({ objectId, objectName }: LogsViewProps) => {
 
     return (
       <div className="overflow-x-auto">
-        {/* Tabela para alinhar perfeitamente com as colunas principais */}
+        {/* Layout para alinhar com as colunas da tabela principal */}
         <div className="min-w-full">
           <div className="flex border-b pb-2 mb-2 text-xs font-medium text-muted-foreground">
-            {/* Espaço para Status e Nome (colunas da esquerda) */}
-            <div className="w-[80px]"></div> {/* Status */}
-            <div className="min-w-[200px] flex-1"></div> {/* Nome */}
+            {/* Espaço exato para Status (80px) + Nome (200px) = 280px total */}
+            <div className="w-[280px]"></div>
             
-            {/* Colunas de métricas alinhadas */}
+            {/* Métricas alinhadas começando na posição do "Valor Gasto" */}
             {availableMetrics.map(metric => (
-              <div key={metric.key} className="min-w-[120px] text-right px-2">
+              <div key={metric.key} className="min-w-[120px] text-right px-3">
                 {metric.label}
               </div>
             ))}
           </div>
           
           <div className="flex text-xs">
-            {/* Espaço para Status e Nome (colunas da esquerda) */}
-            <div className="w-[80px]"></div> {/* Status */}
-            <div className="min-w-[200px] flex-1"></div> {/* Nome */}
+            {/* Espaço exato para Status (80px) + Nome (200px) = 280px total */}
+            <div className="w-[280px]"></div>
             
             {/* Valores das métricas alinhados */}
             {availableMetrics.map(metric => (
-              <div key={metric.key} className="min-w-[120px] text-right px-2">
+              <div key={metric.key} className="min-w-[120px] text-right px-3">
                 <span className="font-medium text-foreground">
                   {formatValue(metrics[metric.key], metric.format)}
                 </span>
