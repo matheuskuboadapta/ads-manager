@@ -2,10 +2,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { ChartContainer } from '@/components/ui/chart';
 import { formatCurrency } from '@/utils/formatters';
-import { TrendingUp, DollarSign, Loader2, Brain } from 'lucide-react';
+import { TrendingUp, DollarSign, Loader2, Brain, BarChart3, FileText } from 'lucide-react';
 import useDetailMetrics from '@/hooks/useDetailMetrics';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import LogsView from './LogsView';
 
 interface DetailViewProps {
   type: 'campaign' | 'adset' | 'ad';
@@ -18,6 +20,7 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
   const [aiInsights, setAiInsights] = useState<string>('');
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [aiError, setAiError] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<string>('metrics');
 
   useEffect(() => {
     // Reset states quando mudar id/type
@@ -129,158 +132,186 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
     : 0;
 
   return (
-    <div className="bg-muted border-t border-border p-6">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold text-foreground mb-1">
-          Detalhes - {name}
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Evolução das métricas nos últimos 7 dias
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Gráfico de Gasto */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <DollarSign className="h-4 w-4 text-primary" />
-              Evolução do Gasto - {formatCurrency(totalSpend)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `R$${value}`}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar 
-                    dataKey="spend" 
-                    fill="hsl(var(--primary))" 
-                    radius={[4, 4, 0, 0]}
-                    name="Gasto"
-                  >
-                    <LabelList 
-                      dataKey="spend" 
-                      position="top" 
-                      fontSize={12} 
-                      fill="hsl(var(--primary))"
-                      fontWeight="600"
-                      formatter={(value: number) => value > 0 ? `R$${value}` : ''}
-                    />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        {/* Gráfico de CPA */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingUp className="h-4 w-4 text-success" />
-              Evolução do CPA - {averageCpa > 0 ? formatCurrency(averageCpa) : 'N/A'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer config={chartConfig} className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                  />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(value) => `R$${value}`}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar 
-                    dataKey="cpa" 
-                    fill="hsl(var(--success))" 
-                    radius={[4, 4, 0, 0]}
-                    name="CPA"
-                  >
-                    <LabelList 
-                      dataKey="cpa" 
-                      position="top" 
-                      fontSize={12} 
-                      fill="hsl(var(--success))"
-                      fontWeight="600"
-                      formatter={(value: number) => value > 0 ? `R$${value}` : ''}
-                    />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartContainer>
-          </CardContent>
-        </Card>
-
-        {/* AI Insights */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Brain className="h-4 w-4 text-primary" />
-              AI Insights
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4 text-sm">
-              {aiLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
-                  <span className="text-muted-foreground">Gerando insights com IA...</span>
-                </div>
-              ) : aiError ? (
-                <div className="bg-muted border border-border rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Brain className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-muted-foreground">Serviço temporariamente indisponível</span>
-                  </div>
-                  <p className="text-muted-foreground text-xs">
-                    Os insights da IA não puderam ser carregados. Isso pode acontecer quando o serviço está sendo atualizado ou temporariamente fora do ar.
-                  </p>
-                </div>
-              ) : (
-                <div className="bg-muted border border-border rounded-lg p-4">
-                  <div className="text-muted-foreground text-sm leading-relaxed space-y-3">
-                    {aiInsights ? 
-                      aiInsights.split('\n').map((line, index) => (
-                        <p key={index} className={line.trim() ? '' : 'h-2'}>
-                          {line.trim() || '\u00A0'}
-                        </p>
-                      )) 
-                      : 'Aguardando análise da IA...'
-                    }
-                  </div>
-                </div>
-              )}
+    <div className="bg-muted border-t border-border">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="px-6 pt-6 pb-2">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-1">
+                Detalhes - {name}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                {activeTab === 'metrics' 
+                  ? 'Evolução das métricas nos últimos 7 dias'
+                  : 'Histórico de modificações realizadas'
+                }
+              </p>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+            
+            <TabsList className="grid w-fit grid-cols-2">
+              <TabsTrigger value="metrics" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Métricas
+              </TabsTrigger>
+              <TabsTrigger value="logs" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Logs
+              </TabsTrigger>
+            </TabsList>
+          </div>
+        </div>
+
+        <TabsContent value="metrics" className="mt-0">
+          <div className="px-6 pb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Gráfico de Gasto */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <DollarSign className="h-4 w-4 text-primary" />
+                    Evolução do Gasto - {formatCurrency(totalSpend)}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer config={chartConfig} className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis 
+                          dataKey="date" 
+                          stroke="hsl(var(--muted-foreground))"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <YAxis 
+                          stroke="hsl(var(--muted-foreground))"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(value) => `R$${value}`}
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar 
+                          dataKey="spend" 
+                          fill="hsl(var(--primary))" 
+                          radius={[4, 4, 0, 0]}
+                          name="Gasto"
+                        >
+                          <LabelList 
+                            dataKey="spend" 
+                            position="top" 
+                            fontSize={12} 
+                            fill="hsl(var(--primary))"
+                            fontWeight="600"
+                            formatter={(value: number) => value > 0 ? `R$${value}` : ''}
+                          />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+
+              {/* Gráfico de CPA */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <TrendingUp className="h-4 w-4 text-success" />
+                    Evolução do CPA - {averageCpa > 0 ? formatCurrency(averageCpa) : 'N/A'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer config={chartConfig} className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis 
+                          dataKey="date" 
+                          stroke="hsl(var(--muted-foreground))"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                        />
+                        <YAxis 
+                          stroke="hsl(var(--muted-foreground))"
+                          fontSize={12}
+                          tickLine={false}
+                          axisLine={false}
+                          tickFormatter={(value) => `R$${value}`}
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Bar 
+                          dataKey="cpa" 
+                          fill="hsl(var(--success))" 
+                          radius={[4, 4, 0, 0]}
+                          name="CPA"
+                        >
+                          <LabelList 
+                            dataKey="cpa" 
+                            position="top" 
+                            fontSize={12} 
+                            fill="hsl(var(--success))"
+                            fontWeight="600"
+                            formatter={(value: number) => value > 0 ? `R$${value}` : ''}
+                          />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+
+              {/* AI Insights */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Brain className="h-4 w-4 text-primary" />
+                    AI Insights
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4 text-sm">
+                    {aiLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+                        <span className="text-muted-foreground">Gerando insights com IA...</span>
+                      </div>
+                    ) : aiError ? (
+                      <div className="bg-muted border border-border rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Brain className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium text-muted-foreground">Serviço temporariamente indisponível</span>
+                        </div>
+                        <p className="text-muted-foreground text-xs">
+                          Os insights da IA não puderam ser carregados. Isso pode acontecer quando o serviço está sendo atualizado ou temporariamente fora do ar.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="bg-muted border border-border rounded-lg p-4">
+                        <div className="text-muted-foreground text-sm leading-relaxed space-y-3">
+                          {aiInsights ? 
+                            aiInsights.split('\n').map((line, index) => (
+                              <p key={index} className={line.trim() ? '' : 'h-2'}>
+                                {line.trim() || '\u00A0'}
+                              </p>
+                            )) 
+                            : 'Aguardando análise da IA...'
+                          }
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="logs" className="mt-0">
+          <LogsView adId={id} adName={name} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
