@@ -135,40 +135,43 @@ const LogsView = ({ objectId, objectName }: LogsViewProps) => {
     };
 
     return (
-      <div className="grid gap-3">
-        {/* Header row alinhado com as colunas da tabela */}
-        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 text-xs font-medium text-muted-foreground border-b pb-2">
-          {availableMetrics.map(metric => (
-            <div key={metric.key} className="text-center">
-              {metric.label}
-            </div>
-          ))}
-        </div>
-        
-        {/* Values row */}
-        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 text-xs">
-          {availableMetrics.map(metric => (
-            <div key={metric.key} className="text-center">
-              <span className="font-medium text-foreground">
-                {formatValue(metrics[metric.key], metric.format)}
-              </span>
-            </div>
-          ))}
+      <div className="overflow-x-auto">
+        {/* Tabela para alinhar perfeitamente com as colunas principais */}
+        <div className="min-w-full">
+          <div className="flex border-b pb-2 mb-2 text-xs font-medium text-muted-foreground">
+            {/* Espaço para Status e Nome (colunas da esquerda) */}
+            <div className="w-[80px]"></div> {/* Status */}
+            <div className="min-w-[200px] flex-1"></div> {/* Nome */}
+            
+            {/* Colunas de métricas alinhadas */}
+            {availableMetrics.map(metric => (
+              <div key={metric.key} className="min-w-[120px] text-right px-2">
+                {metric.label}
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex text-xs">
+            {/* Espaço para Status e Nome (colunas da esquerda) */}
+            <div className="w-[80px]"></div> {/* Status */}
+            <div className="min-w-[200px] flex-1"></div> {/* Nome */}
+            
+            {/* Valores das métricas alinhados */}
+            {availableMetrics.map(metric => (
+              <div key={metric.key} className="min-w-[120px] text-right px-2">
+                <span className="font-medium text-foreground">
+                  {formatValue(metrics[metric.key], metric.format)}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
   };
 
   return (
-    <div className="bg-muted border-t border-border p-6">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold text-foreground mb-1">
-          Histórico de Edições - {objectName}
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Registro de todas as modificações realizadas
-        </p>
-      </div>
+    <div className="bg-muted border-t border-border p-6">{/* Removido o título */}
 
       <div className="space-y-4">
         {logs.map((log, index) => {
