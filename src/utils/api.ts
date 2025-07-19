@@ -24,6 +24,8 @@ const makeRequest = async (payload: UpdatePayload | CreatePayload): Promise<Resp
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
   try {
+    console.log('Sending payload to webhook:', payload);
+    
     const response = await fetch(WEBHOOK_URL, {
       method: 'POST',
       headers: {
@@ -55,6 +57,8 @@ export const updateCampaign = async (
     value
   };
 
+  console.log('Campaign payload before sending:', payload);
+
   const response = await makeRequest(payload);
   
   if (!response.ok) {
@@ -78,6 +82,8 @@ export const updateAdset = async (
     value
   };
 
+  console.log('Adset payload before sending:', payload);
+
   const response = await makeRequest(payload);
   
   if (!response.ok) {
@@ -100,6 +106,8 @@ export const updateAd = async (
     field,
     value
   };
+
+  console.log('Ad payload before sending:', payload);
 
   const response = await makeRequest(payload);
   
