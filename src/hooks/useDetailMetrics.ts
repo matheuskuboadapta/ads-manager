@@ -81,7 +81,7 @@ const useDetailMetrics = (type: 'campaign' | 'adset' | 'ad', name: string) => {
       return result;
     },
     enabled: !!name,
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 15 * 60 * 1000, // 15 minutos
   });
 };
 

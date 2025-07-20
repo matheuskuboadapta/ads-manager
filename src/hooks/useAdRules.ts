@@ -33,7 +33,7 @@ export const useAdRules = () => {
       console.log('Ad rules data fetched successfully:', data?.length, 'records');
       return data as AdRule[];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    refetchInterval: 15 * 60 * 1000, // Auto-refresh every 15 minutes
   });
 };

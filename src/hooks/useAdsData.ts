@@ -52,8 +52,8 @@ export const useAdsData = (dateFilter?: DateFilter | null) => {
       console.log('Sample of raw data:', data?.slice(0, 3));
       return data as AdsViewData[];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    refetchInterval: 15 * 60 * 1000, // Auto-refresh every 15 minutes
   });
 };
 
@@ -419,8 +419,8 @@ export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilte
       console.log('Processed ads with video links:', ads.length);
       return ads;
     },
-    staleTime: 5 * 60 * 1000,
-    refetchInterval: 5 * 60 * 1000,
+    staleTime: 15 * 60 * 1000,
+    refetchInterval: 15 * 60 * 1000,
   });
 
   const updateOptimistic = React.useCallback((adId: string, updates: any) => {

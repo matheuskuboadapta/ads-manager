@@ -22,6 +22,16 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
   const [aiError, setAiError] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('metrics');
 
+  // Auto-scroll para mostrar o DetailView completamente
+  useEffect(() => {
+    setTimeout(() => {
+      const element = document.querySelector('[data-detail-view]');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  }, []);
+
   useEffect(() => {
     // Reset states quando mudar id/type
     setAiInsights('');
@@ -132,7 +142,7 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
     : 0;
 
   return (
-    <div className="bg-muted border-t border-border">
+    <div className="bg-muted border-t border-border" data-detail-view>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="px-6 pt-6 pb-2">
           <div className="flex items-center justify-between mb-4">

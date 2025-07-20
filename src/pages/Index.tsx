@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Users, Target, BarChart3, Megaphone, Sun, Moon, Settings } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { RefreshCw, Users, Target, BarChart3, Megaphone, Settings } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import AccountsTab from '@/components/ads-manager/AccountsTab';
@@ -20,7 +19,6 @@ export default function Index() {
   const [selectedAdset, setSelectedAdset] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { theme, setTheme } = useTheme();
 
   // Function to refresh all data
   const refreshAllData = () => {
@@ -41,7 +39,7 @@ export default function Index() {
   console.log('===================');
 
   const handleRefresh = () => {
-    window.location.reload();
+    refreshAllData();
   };
 
   const handleAccountSelect = (accountName: string) => {
@@ -53,9 +51,6 @@ export default function Index() {
     setSelectedCampaign(null);
     setSelectedAdset(null);
     setActiveTab('campaigns');
-    
-    // Refresh data when navigating to campaigns
-    refreshAllData();
     
     console.log('State will be updated to:', {
       selectedAccount: accountName,
@@ -76,9 +71,6 @@ export default function Index() {
     setSelectedAdset(null);
     setActiveTab('adsets');
     
-    // Refresh data when navigating to adsets
-    refreshAllData();
-    
     console.log('State will be updated to:', {
       selectedAccount: selectedAccount,
       selectedCampaign: campaignName,
@@ -97,9 +89,6 @@ export default function Index() {
     setSelectedAdset(adsetName);
     setActiveTab('ads');
     
-    // Refresh data when navigating to ads
-    refreshAllData();
-    
     console.log('State will be updated to:', {
       selectedCampaign: selectedCampaign,
       selectedAdset: adsetName,
@@ -114,9 +103,6 @@ export default function Index() {
     console.log('Previous tab:', activeTab);
     
     setActiveTab(tab);
-    
-    // Refresh data whenever tab changes
-    refreshAllData();
     
     // Clear selections when accessing tabs directly
     if (tab === 'accounts') {
@@ -150,17 +136,6 @@ export default function Index() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            >
-              {theme === 'dark' ? (
-                <Sun className="h-4 w-4" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
-            </Button>
             <Badge variant="outline" className="text-muted-foreground">
               Última atualização: {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </Badge>
