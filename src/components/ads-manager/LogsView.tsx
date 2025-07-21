@@ -94,7 +94,36 @@ const LogsView = ({ objectId, objectName }: LogsViewProps) => {
       return <p className="text-muted-foreground text-xs">Nenhuma métrica disponível</p>;
     }
 
-    // Definir todas as métricas possíveis na ordem das colunas da tabela
+    // Calcular métricas derivadas baseadas nos dados básicos
+    const spend = Number(metrics.spend) || 0;
+    const impressions = Number(metrics.impressions) || 0;
+    const clicks = Number(metrics.clicks) || 0;
+    const realSales = Number(metrics.real_sales) || 0;
+    const realRevenue = Number(metrics.real_revenue) || 0;
+    const dailyBudget = Number(metrics.daily_budget_per_row) || 0;
+
+    // Calcular métricas derivadas
+    const cpm = impressions > 0 ? (spend / impressions) * 1000 : 0;
+    const ctr = impressions > 0 ? (clicks / impressions) : 0;
+    const clickCV = clicks > 0 ? (realSales / clicks) : 0;
+    const epc = clicks > 0 ? (realRevenue / clicks) : 0;
+    const roas = spend > 0 ? (realRevenue / spend) : 0;
+
+    // Definir todas as métricas na ordem das colunas da tabela principal
+    const calculatedMetrics = {
+      spend,
+      daily_budget_per_row: dailyBudget,
+      impressions,
+      clicks,
+      cpm,
+      ctr,
+      click_cv: clickCV,
+      epc,
+      roas,
+      real_sales: realSales,
+      real_revenue: realRevenue
+    };
+
     const metricsMap = [
       { key: 'spend', label: 'Valor Gasto', format: 'currency' },
       { key: 'daily_budget_per_row', label: 'Orçamento Diário', format: 'currency' },
@@ -102,16 +131,18 @@ const LogsView = ({ objectId, objectName }: LogsViewProps) => {
       { key: 'clicks', label: 'Cliques', format: 'number' },
       { key: 'cpm', label: 'CPM', format: 'currency' },
       { key: 'ctr', label: 'CTR', format: 'percentage' },
-      { key: 'cpa', label: 'CPA', format: 'currency' },
+      { key: 'click_cv', label: 'CLICK CV', format: 'percentage' },
+      { key: 'epc', label: 'EPC', format: 'currency' },
       { key: 'roas', label: 'ROAS', format: 'multiplier' },
+      { key: 'real_sales', label: 'Vendas', format: 'number' },
+      { key: 'real_revenue', label: 'Receita', format: 'currency' },
     ];
 
-    // Filtrar apenas as métricas que existem no objeto
-    const availableMetrics = metricsMap.filter(metric => 
-      metrics[metric.key] !== undefined && 
-      metrics[metric.key] !== null && 
-      metrics[metric.key] !== ''
-    );
+    // Filtrar apenas as métricas que têm valores válidos
+    const availableMetrics = metricsMap.filter(metric => {
+      const value = calculatedMetrics[metric.key];
+      return value !== undefined && value !== null && !isNaN(value);
+    });
 
     if (availableMetrics.length === 0) {
       return <p className="text-muted-foreground text-xs">Nenhuma métrica disponível</p>;
@@ -158,7 +189,7 @@ const LogsView = ({ objectId, objectName }: LogsViewProps) => {
             {availableMetrics.map(metric => (
               <div key={metric.key} className="min-w-[120px] text-right px-3">
                 <span className="font-medium text-foreground">
-                  {formatValue(metrics[metric.key], metric.format)}
+                  {formatValue(calculatedMetrics[metric.key], metric.format)}
                 </span>
               </div>
             ))}
