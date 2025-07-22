@@ -3,9 +3,10 @@ import { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Users, Target, BarChart3, Megaphone, Settings } from 'lucide-react';
+import { RefreshCw, Users, Target, BarChart3, Megaphone, Settings, LogOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/hooks/useAuth';
 import AccountsTab from '@/components/ads-manager/AccountsTab';
 import CampaignsTab from '@/components/ads-manager/CampaignsTab';
 import AdsetsTab from '@/components/ads-manager/AdsetsTab';
@@ -19,6 +20,7 @@ export default function Index() {
   const [selectedAdset, setSelectedAdset] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, signOut } = useAuth();
 
   // Function to refresh all data
   const refreshAllData = () => {
@@ -132,7 +134,9 @@ export default function Index() {
             </div>
             <div>
               <h1 className="text-xl font-bold text-foreground">Adapta Ads Manager</h1>
-              <p className="text-muted-foreground text-sm">Gerenciamento de campanhas publicitárias</p>
+              <p className="text-muted-foreground text-sm">
+                Logado como: {user?.email}
+              </p>
             </div>
           </div>
           <div className="flex items-center space-x-4">
@@ -142,6 +146,10 @@ export default function Index() {
             <Button onClick={handleRefresh} variant="outline" size="sm">
               <RefreshCw className="h-4 w-4 mr-2" />
               Atualizar
+            </Button>
+            <Button onClick={signOut} variant="outline" size="sm">
+              <LogOut className="h-4 w-4 mr-2" />
+              Sair
             </Button>
           </div>
         </div>
