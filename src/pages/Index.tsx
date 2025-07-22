@@ -12,6 +12,7 @@ import CampaignsTab from '@/components/ads-manager/CampaignsTab';
 import AdsetsTab from '@/components/ads-manager/AdsetsTab';
 import AdsTab from '@/components/ads-manager/AdsTab';
 import RulesTab from '@/components/ads-manager/RulesTab';
+import { FloatingChatButton } from '@/components/chat/FloatingChatButton';
 
 export default function Index() {
   const [activeTab, setActiveTab] = useState('accounts');
@@ -202,6 +203,9 @@ export default function Index() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Floating Chat Button */}
+      <FloatingChatButton />
     </div>
   );
 }
