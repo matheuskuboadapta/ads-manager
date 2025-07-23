@@ -37,23 +37,13 @@ export function useChat() {
     setIsLoading(true);
 
     try {
-      // Send message to webhook
-      await fetch('https://mkthooks.adaptahub.org/webhook/ads-manager/chat-to-traffic', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: user.email,
-          message: text,
-        }),
+      // Send message and get response from single webhook
+      const params = new URLSearchParams({
+        email: user.email,
+        message: text,
       });
-
-      // Wait 3 seconds
-      await new Promise(resolve => setTimeout(resolve, 3000));
-
-      // Get response
-      const response = await fetch('https://mkthooks.adaptahub.org/webhook/ads-manager/chat-to-traffic-answer');
+      
+      const response = await fetch(`https://mkthooks.adaptahub.org/webhook/ads-manager/chat-to-traffic-answer?${params}`);
       const data = await response.json();
 
       // Add bot response
