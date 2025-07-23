@@ -59,7 +59,7 @@ export function useChat() {
       // Add bot response
       const botMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        text: data.message || 'Resposta não disponível',
+        text: data.response || 'Resposta não disponível',
         isUser: false,
         timestamp: new Date(),
       };
