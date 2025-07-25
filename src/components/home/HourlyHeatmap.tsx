@@ -75,6 +75,17 @@ export function HourlyHeatmap() {
     return (value - minValue) / (maxValue - minValue);
   };
 
+  const getColorForIntensity = (intensity: number): string => {
+    if (intensity === 0) return 'hsl(var(--muted))';
+    
+    // Create a colorful gradient from light blue to purple like the reference
+    if (intensity < 0.2) return 'hsl(200, 100%, 85%)'; // Light blue
+    if (intensity < 0.4) return 'hsl(200, 100%, 70%)'; // Blue
+    if (intensity < 0.6) return 'hsl(240, 100%, 75%)'; // Light purple
+    if (intensity < 0.8) return 'hsl(260, 100%, 65%)'; // Purple
+    return 'hsl(280, 100%, 55%)'; // Dark purple
+  };
+
   const formatValue = (value: number): string => {
     if (value === 0) return '0';
     
@@ -159,9 +170,7 @@ export function HourlyHeatmap() {
                   key={hour}
                   className="w-8 h-6 mx-px rounded-sm border border-border relative group"
                   style={{
-                    backgroundColor: value > 0 
-                      ? `hsl(var(--primary) / ${getIntensity(value) * 0.8 + 0.1})`
-                      : 'hsl(var(--muted))'
+                    backgroundColor: getColorForIntensity(getIntensity(value))
                   }}
                   title={`${new Date(last7Days[dayIndex]).toLocaleDateString('pt-BR')} às ${hour}h: ${formatValue(value)}`}
                 >

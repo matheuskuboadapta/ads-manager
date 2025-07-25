@@ -44,36 +44,42 @@ export function HomeTab() {
           currentValue={metrics?.todaySpend || 0}
           previousValue={metrics?.previousDaySpend || 0}
           format="currency"
+          chartData={metrics?.last7DaysSpend}
         />
         <MetricsScorecard
           title="Vendas"
           currentValue={metrics?.todaySales || 0}
           previousValue={metrics?.previousDaySales || 0}
           format="number"
+          chartData={metrics?.last7DaysSales}
         />
         <MetricsScorecard
           title="Receita"
           currentValue={metrics?.todayRevenue || 0}
           previousValue={metrics?.previousDayRevenue || 0}
           format="currency"
+          chartData={metrics?.last7DaysRevenue}
         />
         <MetricsScorecard
           title="Impressões"
           currentValue={metrics?.todayImpressions || 0}
           previousValue={metrics?.previousDayImpressions || 0}
           format="number"
+          chartData={metrics?.last7DaysImpressions}
         />
         <MetricsScorecard
           title="Cliques"
           currentValue={metrics?.todayClicks || 0}
           previousValue={metrics?.previousDayClicks || 0}
           format="number"
+          chartData={metrics?.last7DaysClicks}
         />
         <MetricsScorecard
           title="CPA"
           currentValue={metrics?.todayCPA || 0}
           previousValue={metrics?.previousDayCPA || 0}
           format="currency"
+          chartData={metrics?.last7DaysCPA}
         />
       </div>
 

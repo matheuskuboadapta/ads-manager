@@ -13,6 +13,13 @@ interface HomeMetrics {
   previousDayImpressions: number;
   previousDayClicks: number;
   previousDayCPA: number;
+  // Last 7 days data for mini charts
+  last7DaysSpend: number[];
+  last7DaysSales: number[];
+  last7DaysRevenue: number[];
+  last7DaysImpressions: number[];
+  last7DaysClicks: number[];
+  last7DaysCPA: number[];
 }
 
 interface HourlyMetrics {
@@ -31,6 +38,14 @@ const generateMockHomeMetrics = (): HomeMetrics => {
   const todaySales = Math.floor(Math.random() * 50 + 10);
   const previousDaySales = Math.floor(Math.random() * 50 + 10);
   
+  // Generate last 7 days data for mini charts
+  const last7DaysSpend = Array.from({ length: 7 }, () => Math.random() * 5000 + 1000);
+  const last7DaysSales = Array.from({ length: 7 }, () => Math.floor(Math.random() * 50 + 10));
+  const last7DaysRevenue = last7DaysSales.map(sales => sales * (Math.random() * 100 + 50));
+  const last7DaysImpressions = Array.from({ length: 7 }, () => Math.floor(Math.random() * 100000 + 50000));
+  const last7DaysClicks = Array.from({ length: 7 }, () => Math.floor(Math.random() * 5000 + 1000));
+  const last7DaysCPA = last7DaysSpend.map((spend, i) => spend / last7DaysSales[i]);
+  
   return {
     todaySpend,
     todaySales,
@@ -44,6 +59,12 @@ const generateMockHomeMetrics = (): HomeMetrics => {
     previousDayImpressions: Math.floor(Math.random() * 100000 + 50000),
     previousDayClicks: Math.floor(Math.random() * 5000 + 1000),
     previousDayCPA: previousDaySpend / previousDaySales,
+    last7DaysSpend,
+    last7DaysSales,
+    last7DaysRevenue,
+    last7DaysImpressions,
+    last7DaysClicks,
+    last7DaysCPA,
   };
 };
 
