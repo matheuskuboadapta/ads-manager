@@ -50,8 +50,7 @@ const fetchRealHomeMetrics = async (): Promise<HomeMetrics> => {
   // Fetch all data without date filter (same as other tabs)
   const { data: rawData, error } = await supabase
     .from('meta_ads_view')
-    .select('date_start, spend, real_sales, real_revenue, impressions, clicks')
-    .order('date_start', { ascending: true });
+    .select('date_start, spend, real_sales, real_revenue, impressions, clicks');
 
   if (error) {
     console.error('Error fetching home metrics:', error);
@@ -95,30 +94,32 @@ const fetchRealHomeMetrics = async (): Promise<HomeMetrics> => {
 
   console.log('Daily aggregated data:', Object.fromEntries(dailyData));
 
-  // Get today's and yesterday's metrics
-  const todayData = dailyData.get(todayStr) || { spend: 0, sales: 0, revenue: 0, impressions: 0, clicks: 0 };
-  const yesterdayData = dailyData.get(yesterdayStr) || { spend: 0, sales: 0, revenue: 0, impressions: 0, clicks: 0 };
+  // Get the most recent date with data as "today" and the previous day with data as "yesterday"
+  const sortedDates = Array.from(dailyData.keys()).sort().reverse();
+  const mostRecentDateStr = sortedDates[0];
+  const previousDateStr = sortedDates[1];
+  
+  const todayData = dailyData.get(mostRecentDateStr) || { spend: 0, sales: 0, revenue: 0, impressions: 0, clicks: 0 };
+  const yesterdayData = dailyData.get(previousDateStr) || { spend: 0, sales: 0, revenue: 0, impressions: 0, clicks: 0 };
 
-  console.log('Today data:', todayData);
-  console.log('Yesterday data:', yesterdayData);
+  console.log('Most recent date:', mostRecentDateStr, 'Data:', todayData);
+  console.log('Previous date:', previousDateStr, 'Data:', yesterdayData);
 
-  // Create arrays for last 7 days for mini charts
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    return format(subDays(today, 6 - i), 'yyyy-MM-dd');
-  });
-
-  const last7DaysSpend = last7Days.map(date => dailyData.get(date)?.spend || 0);
-  const last7DaysSales = last7Days.map(date => dailyData.get(date)?.sales || 0);
-  const last7DaysRevenue = last7Days.map(date => dailyData.get(date)?.revenue || 0);
-  const last7DaysImpressions = last7Days.map(date => dailyData.get(date)?.impressions || 0);
-  const last7DaysClicks = last7Days.map(date => dailyData.get(date)?.clicks || 0);
+  // Create arrays for last 7 days for mini charts using the most recent data available
+  const last7DaysFromMostRecent = sortedDates.slice(0, 7).reverse(); // Get last 7 dates with data, in chronological order
+  
+  const last7DaysSpend = last7DaysFromMostRecent.map(date => dailyData.get(date)?.spend || 0);
+  const last7DaysSales = last7DaysFromMostRecent.map(date => dailyData.get(date)?.sales || 0);
+  const last7DaysRevenue = last7DaysFromMostRecent.map(date => dailyData.get(date)?.revenue || 0);
+  const last7DaysImpressions = last7DaysFromMostRecent.map(date => dailyData.get(date)?.impressions || 0);
+  const last7DaysClicks = last7DaysFromMostRecent.map(date => dailyData.get(date)?.clicks || 0);
   const last7DaysCPA = last7DaysSpend.map((spend, i) => {
     const sales = last7DaysSales[i];
     return sales > 0 ? spend / sales : 0;
   });
 
-  console.log('Last 7 days data:', {
-    dates: last7Days,
+  console.log('Last 7 days with data:', {
+    dates: last7DaysFromMostRecent,
     spend: last7DaysSpend,
     sales: last7DaysSales,
   });
