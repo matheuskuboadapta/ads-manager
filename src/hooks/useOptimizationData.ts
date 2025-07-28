@@ -31,14 +31,22 @@ const fetchOptimizationData = async (type: 'campaigns' | 'adsets' | 'ads', dateR
   const threeDaysAgoStr = format(subDays(today, 2), 'yyyy-MM-dd');
   const dateRangeStartStr = format(subDays(today, dateRange - 1), 'yyyy-MM-dd');
 
-  // Fetch all data without date filter
+  console.log('Date filters:', {
+    today: todayStr,
+    threeDaysAgo: threeDaysAgoStr,
+    dateRangeStart: dateRangeStartStr
+  });
+
+  // Fetch data from the period we need
   const { data: rawData, error } = await supabase
     .from('meta_ads_view')
     .select('*')
+    .gte('date_start', dateRangeStartStr)
+    .lte('date_start', todayStr)
     .order('date_start', { ascending: true });
 
   console.log('Raw optimization data fetched:', rawData?.length, 'records');
-  console.log('Sample data:', rawData?.slice(0, 3));
+  console.log('Sample data:', rawData?.slice(0, 2));
 
   if (error) {
     console.error('Error fetching optimization data:', error);
@@ -46,22 +54,13 @@ const fetchOptimizationData = async (type: 'campaigns' | 'adsets' | 'ads', dateR
   }
 
   if (!rawData || rawData.length === 0) {
-    console.log('No data found for optimization');
+    console.log('No data found for optimization in date range');
     return {
       today: [],
       last3Days: [],
       main: [],
     };
   }
-
-  console.log('Processing optimization data:', {
-    type,
-    totalRecords: rawData.length,
-    dateRange,
-    todayStr,
-    threeDaysAgoStr,
-    dateRangeStartStr
-  });
 
   // Helper function to process data by grouping key
   const processDataByGroup = (data: any[], groupBy: string, dateFilter?: (date: string) => boolean) => {
@@ -71,7 +70,6 @@ const fetchOptimizationData = async (type: 'campaigns' | 'adsets' | 'ads', dateR
     
     data.forEach(row => {
       if (!row.date_start) {
-        console.log('Skipping row without date_start:', row);
         return;
       }
       
@@ -84,20 +82,14 @@ const fetchOptimizationData = async (type: 'campaigns' | 'adsets' | 'ads', dateR
                  row.ad_name;
       
       if (!key) {
-        console.log(`Skipping row without ${groupBy} name:`, { 
-          campaign_name: row.campaign_name, 
-          adset_name: row.adset_name, 
-          ad_name: row.ad_name,
-          date_start: row.date_start 
-        });
         return;
       }
       
-      console.log(`Processing ${groupBy} entry:`, key, 'for date:', row.date_start);
-      
       const existing = grouped.get(key) || {
         name: key,
-        status: row.ad_status_final || row.adset_status_final || row.campaign_status_final || 'UNKNOWN',
+        status: groupBy === 'campaigns' ? row.campaign_status_final : 
+               groupBy === 'adsets' ? row.adset_status_final : 
+               row.ad_status_final,
         budget: 0,
         spend: 0,
         revenue: 0,
@@ -112,9 +104,9 @@ const fetchOptimizationData = async (type: 'campaigns' | 'adsets' | 'ads', dateR
       existing.clicks += row.clicks || 0;
       existing.sales += row.real_sales || 0;
       
-      // For budget, we'll use daily_budget which is available in the view
-      if (row.daily_budget) {
-        existing.budget = Math.max(existing.budget, row.daily_budget);
+      // For budget, use daily_budget from the view
+      if (row.daily_budget && row.daily_budget > existing.budget) {
+        existing.budget = row.daily_budget;
       }
       
       grouped.set(key, existing);
@@ -138,38 +130,37 @@ const fetchOptimizationData = async (type: 'campaigns' | 'adsets' | 'ads', dateR
   // Get today's data
   console.log('Getting today data for date:', todayStr);
   const todayData = processDataByGroup(rawData, type, (date) => {
-    console.log('Checking today filter:', date, '===', todayStr, '?', date === todayStr);
-    return date === todayStr;
+    const isToday = date === todayStr;
+    console.log('Today filter:', date, '===', todayStr, '?', isToday);
+    return isToday;
   });
   
   // Get last 3 days data
   console.log('Getting last 3 days data from:', threeDaysAgoStr, 'to:', todayStr);
   const last3DaysData = processDataByGroup(rawData, type, (date) => {
     const isInRange = date >= threeDaysAgoStr && date <= todayStr;
-    console.log('Checking 3 days filter:', date, 'in range?', isInRange);
+    console.log('3 days filter:', date, 'in range [', threeDaysAgoStr, '-', todayStr, ']?', isInRange);
     return isInRange;
   });
   
-  // Get main period data
-  console.log('Getting main period data from:', dateRangeStartStr, 'to:', todayStr);
-  const mainData = processDataByGroup(rawData, type, (date) => {
-    const isInRange = date >= dateRangeStartStr && date <= todayStr;
-    console.log('Checking main period filter:', date, 'in range?', isInRange);
-    return isInRange;
-  });
+  // Get main period data (already filtered by the query)
+  console.log('Getting main period data (all fetched data)');
+  const mainData = processDataByGroup(rawData, type);
 
-  console.log('Optimization data processed:', {
+  const result = {
+    today: todayData,
+    last3Days: last3DaysData,
+    main: mainData,
+  };
+
+  console.log('Final optimization data result:', {
     type,
     todayCount: todayData.length,
     last3DaysCount: last3DaysData.length,
     mainCount: mainData.length,
   });
 
-  return {
-    today: todayData,
-    last3Days: last3DaysData,
-    main: mainData,
-  };
+  return result;
 };
 
 export function useOptimizationData(type: 'campaigns' | 'adsets' | 'ads', dateRange: number) {
