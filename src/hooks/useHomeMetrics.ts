@@ -33,8 +33,10 @@ interface HourlyMetrics {
   date_brt: string;
 }
 
-// Fetch real data from meta_ads_view
+// Fetch real data from meta_ads_view using the same logic as other tabs
 const fetchRealHomeMetrics = async (): Promise<HomeMetrics> => {
+  console.log('Fetching real home metrics from meta_ads_view...');
+  
   const today = new Date();
   const yesterday = subDays(today, 1);
   const sevenDaysAgo = subDays(today, 6);
@@ -43,36 +45,37 @@ const fetchRealHomeMetrics = async (): Promise<HomeMetrics> => {
   const yesterdayStr = format(yesterday, 'yyyy-MM-dd');
   const sevenDaysAgoStr = format(sevenDaysAgo, 'yyyy-MM-dd');
 
-  // Fetch last 7 days data
-  const { data: last7DaysData, error: last7DaysError } = await supabase
+  console.log('Date range:', { today: todayStr, yesterday: yesterdayStr, sevenDaysAgo: sevenDaysAgoStr });
+
+  // Fetch all data from the last 7 days (same as other tabs)
+  const { data: rawData, error } = await supabase
     .from('meta_ads_view')
     .select('date_start, spend, real_sales, real_revenue, impressions, clicks')
     .gte('date_start', sevenDaysAgoStr)
     .lte('date_start', todayStr)
     .order('date_start', { ascending: true });
 
-  if (last7DaysError) {
-    console.error('Error fetching last 7 days data:', last7DaysError);
-    throw last7DaysError;
+  if (error) {
+    console.error('Error fetching home metrics:', error);
+    throw error;
   }
 
-  // Group data by date
+  console.log('Raw data fetched:', rawData?.length, 'records');
+  console.log('Sample raw data:', rawData?.slice(0, 5));
+
+  if (!rawData || rawData.length === 0) {
+    console.log('No data found for home metrics');
+    return {
+      todaySpend: 0, todaySales: 0, todayRevenue: 0, todayImpressions: 0, todayClicks: 0, todayCPA: 0,
+      previousDaySpend: 0, previousDaySales: 0, previousDayRevenue: 0, previousDayImpressions: 0, previousDayClicks: 0, previousDayCPA: 0,
+      last7DaysSpend: [], last7DaysSales: [], last7DaysRevenue: [], last7DaysImpressions: [], last7DaysClicks: [], last7DaysCPA: [],
+    };
+  }
+
+  // Group data by date and aggregate (same logic as AccountsTab)
   const dailyData = new Map();
   
-  // Initialize all 7 days with zero values
-  for (let i = 0; i < 7; i++) {
-    const date = format(subDays(today, 6 - i), 'yyyy-MM-dd');
-    dailyData.set(date, {
-      spend: 0,
-      sales: 0,
-      revenue: 0,
-      impressions: 0,
-      clicks: 0,
-    });
-  }
-
-  // Aggregate data by date
-  last7DaysData?.forEach(row => {
+  rawData.forEach(row => {
     if (!row.date_start) return;
     
     const existing = dailyData.get(row.date_start) || {
@@ -92,23 +95,37 @@ const fetchRealHomeMetrics = async (): Promise<HomeMetrics> => {
     dailyData.set(row.date_start, existing);
   });
 
-  // Convert to arrays for mini charts (last 7 days)
-  const sortedDates = Array.from(dailyData.keys()).sort();
-  const last7DaysSpend = sortedDates.map(date => dailyData.get(date)?.spend || 0);
-  const last7DaysSales = sortedDates.map(date => dailyData.get(date)?.sales || 0);
-  const last7DaysRevenue = sortedDates.map(date => dailyData.get(date)?.revenue || 0);
-  const last7DaysImpressions = sortedDates.map(date => dailyData.get(date)?.impressions || 0);
-  const last7DaysClicks = sortedDates.map(date => dailyData.get(date)?.clicks || 0);
-  const last7DaysCPA = last7DaysSpend.map((spend, i) => {
-    const sales = last7DaysSales[i];
-    return sales > 0 ? spend / sales : 0;
-  });
+  console.log('Daily aggregated data:', Object.fromEntries(dailyData));
 
   // Get today's and yesterday's metrics
   const todayData = dailyData.get(todayStr) || { spend: 0, sales: 0, revenue: 0, impressions: 0, clicks: 0 };
   const yesterdayData = dailyData.get(yesterdayStr) || { spend: 0, sales: 0, revenue: 0, impressions: 0, clicks: 0 };
 
-  return {
+  console.log('Today data:', todayData);
+  console.log('Yesterday data:', yesterdayData);
+
+  // Create arrays for last 7 days for mini charts
+  const last7Days = Array.from({ length: 7 }, (_, i) => {
+    return format(subDays(today, 6 - i), 'yyyy-MM-dd');
+  });
+
+  const last7DaysSpend = last7Days.map(date => dailyData.get(date)?.spend || 0);
+  const last7DaysSales = last7Days.map(date => dailyData.get(date)?.sales || 0);
+  const last7DaysRevenue = last7Days.map(date => dailyData.get(date)?.revenue || 0);
+  const last7DaysImpressions = last7Days.map(date => dailyData.get(date)?.impressions || 0);
+  const last7DaysClicks = last7Days.map(date => dailyData.get(date)?.clicks || 0);
+  const last7DaysCPA = last7DaysSpend.map((spend, i) => {
+    const sales = last7DaysSales[i];
+    return sales > 0 ? spend / sales : 0;
+  });
+
+  console.log('Last 7 days data:', {
+    dates: last7Days,
+    spend: last7DaysSpend,
+    sales: last7DaysSales,
+  });
+
+  const result = {
     todaySpend: todayData.spend,
     todaySales: todayData.sales,
     todayRevenue: todayData.revenue,
@@ -130,6 +147,9 @@ const fetchRealHomeMetrics = async (): Promise<HomeMetrics> => {
     last7DaysClicks,
     last7DaysCPA,
   };
+
+  console.log('Final home metrics result:', result);
+  return result;
 };
 
 const fetchRealHourlyMetrics = async (accountName?: string | null): Promise<HourlyMetrics[]> => {
