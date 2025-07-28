@@ -47,12 +47,10 @@ const fetchRealHomeMetrics = async (): Promise<HomeMetrics> => {
 
   console.log('Date range:', { today: todayStr, yesterday: yesterdayStr, sevenDaysAgo: sevenDaysAgoStr });
 
-  // Fetch all data from the last 7 days (same as other tabs)
+  // Fetch all data without date filter (same as other tabs)
   const { data: rawData, error } = await supabase
     .from('meta_ads_view')
     .select('date_start, spend, real_sales, real_revenue, impressions, clicks')
-    .gte('date_start', sevenDaysAgoStr)
-    .lte('date_start', todayStr)
     .order('date_start', { ascending: true });
 
   if (error) {
