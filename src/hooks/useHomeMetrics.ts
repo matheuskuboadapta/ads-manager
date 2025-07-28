@@ -71,7 +71,13 @@ const generateMockHomeMetrics = (): HomeMetrics => {
 const generateMockHourlyMetrics = (): HourlyMetrics[] => {
   const data: HourlyMetrics[] = [];
   const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date();
+    // Force timezone to Brazil (GMT-3) to ensure correct date calculation
+    const now = new Date();
+    const brasilOffset = -3 * 60; // GMT-3 in minutes
+    const localOffset = now.getTimezoneOffset();
+    const brasilTime = new Date(now.getTime() + (localOffset - brasilOffset) * 60 * 1000);
+    
+    const date = new Date(brasilTime);
     date.setDate(date.getDate() - (6 - i));
     return date.toISOString().split('T')[0];
   });

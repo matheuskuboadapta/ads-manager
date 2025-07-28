@@ -59,8 +59,14 @@ const FilterBar = ({
   const showStatusFilter = ['campaigns', 'adsets', 'ads'].includes(activeTab);
 
   const getPresetDateRanges = (): DateFilter[] => {
-    const today = startOfDay(new Date());
-    const yesterday = startOfDay(subDays(new Date(), 1));
+    // Force timezone to Brazil (GMT-3) to ensure correct date calculation
+    const now = new Date();
+    const brasilOffset = -3 * 60; // GMT-3 in minutes
+    const localOffset = now.getTimezoneOffset();
+    const brasilTime = new Date(now.getTime() + (localOffset - brasilOffset) * 60 * 1000);
+    
+    const today = startOfDay(brasilTime);
+    const yesterday = startOfDay(subDays(brasilTime, 1));
     
     return [
       {
@@ -74,23 +80,23 @@ const FilterBar = ({
         label: 'Ontem'
       },
       {
-        from: startOfDay(subDays(new Date(), 2)),
-        to: endOfDay(new Date()),
+        from: startOfDay(subDays(brasilTime, 2)),
+        to: endOfDay(brasilTime),
         label: 'Últimos 3 dias'
       },
       {
-        from: startOfDay(subDays(new Date(), 6)),
-        to: endOfDay(new Date()),
+        from: startOfDay(subDays(brasilTime, 6)),
+        to: endOfDay(brasilTime),
         label: 'Últimos 7 dias'
       },
       {
-        from: startOfDay(subDays(new Date(), 13)),
-        to: endOfDay(new Date()),
+        from: startOfDay(subDays(brasilTime, 13)),
+        to: endOfDay(brasilTime),
         label: 'Últimos 14 dias'
       },
       {
-        from: startOfDay(subDays(new Date(), 29)),
-        to: endOfDay(new Date()),
+        from: startOfDay(subDays(brasilTime, 29)),
+        to: endOfDay(brasilTime),
         label: 'Últimos 30 dias'
       }
     ];
