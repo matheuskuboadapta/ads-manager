@@ -37,6 +37,9 @@ const fetchOptimizationData = async (type: 'campaigns' | 'adsets' | 'ads', dateR
     .select('*')
     .order('date_start', { ascending: true });
 
+  console.log('Raw optimization data fetched:', rawData?.length, 'records');
+  console.log('Sample data:', rawData?.slice(0, 3));
+
   if (error) {
     console.error('Error fetching optimization data:', error);
     throw error;
@@ -51,18 +54,46 @@ const fetchOptimizationData = async (type: 'campaigns' | 'adsets' | 'ads', dateR
     };
   }
 
+  console.log('Processing optimization data:', {
+    type,
+    totalRecords: rawData.length,
+    dateRange,
+    todayStr,
+    threeDaysAgoStr,
+    dateRangeStartStr
+  });
+
   // Helper function to process data by grouping key
   const processDataByGroup = (data: any[], groupBy: string, dateFilter?: (date: string) => boolean) => {
     const grouped = new Map();
     
+    console.log(`Processing ${groupBy} data with ${data.length} records`);
+    
     data.forEach(row => {
-      if (!row.date_start || (dateFilter && !dateFilter(row.date_start))) return;
+      if (!row.date_start) {
+        console.log('Skipping row without date_start:', row);
+        return;
+      }
+      
+      if (dateFilter && !dateFilter(row.date_start)) {
+        return;
+      }
       
       const key = groupBy === 'campaigns' ? row.campaign_name : 
                  groupBy === 'adsets' ? row.adset_name : 
                  row.ad_name;
       
-      if (!key) return;
+      if (!key) {
+        console.log(`Skipping row without ${groupBy} name:`, { 
+          campaign_name: row.campaign_name, 
+          adset_name: row.adset_name, 
+          ad_name: row.ad_name,
+          date_start: row.date_start 
+        });
+        return;
+      }
+      
+      console.log(`Processing ${groupBy} entry:`, key, 'for date:', row.date_start);
       
       const existing = grouped.get(key) || {
         name: key,
@@ -90,7 +121,7 @@ const fetchOptimizationData = async (type: 'campaigns' | 'adsets' | 'ads', dateR
     });
 
     // Convert to array and calculate derived metrics
-    return Array.from(grouped.values()).map(item => ({
+    const result = Array.from(grouped.values()).map(item => ({
       ...item,
       cpa: item.sales > 0 ? item.spend / item.sales : 0,
       ctr: item.impressions > 0 ? (item.clicks / item.impressions) * 100 : 0,
@@ -99,19 +130,32 @@ const fetchOptimizationData = async (type: 'campaigns' | 'adsets' | 'ads', dateR
       profit: item.revenue - item.spend,
       roas: item.spend > 0 ? (item.revenue / item.spend) * 100 : 0,
     }));
+    
+    console.log(`Processed ${groupBy}:`, result.length, 'items');
+    return result;
   };
 
   // Get today's data
-  const todayData = processDataByGroup(rawData, type, (date) => date === todayStr);
+  console.log('Getting today data for date:', todayStr);
+  const todayData = processDataByGroup(rawData, type, (date) => {
+    console.log('Checking today filter:', date, '===', todayStr, '?', date === todayStr);
+    return date === todayStr;
+  });
   
   // Get last 3 days data
+  console.log('Getting last 3 days data from:', threeDaysAgoStr, 'to:', todayStr);
   const last3DaysData = processDataByGroup(rawData, type, (date) => {
-    return date >= threeDaysAgoStr && date <= todayStr;
+    const isInRange = date >= threeDaysAgoStr && date <= todayStr;
+    console.log('Checking 3 days filter:', date, 'in range?', isInRange);
+    return isInRange;
   });
   
   // Get main period data
+  console.log('Getting main period data from:', dateRangeStartStr, 'to:', todayStr);
   const mainData = processDataByGroup(rawData, type, (date) => {
-    return date >= dateRangeStartStr && date <= todayStr;
+    const isInRange = date >= dateRangeStartStr && date <= todayStr;
+    console.log('Checking main period filter:', date, 'in range?', isInRange);
+    return isInRange;
   });
 
   console.log('Optimization data processed:', {
