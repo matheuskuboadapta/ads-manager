@@ -1,4 +1,5 @@
 import { formatCurrency, formatNumber } from '@/utils/formatters';
+import { subDays, format as formatDate } from 'date-fns';
 
 interface MiniChartProps {
   data: number[];
@@ -29,6 +30,12 @@ export function MiniChart({ data, format, className = "" }: MiniChartProps) {
     return 'hsl(var(--muted-foreground) / 0.3)';
   };
 
+  const getDayLabel = (index: number): string => {
+    const today = new Date();
+    const dayDate = subDays(today, 6 - index);
+    return formatDate(dayDate, 'dd/MM');
+  };
+
   return (
     <div className={`flex items-end space-x-1 h-12 ${className}`}>
       {data.map((value, index) => (
@@ -40,7 +47,7 @@ export function MiniChart({ data, format, className = "" }: MiniChartProps) {
             backgroundColor: getColor(index),
             minWidth: '3px'
           }}
-          title={`Dia ${index + 1}: ${
+          title={`${getDayLabel(index)}: ${
             format === 'currency' ? formatCurrency(value) :
             format === 'percentage' ? `${value.toFixed(2)}%` :
             formatNumber(value)
