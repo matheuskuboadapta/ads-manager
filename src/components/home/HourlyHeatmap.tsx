@@ -1,16 +1,19 @@
 import { useState } from 'react';
-import { useHourlyMetrics } from '@/hooks/useHomeMetrics';
+import { useHourlyMetrics, useAvailableAccounts } from '@/hooks/useHomeMetrics';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatCurrency, formatNumber } from '@/utils/formatters';
 
 type MetricType = 'spend' | 'sales' | 'cpa';
 
 export function HourlyHeatmap() {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('spend');
-  const { data: hourlyData, isLoading } = useHourlyMetrics();
+  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
+  const { data: hourlyData, isLoading } = useHourlyMetrics(selectedAccount);
+  const { data: availableAccounts, isLoading: isLoadingAccounts } = useAvailableAccounts();
 
-  if (isLoading) {
+  if (isLoading || isLoadingAccounts) {
     return <Skeleton className="h-64 w-full" />;
   }
 
@@ -21,6 +24,31 @@ export function HourlyHeatmap() {
       </div>
     );
   }
+
+  // Aggregate data by date and hour in case there are multiple records
+  const aggregateData = (data: typeof hourlyData): typeof hourlyData => {
+    if (!data) return [];
+    
+    const aggregatedMap = new Map<string, any>();
+    
+    data.forEach(row => {
+      const key = `${row.date_brt}-${row.hour_of_day}`;
+      
+      if (aggregatedMap.has(key)) {
+        const existing = aggregatedMap.get(key);
+        existing.spend_hour += row.spend_hour || 0;
+        existing.real_sales_hour += row.real_sales_hour || 0;
+        existing.impressions_hour += row.impressions_hour || 0;
+        existing.clicks_hour += row.clicks_hour || 0;
+      } else {
+        aggregatedMap.set(key, { ...row });
+      }
+    });
+    
+    return Array.from(aggregatedMap.values());
+  };
+
+  const processedData = aggregateData(hourlyData);
 
   // Prepare data for heatmap
   const last7Days = Array.from({ length: 7 }, (_, i) => {
@@ -37,9 +65,9 @@ export function HourlyHeatmap() {
 
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
-  // Create a map for quick data lookup
+  // Create a map for quick data lookup using processed data
   const dataMap = new Map();
-  hourlyData.forEach(row => {
+  processedData.forEach(row => {
     const key = `${row.date_brt}-${row.hour_of_day}`;
     dataMap.set(key, row);
   });
@@ -121,6 +149,24 @@ export function HourlyHeatmap() {
 
   return (
     <div className="space-y-4">
+      {/* Account Selection Dropdown */}
+      <div className="flex items-center space-x-4">
+        <label className="text-sm font-medium text-foreground">Conta:</label>
+        <Select value={selectedAccount || 'all'} onValueChange={(value) => setSelectedAccount(value === 'all' ? null : value)}>
+          <SelectTrigger className="w-64">
+            <SelectValue placeholder="Selecione uma conta" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todas as contas</SelectItem>
+            {availableAccounts?.map((account) => (
+              <SelectItem key={account} value={account}>
+                {account}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Metric Selection Buttons */}
       <div className="flex space-x-2">
         <Button
