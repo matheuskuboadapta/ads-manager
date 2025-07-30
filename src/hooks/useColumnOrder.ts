@@ -3,7 +3,6 @@ import { useState, useCallback, useEffect } from 'react';
 // Definir as colunas padrão para cada tipo de tabela
 export const DEFAULT_COLUMN_ORDERS = {
   accounts: [
-    'status',
     'name', 
     'spend',
     'revenue',
@@ -103,6 +102,13 @@ export const useColumnOrder = () => {
       const savedOrders = localStorage.getItem(STORAGE_KEY);
       if (savedOrders) {
         const parsed = JSON.parse(savedOrders);
+        
+        // Migration: Remove 'status' column from accounts if it exists
+        if (parsed.accounts && parsed.accounts.includes('status')) {
+          parsed.accounts = parsed.accounts.filter((col: string) => col !== 'status');
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        }
+        
         setColumnOrders(parsed);
       }
 

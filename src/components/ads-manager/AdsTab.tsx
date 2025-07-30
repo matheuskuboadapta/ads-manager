@@ -4,9 +4,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Megaphone, ExternalLink, Play, ChevronDown, ChevronRight } from 'lucide-react';
+import { Megaphone, ExternalLink, Play, ChevronDown, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
-import { formatCurrency, formatPercentage } from '@/utils/formatters';
+import { formatCurrency, formatPercentage, getCPAColorClass } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { updateAd } from '@/utils/api';
 import { useAdsListData } from '@/hooks/useAdsData';
@@ -15,6 +15,8 @@ import ColumnOrderDialog from './ColumnOrderDialog';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import DetailView from './DetailView';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableHeader } from '@/components/ui/sortable-header';
 
 interface AdsTabProps {
   adsetId: string | null;
@@ -22,23 +24,45 @@ interface AdsTabProps {
 
 const AdsTab = ({ adsetId }: AdsTabProps) => {
   const [expandedAd, setExpandedAd] = useState<string | null>(null);
+  const [detailMetrics, setDetailMetrics] = useState<{ [adId: string]: { threeDay: any; sevenDay: any } }>({});
   const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
 
   const { data: ads, isLoading, error, updateOptimistic, clearOptimistic } = useAdsListData(adsetId, settings.dateFilter);
 
-  const filteredAds = useMemo(() => {
-    if (!ads) return [];
+  // Sorting functionality with default sort by CPA descending
+  const { sortedData: sortedAds, handleSort, getSortDirection } = useTableSort(ads || [], { column: 'cpa', direction: 'desc' });
 
-    return ads.filter(ad => {
+  const filteredAds = useMemo(() => {
+    if (!sortedAds) return [];
+
+    return sortedAds.filter(ad => {
       const matchesName = ad.name.toLowerCase().includes(settings.nameFilter.toLowerCase());
       const matchesStatus = settings.statusFilter === 'all' || 
         (settings.statusFilter === 'ACTIVE' && ad.statusFinal === 'ATIVO') ||
         (settings.statusFilter === 'PAUSED' && ad.statusFinal === 'DESATIVADO');
       return matchesName && matchesStatus;
     });
-  }, [ads, settings.nameFilter, settings.statusFilter]);
+  }, [sortedAds, settings.nameFilter, settings.statusFilter]);
+
+  // Coletar todos os CPAs para o color scale (anúncios principais + 3 dias + 7 dias)
+  const allCPAs = useMemo(() => {
+    const cpas: number[] = [];
+    
+    // CPAs dos anúncios principais
+    filteredAds.forEach(ad => {
+      if (ad.cpa > 0) cpas.push(ad.cpa);
+    });
+    
+    // CPAs das métricas de 3 e 7 dias
+    Object.values(detailMetrics).forEach(metrics => {
+      if (metrics.threeDay?.cpa > 0) cpas.push(metrics.threeDay.cpa);
+      if (metrics.sevenDay?.cpa > 0) cpas.push(metrics.sevenDay.cpa);
+    });
+    
+    return cpas;
+  }, [filteredAds, detailMetrics]);
 
   // Cálculo das métricas de resumo
   const summaryMetrics = useMemo(() => {
@@ -111,6 +135,19 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleMetricsReady = (adId: string, metrics: { threeDay: any; sevenDay: any }) => {
+    setDetailMetrics(prev => ({
+      ...prev,
+      [adId]: metrics
+    }));
+  };
+
+  // Helper function to calculate CTR delta
+  const calculateCTRDelta = (currentCTR: number, periodCTR: number) => {
+    if (periodCTR === 0) return currentCTR > 0 ? 100 : 0;
+    return ((currentCTR - periodCTR) / periodCTR) * 100;
   };
 
   if (isLoading) {
@@ -198,24 +235,52 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
               <TableRow className="bg-slate-50 border-b-slate-200">
                 {getVisibleColumns('ads').map((column) => {
                   const isRightAligned = !['status', 'name', 'videoLink'].includes(column);
+                  const isSortable = !['status', 'name', 'videoLink'].includes(column);
+                  const sortDirection = getSortDirection(column);
+                  
                   return (
                     <TableHead 
                       key={column}
                       className={`font-semibold min-w-[80px] ${isRightAligned ? 'text-right' : ''} ${column === 'name' ? 'min-w-[200px]' : ''} ${column === 'videoLink' ? 'text-center' : ''}`}
                     >
-                      {column === 'status' && 'Status'}
-                      {column === 'name' && 'Nome do Anúncio'}
-                      {column === 'spend' && 'Valor Gasto'}
-                      {column === 'revenue' && 'Faturamento'}
-                      {column === 'sales' && 'Vendas'}
-                      {column === 'profit' && 'Profit'}
-                      {column === 'cpa' && 'CPA'}
-                      {column === 'cpm' && 'CPM'}
-                      {column === 'roas' && 'ROAS'}
-                      {column === 'ctr' && 'CTR'}
-                      {column === 'clickCv' && 'Click CV'}
-                      {column === 'epc' && 'EPC'}
-                      {column === 'videoLink' && 'Vídeo'}
+                      {isSortable ? (
+                        <SortableHeader
+                          column={column}
+                          sortDirection={sortDirection}
+                          onSort={handleSort}
+                          className={`${isRightAligned ? 'justify-end' : ''} ${column === 'videoLink' ? 'justify-center' : ''}`}
+                        >
+                          {column === 'status' && 'Status'}
+                          {column === 'name' && 'Nome do Anúncio'}
+                          {column === 'spend' && 'Valor Gasto'}
+                          {column === 'revenue' && 'Faturamento'}
+                          {column === 'sales' && 'Vendas'}
+                          {column === 'profit' && 'Profit'}
+                          {column === 'cpa' && 'CPA'}
+                          {column === 'cpm' && 'CPM'}
+                          {column === 'roas' && 'ROAS'}
+                          {column === 'ctr' && 'CTR'}
+                          {column === 'clickCv' && 'Click CV'}
+                          {column === 'epc' && 'EPC'}
+                          {column === 'videoLink' && 'Vídeo'}
+                        </SortableHeader>
+                      ) : (
+                        <>
+                          {column === 'status' && 'Status'}
+                          {column === 'name' && 'Nome do Anúncio'}
+                          {column === 'spend' && 'Valor Gasto'}
+                          {column === 'revenue' && 'Faturamento'}
+                          {column === 'sales' && 'Vendas'}
+                          {column === 'profit' && 'Profit'}
+                          {column === 'cpa' && 'CPA'}
+                          {column === 'cpm' && 'CPM'}
+                          {column === 'roas' && 'ROAS'}
+                          {column === 'ctr' && 'CTR'}
+                          {column === 'clickCv' && 'Click CV'}
+                          {column === 'epc' && 'EPC'}
+                          {column === 'videoLink' && 'Vídeo'}
+                        </>
+                      )}
                     </TableHead>
                   );
                 })}
@@ -231,7 +296,7 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
                     return (
                       <TableCell 
                         key={column}
-                        className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'name' ? 'font-medium' : ''} ${column === 'videoLink' ? 'text-center' : ''}`}
+                        className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'name' ? 'font-medium' : ''} ${column === 'videoLink' ? 'text-center' : ''} ${column === 'cpa' ? getCPAColorClass(ad.cpa, allCPAs) : ''}`}
                       >
                         {column === 'status' && (
                           <Switch
@@ -298,13 +363,141 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
                     );
                   })}
                   </TableRow>
+                  
+                  {/* 3 Days Metrics Row */}
+                  {expandedAd === ad.id && detailMetrics[ad.id]?.threeDay && (
+                    <TableRow>
+                      {getVisibleColumns('ads').map((column) => {
+                        const isRightAligned = !['status', 'name', 'videoLink'].includes(column);
+                        const metrics = detailMetrics[ad.id].threeDay;
+                        
+                        return (
+                          <TableCell 
+                            key={column}
+                            className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'cpa' ? getCPAColorClass(metrics.cpa, allCPAs) : ''}`}
+                          >
+                            {column === 'status' && ''}
+                            {column === 'name' && (
+                              <span className="font-semibold">3 Dias</span>
+                            )}
+                            {column === 'spend' && formatCurrency(metrics.spend)}
+                            {column === 'revenue' && (
+                              <span className="text-green-600">{formatCurrency(metrics.revenue)}</span>
+                            )}
+                            {column === 'sales' && (
+                              <span className="font-semibold">{metrics.sales}</span>
+                            )}
+                            {column === 'profit' && (
+                              <span className={metrics.profit > 0 ? 'text-green-600' : 'text-red-600'}>
+                                {formatCurrency(metrics.profit)}
+                              </span>
+                            )}
+                            {column === 'cpa' && formatCurrency(metrics.cpa)}
+                            {column === 'cpm' && formatCurrency(metrics.cpm)}
+                            {column === 'roas' && (
+                              <span className="font-semibold">{metrics.roas.toFixed(2)}x</span>
+                            )}
+                            {column === 'ctr' && (
+                              <div className="relative flex items-center justify-end">
+                                <span>{formatPercentage(metrics.ctr)}</span>
+                                {(() => {
+                                  const delta = calculateCTRDelta(ad.ctr, metrics.ctr);
+                                  const isPositive = delta > 0;
+                                  return (
+                                    <div className="absolute -top-3 -right-9 flex items-center gap-0.5">
+                                      <span className="text-xs font-medium">
+                                        {isPositive ? '+' : ''}{delta.toFixed(1)}%
+                                      </span>
+                                      {isPositive ? (
+                                        <TrendingUp className="h-2.5 w-2.5 text-green-600" />
+                                      ) : (
+                                        <TrendingDown className="h-2.5 w-2.5 text-red-600" />
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                            {column === 'clickCv' && formatPercentage(metrics.clickCv)}
+                            {column === 'epc' && formatCurrency(metrics.epc)}
+                            {column === 'videoLink' && ''}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  )}
+                  
+                  {/* 7 Days Metrics Row */}
+                  {expandedAd === ad.id && detailMetrics[ad.id]?.sevenDay && (
+                    <TableRow>
+                      {getVisibleColumns('ads').map((column) => {
+                        const isRightAligned = !['status', 'name', 'videoLink'].includes(column);
+                        const metrics = detailMetrics[ad.id].sevenDay;
+                        
+                        return (
+                          <TableCell 
+                            key={column}
+                            className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'cpa' ? getCPAColorClass(metrics.cpa, allCPAs) : ''}`}
+                          >
+                            {column === 'status' && ''}
+                            {column === 'name' && (
+                              <span className="font-semibold">7 Dias</span>
+                            )}
+                            {column === 'spend' && formatCurrency(metrics.spend)}
+                            {column === 'revenue' && (
+                              <span className="text-green-600">{formatCurrency(metrics.revenue)}</span>
+                            )}
+                            {column === 'sales' && (
+                              <span className="font-semibold">{metrics.sales}</span>
+                            )}
+                            {column === 'profit' && (
+                              <span className={metrics.profit > 0 ? 'text-green-600' : 'text-red-600'}>
+                                {formatCurrency(metrics.profit)}
+                              </span>
+                            )}
+                            {column === 'cpa' && formatCurrency(metrics.cpa)}
+                            {column === 'cpm' && formatCurrency(metrics.cpm)}
+                            {column === 'roas' && (
+                              <span className="font-semibold">{metrics.roas.toFixed(2)}x</span>
+                            )}
+                            {column === 'ctr' && (
+                              <div className="relative flex items-center justify-end">
+                                <span>{formatPercentage(metrics.ctr)}</span>
+                                {(() => {
+                                  const delta = calculateCTRDelta(ad.ctr, metrics.ctr);
+                                  const isPositive = delta > 0;
+                                  return (
+                                    <div className="absolute -top-3 -right-9 flex items-center gap-0.5">
+                                      <span className="text-xs font-medium">
+                                        {isPositive ? '+' : ''}{delta.toFixed(1)}%
+                                      </span>
+                                      {isPositive ? (
+                                        <TrendingUp className="h-2.5 w-2.5 text-green-600" />
+                                      ) : (
+                                        <TrendingDown className="h-2.5 w-2.5 text-red-600" />
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                            {column === 'clickCv' && formatPercentage(metrics.clickCv)}
+                            {column === 'epc' && formatCurrency(metrics.epc)}
+                            {column === 'videoLink' && ''}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  )}
+                  
                   {expandedAd === ad.id && (
                     <TableRow>
                       <TableCell colSpan={getVisibleColumns('ads').length} className="p-0">
                         <DetailView 
                           type="ad" 
                           name={ad.name} 
-                          id={ad.id} 
+                          id={ad.id}
+                          onMetricsReady={(metrics) => handleMetricsReady(ad.id, metrics)}
                         />
                       </TableCell>
                     </TableRow>
@@ -339,7 +532,11 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
                             {formatCurrency(summaryMetrics.profit)}
                           </span>
                         )}
-                        {column === 'cpa' && formatCurrency(summaryMetrics.cpa)}
+                        {column === 'cpa' && (
+                          <span className={getCPAColorClass(summaryMetrics.cpa, allCPAs)}>
+                            {formatCurrency(summaryMetrics.cpa)}
+                          </span>
+                        )}
                         {column === 'cpm' && formatCurrency(summaryMetrics.cpm)}
                         {column === 'roas' && (
                           <span className="font-semibold">{summaryMetrics.roas.toFixed(2)}x</span>

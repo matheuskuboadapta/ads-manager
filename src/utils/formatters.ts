@@ -25,3 +25,33 @@ export const formatDate = (date: Date): string => {
     minute: '2-digit'
   }).format(date);
 };
+
+export const getCPAColorClass = (cpa: number, allCPAs: number[]): string => {
+  if (allCPAs.length === 0 || cpa === 0) return '';
+  
+  const threshold = 550; // R$550 threshold
+  
+  if (cpa <= threshold) {
+    // Green tones: CPA <= R$550 (good performance)
+    const distanceFromThreshold = threshold - cpa;
+    const maxDistance = threshold; // Maximum possible distance (when CPA = 0)
+    const intensity = Math.min(1, distanceFromThreshold / maxDistance);
+    
+    if (intensity <= 0.2) return 'bg-green-50';
+    if (intensity <= 0.4) return 'bg-green-100';
+    if (intensity <= 0.6) return 'bg-green-200';
+    if (intensity <= 0.8) return 'bg-green-300';
+    return 'bg-green-400';
+  } else {
+    // Red tones: CPA > R$550 (bad performance)
+    const distanceFromThreshold = cpa - threshold;
+    const maxDistance = Math.max(...allCPAs) - threshold;
+    const intensity = Math.min(1, distanceFromThreshold / maxDistance);
+    
+    if (intensity <= 0.2) return 'bg-red-50';
+    if (intensity <= 0.4) return 'bg-red-100';
+    if (intensity <= 0.6) return 'bg-red-200';
+    if (intensity <= 0.8) return 'bg-red-300';
+    return 'bg-red-400';
+  }
+};

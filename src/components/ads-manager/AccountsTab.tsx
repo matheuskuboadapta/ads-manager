@@ -3,12 +3,14 @@ import { useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { BarChart3 } from 'lucide-react';
-import { formatCurrency, formatPercentage } from '@/utils/formatters';
+import { formatCurrency, formatPercentage, getCPAColorClass } from '@/utils/formatters';
 import { useAccountsData } from '@/hooks/useAdsData';
 import FilterBar from './FilterBar';
 import ColumnOrderDialog from './ColumnOrderDialog';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableHeader } from '@/components/ui/sortable-header';
 
 interface AccountsTabProps {
   onAccountSelect: (accountId: string) => void;
@@ -21,15 +23,18 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
   // Sempre carregar dados, mesmo que o dateFilter seja null
   const { data: accounts, isLoading, error } = useAccountsData(settings.dateFilter);
 
+  // Sorting functionality with default sort by CPA descending
+  const { sortedData: sortedAccounts, handleSort, getSortDirection } = useTableSort(accounts || [], { column: 'cpa', direction: 'desc' });
+
   // Filtrar contas por nome
   const filteredAccounts = useMemo(() => {
-    if (!accounts) return [];
+    if (!sortedAccounts) return [];
 
-    return accounts.filter(account => {
+    return sortedAccounts.filter(account => {
       const matchesName = account.name.toLowerCase().includes(settings.nameFilter.toLowerCase());
       return matchesName;
     });
-  }, [accounts, settings.nameFilter]);
+  }, [sortedAccounts, settings.nameFilter]);
 
   // Cálculo das métricas de resumo
   const summaryMetrics = useMemo(() => {
@@ -121,22 +126,47 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
               <TableRow className="bg-slate-50">
                 {getVisibleColumns('accounts').map((column) => {
                   const isRightAligned = column !== 'name';
+                  const isSortable = !['name'].includes(column); // Exclude name column from sorting
+                  const sortDirection = getSortDirection(column);
+                  
                   return (
                     <TableHead 
                       key={column}
                       className={`font-semibold min-w-[80px] ${isRightAligned ? 'text-right' : ''} ${column === 'name' ? 'min-w-[200px]' : ''}`}
                     >
-                      {column === 'name' && 'Nome da Conta'}
-                      {column === 'spend' && 'Valor Gasto'}
-                      {column === 'revenue' && 'Faturamento'}
-                      {column === 'sales' && 'Vendas'}
-                      {column === 'profit' && 'Profit'}
-                      {column === 'cpa' && 'CPA'}
-                      {column === 'cpm' && 'CPM'}
-                      {column === 'roas' && 'ROAS'}
-                      {column === 'ctr' && 'CTR'}
-                      {column === 'clickCv' && 'Click CV'}
-                      {column === 'epc' && 'EPC'}
+                      {isSortable ? (
+                        <SortableHeader
+                          column={column}
+                          sortDirection={sortDirection}
+                          onSort={handleSort}
+                          className={`${isRightAligned ? 'justify-end' : ''}`}
+                        >
+                          {column === 'spend' && 'Valor Gasto'}
+                          {column === 'revenue' && 'Faturamento'}
+                          {column === 'sales' && 'Vendas'}
+                          {column === 'profit' && 'Profit'}
+                          {column === 'cpa' && 'CPA'}
+                          {column === 'cpm' && 'CPM'}
+                          {column === 'roas' && 'ROAS'}
+                          {column === 'ctr' && 'CTR'}
+                          {column === 'clickCv' && 'Click CV'}
+                          {column === 'epc' && 'EPC'}
+                        </SortableHeader>
+                      ) : (
+                        <>
+                          {column === 'name' && 'Nome da Conta'}
+                          {column === 'spend' && 'Valor Gasto'}
+                          {column === 'revenue' && 'Faturamento'}
+                          {column === 'sales' && 'Vendas'}
+                          {column === 'profit' && 'Profit'}
+                          {column === 'cpa' && 'CPA'}
+                          {column === 'cpm' && 'CPM'}
+                          {column === 'roas' && 'ROAS'}
+                          {column === 'ctr' && 'CTR'}
+                          {column === 'clickCv' && 'Click CV'}
+                          {column === 'epc' && 'EPC'}
+                        </>
+                      )}
                     </TableHead>
                   );
                 })}
@@ -188,7 +218,7 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
                     return (
                       <TableCell 
                         key={column}
-                        className={`${isRightAligned ? 'text-right font-mono text-sm' : 'font-medium'}`}
+                        className={`${isRightAligned ? 'text-right font-mono text-sm' : 'font-medium'} ${column === 'cpa' ? getCPAColorClass(account.cpa, filteredAccounts.map(a => a.cpa)) : ''}`}
                       >
                         {column === 'name' && (
                           <div 

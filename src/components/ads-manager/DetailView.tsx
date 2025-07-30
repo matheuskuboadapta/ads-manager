@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { ChartContainer } from '@/components/ui/chart';
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { TrendingUp, DollarSign, Loader2, Brain, BarChart3, FileText } from 'lucide-react';
 import useDetailMetrics from '@/hooks/useDetailMetrics';
 import { useState, useEffect } from 'react';
@@ -13,14 +13,25 @@ interface DetailViewProps {
   type: 'campaign' | 'adset' | 'ad';
   name: string;
   id: string;
+  onMetricsReady?: (metrics: { threeDay: any; sevenDay: any }) => void;
 }
 
-const DetailView = ({ type, name, id }: DetailViewProps) => {
-  const { data: chartData, isLoading, error } = useDetailMetrics(type, name);
+const DetailView = ({ type, name, id, onMetricsReady }: DetailViewProps) => {
+  const { data: metricsData, isLoading, error } = useDetailMetrics(type, name);
   const [aiInsights, setAiInsights] = useState<string>('');
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [aiError, setAiError] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('metrics');
+
+  // Notify parent component when metrics are ready
+  useEffect(() => {
+    if (metricsData && onMetricsReady) {
+      onMetricsReady({
+        threeDay: metricsData.threeDayMetrics,
+        sevenDay: metricsData.sevenDayMetrics
+      });
+    }
+  }, [metricsData, onMetricsReady]);
 
   // Auto-scroll para mostrar o DetailView completamente
   useEffect(() => {
@@ -149,7 +160,7 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
     );
   }
 
-  if (!chartData || chartData.length === 0) {
+  if (!metricsData || !metricsData.dailyData || metricsData.dailyData.length === 0) {
     return (
       <div className="bg-muted border-t border-border p-6">
         <div className="text-center py-8">
@@ -161,8 +172,8 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
   }
 
   // Calcular totais para os títulos
-  const totalSpend = chartData.reduce((sum, item) => sum + item.spend, 0);
-  const validCpaValues = chartData.filter(item => item.cpa > 0);
+  const totalSpend = metricsData.dailyData.reduce((sum, item) => sum + item.spend, 0);
+  const validCpaValues = metricsData.dailyData.filter(item => item.cpa > 0);
   const averageCpa = validCpaValues.length > 0 
     ? validCpaValues.reduce((sum, item) => sum + item.cpa, 0) / validCpaValues.length 
     : 0;
@@ -211,7 +222,7 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
                 <CardContent>
                   <ChartContainer config={chartConfig} className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <BarChart data={metricsData.dailyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                         <XAxis 
                           dataKey="date" 
@@ -260,7 +271,7 @@ const DetailView = ({ type, name, id }: DetailViewProps) => {
                 <CardContent>
                   <ChartContainer config={chartConfig} className="h-64">
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <BarChart data={metricsData.dailyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                         <XAxis 
                           dataKey="date" 

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Users, Target, BarChart3, Megaphone, Settings, LogOut, Home, TrendingUp } from 'lucide-react';
+import { RefreshCw, Users, Target, BarChart3, Megaphone, Settings, LogOut, Home } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,7 +13,6 @@ import AdsetsTab from '@/components/ads-manager/AdsetsTab';
 import AdsTab from '@/components/ads-manager/AdsTab';
 import RulesTab from '@/components/ads-manager/RulesTab';
 import { HomeTab } from '@/components/home/HomeTab';
-import { OptimizationTab } from '@/components/optimization/OptimizationTab';
 import { FloatingChatButton } from '@/components/chat/FloatingChatButton';
 
 export default function Index() {
@@ -110,7 +109,7 @@ export default function Index() {
     setActiveTab(tab);
     
     // Clear selections when accessing tabs directly
-    if (tab === 'home' || tab === 'optimization') {
+    if (tab === 'home') {
       setSelectedAccount(null);
       setSelectedCampaign(null);
       setSelectedAdset(null);
@@ -166,14 +165,10 @@ export default function Index() {
       {/* Main Content */}
       <main className="p-6">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 lg:w-[700px]">
+          <TabsList className="grid w-full grid-cols-6 lg:w-[600px]">
             <TabsTrigger value="home" className="flex items-center space-x-2">
               <Home className="h-4 w-4" />
               <span className="hidden sm:inline">Home</span>
-            </TabsTrigger>
-            <TabsTrigger value="optimization" className="flex items-center space-x-2">
-              <TrendingUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Otimização</span>
             </TabsTrigger>
             <TabsTrigger value="accounts" className="flex items-center space-x-2">
               <Users className="h-4 w-4" />
@@ -199,10 +194,6 @@ export default function Index() {
 
           <TabsContent value="home" className="space-y-4">
             <HomeTab />
-          </TabsContent>
-
-          <TabsContent value="optimization" className="space-y-4">
-            <OptimizationTab />
           </TabsContent>
 
           <TabsContent value="accounts" className="space-y-4">

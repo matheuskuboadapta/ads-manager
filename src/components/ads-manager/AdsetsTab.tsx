@@ -5,10 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, BarChart3, Edit2, Check, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, BarChart3, Edit2, Check, X, ChevronDown, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
-import { formatCurrency, formatPercentage } from '@/utils/formatters';
+import { formatCurrency, formatPercentage, getCPAColorClass } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { updateAdset, createAdset } from '@/utils/api';
 import { useAdsetsData } from '@/hooks/useAdsData';
@@ -17,6 +18,8 @@ import ColumnOrderDialog from './ColumnOrderDialog';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import DetailView from './DetailView';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableHeader } from '@/components/ui/sortable-header';
 
 interface AdsetsTabProps {
   campaignId: string | null;
@@ -29,23 +32,47 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
   const [tempBudget, setTempBudget] = useState<string>('');
   const [newAdset, setNewAdset] = useState({ name: '', dailyBudget: '' });
   const [expandedAdset, setExpandedAdset] = useState<string | null>(null);
+  const [detailMetrics, setDetailMetrics] = useState<{ [adsetId: string]: { threeDay: any; sevenDay: any } }>({});
+  const [showBudgetConfirmation, setShowBudgetConfirmation] = useState(false);
+  const [pendingBudgetChange, setPendingBudgetChange] = useState<{ adset: any; newBudget: number; currentBudget: number } | null>(null);
   const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
 
   const { data: adsets, isLoading, error, updateOptimistic, clearOptimistic } = useAdsetsData(campaignId, settings.dateFilter);
 
-  const filteredAdsets = useMemo(() => {
-    if (!adsets) return [];
+  // Sorting functionality with default sort by CPA descending
+  const { sortedData: sortedAdsets, handleSort, getSortDirection } = useTableSort(adsets || [], { column: 'cpa', direction: 'desc' });
 
-    return adsets.filter(adset => {
+  const filteredAdsets = useMemo(() => {
+    if (!sortedAdsets) return [];
+
+    return sortedAdsets.filter(adset => {
       const matchesName = adset.name.toLowerCase().includes(settings.nameFilter.toLowerCase());
       const matchesStatus = settings.statusFilter === 'all' || 
         (settings.statusFilter === 'ACTIVE' && adset.statusFinal === 'ATIVO') ||
         (settings.statusFilter === 'PAUSED' && adset.statusFinal === 'DESATIVADA');
       return matchesName && matchesStatus;
     });
-  }, [adsets, settings.nameFilter, settings.statusFilter]);
+  }, [sortedAdsets, settings.nameFilter, settings.statusFilter]);
+
+  // Coletar todos os CPAs para o color scale (conjuntos principais + 3 dias + 7 dias)
+  const allCPAs = useMemo(() => {
+    const cpas: number[] = [];
+    
+    // CPAs dos conjuntos principais
+    filteredAdsets.forEach(adset => {
+      if (adset.cpa > 0) cpas.push(adset.cpa);
+    });
+    
+    // CPAs das métricas de 3 e 7 dias
+    Object.values(detailMetrics).forEach(metrics => {
+      if (metrics.threeDay?.cpa > 0) cpas.push(metrics.threeDay.cpa);
+      if (metrics.sevenDay?.cpa > 0) cpas.push(metrics.sevenDay.cpa);
+    });
+    
+    return cpas;
+  }, [filteredAdsets, detailMetrics]);
 
   // Cálculo das métricas de resumo
   const summaryMetrics = useMemo(() => {
@@ -138,6 +165,22 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
       return;
     }
 
+    // Check if the new budget is 4x bigger than the current budget
+    const currentBudget = adset.dailyBudget;
+    const budgetIncrease = newBudget / currentBudget;
+    
+    if (budgetIncrease >= 4) {
+      // Show confirmation dialog
+      setPendingBudgetChange({ adset, newBudget, currentBudget });
+      setShowBudgetConfirmation(true);
+      return;
+    }
+
+    // Proceed with the update if no confirmation needed
+    await performBudgetUpdate(adset, newBudget);
+  };
+
+  const performBudgetUpdate = async (adset: any, newBudget: number) => {
     // Atualização otimística - mostrar mudança imediatamente
     updateOptimistic(adset.firstAdId, { dailyBudget: newBudget });
 
@@ -161,6 +204,19 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleBudgetConfirmation = async () => {
+    if (pendingBudgetChange) {
+      await performBudgetUpdate(pendingBudgetChange.adset, pendingBudgetChange.newBudget);
+      setShowBudgetConfirmation(false);
+      setPendingBudgetChange(null);
+    }
+  };
+
+  const handleBudgetConfirmationCancel = () => {
+    setShowBudgetConfirmation(false);
+    setPendingBudgetChange(null);
   };
 
   const handleBudgetCancel = () => {
@@ -210,6 +266,19 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleMetricsReady = (adsetId: string, metrics: { threeDay: any; sevenDay: any }) => {
+    setDetailMetrics(prev => ({
+      ...prev,
+      [adsetId]: metrics
+    }));
+  };
+
+  // Helper function to calculate CTR delta
+  const calculateCTRDelta = (currentCTR: number, periodCTR: number) => {
+    if (periodCTR === 0) return currentCTR > 0 ? 100 : 0;
+    return ((currentCTR - periodCTR) / periodCTR) * 100;
   };
 
   if (isLoading) {
@@ -327,24 +396,52 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
               <TableRow className="bg-slate-50 border-b-slate-200">
                 {getVisibleColumns('adsets').map((column) => {
                   const isRightAligned = !['status', 'name'].includes(column);
+                  const isSortable = !['status', 'name', 'dailyBudget'].includes(column);
+                  const sortDirection = getSortDirection(column);
+                  
                   return (
                     <TableHead 
                       key={column}
                       className={`font-semibold min-w-[80px] ${isRightAligned ? 'text-right' : ''} ${column === 'name' ? 'min-w-[200px]' : ''} ${column === 'dailyBudget' ? 'min-w-[130px]' : ''}`}
                     >
-                      {column === 'status' && 'Status'}
-                      {column === 'name' && 'Nome do Conjunto'}
-                      {column === 'dailyBudget' && 'Orçamento Diário'}
-                      {column === 'spend' && 'Valor Gasto'}
-                      {column === 'revenue' && 'Faturamento'}
-                      {column === 'sales' && 'Vendas'}
-                      {column === 'profit' && 'Profit'}
-                      {column === 'cpa' && 'CPA'}
-                      {column === 'cpm' && 'CPM'}
-                      {column === 'roas' && 'ROAS'}
-                      {column === 'ctr' && 'CTR'}
-                      {column === 'clickCv' && 'Click CV'}
-                      {column === 'epc' && 'EPC'}
+                      {isSortable ? (
+                        <SortableHeader
+                          column={column}
+                          sortDirection={sortDirection}
+                          onSort={handleSort}
+                          className={`${isRightAligned ? 'justify-end' : ''}`}
+                        >
+                          {column === 'status' && 'Status'}
+                          {column === 'name' && 'Nome do Conjunto'}
+                          {column === 'dailyBudget' && 'Orçamento Diário'}
+                          {column === 'spend' && 'Valor Gasto'}
+                          {column === 'revenue' && 'Faturamento'}
+                          {column === 'sales' && 'Vendas'}
+                          {column === 'profit' && 'Profit'}
+                          {column === 'cpa' && 'CPA'}
+                          {column === 'cpm' && 'CPM'}
+                          {column === 'roas' && 'ROAS'}
+                          {column === 'ctr' && 'CTR'}
+                          {column === 'clickCv' && 'Click CV'}
+                          {column === 'epc' && 'EPC'}
+                        </SortableHeader>
+                      ) : (
+                        <>
+                          {column === 'status' && 'Status'}
+                          {column === 'name' && 'Nome do Conjunto'}
+                          {column === 'dailyBudget' && 'Orçamento Diário'}
+                          {column === 'spend' && 'Valor Gasto'}
+                          {column === 'revenue' && 'Faturamento'}
+                          {column === 'sales' && 'Vendas'}
+                          {column === 'profit' && 'Profit'}
+                          {column === 'cpa' && 'CPA'}
+                          {column === 'cpm' && 'CPM'}
+                          {column === 'roas' && 'ROAS'}
+                          {column === 'ctr' && 'CTR'}
+                          {column === 'clickCv' && 'Click CV'}
+                          {column === 'epc' && 'EPC'}
+                        </>
+                      )}
                     </TableHead>
                   );
                 })}
@@ -360,7 +457,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                     return (
                       <TableCell 
                         key={column}
-                        className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'name' ? 'font-medium' : ''}`}
+                        className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'name' ? 'font-medium' : ''} ${column === 'cpa' ? getCPAColorClass(adset.cpa, allCPAs) : ''}`}
                       >
                         {column === 'status' && (
                           <Switch
@@ -463,13 +560,141 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                     );
                   })}
                   </TableRow>
+                  
+                  {/* 3 Days Metrics Row */}
+                  {expandedAdset === adset.id && detailMetrics[adset.id]?.threeDay && (
+                    <TableRow>
+                      {getVisibleColumns('adsets').map((column) => {
+                        const isRightAligned = !['status', 'name'].includes(column);
+                        const metrics = detailMetrics[adset.id].threeDay;
+                        
+                        return (
+                          <TableCell 
+                            key={column}
+                            className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'cpa' ? getCPAColorClass(metrics.cpa, allCPAs) : ''}`}
+                          >
+                            {column === 'status' && ''}
+                            {column === 'name' && (
+                              <span className="font-semibold">3 Dias</span>
+                            )}
+                            {column === 'dailyBudget' && ''}
+                            {column === 'spend' && formatCurrency(metrics.spend)}
+                            {column === 'revenue' && (
+                              <span className="text-green-600">{formatCurrency(metrics.revenue)}</span>
+                            )}
+                            {column === 'sales' && (
+                              <span className="font-semibold">{metrics.sales}</span>
+                            )}
+                            {column === 'profit' && (
+                              <span className={metrics.profit > 0 ? 'text-green-600' : 'text-red-600'}>
+                                {formatCurrency(metrics.profit)}
+                              </span>
+                            )}
+                            {column === 'cpa' && formatCurrency(metrics.cpa)}
+                            {column === 'cpm' && formatCurrency(metrics.cpm)}
+                            {column === 'roas' && (
+                              <span className="font-semibold">{metrics.roas.toFixed(2)}x</span>
+                            )}
+                            {column === 'ctr' && (
+                              <div className="relative flex items-center justify-end">
+                                <span>{formatPercentage(metrics.ctr)}</span>
+                                {(() => {
+                                  const delta = calculateCTRDelta(adset.ctr, metrics.ctr);
+                                  const isPositive = delta > 0;
+                                  return (
+                                    <div className="absolute -top-3 -right-9 flex items-center gap-0.5">
+                                      <span className="text-xs font-medium">
+                                        {isPositive ? '+' : ''}{delta.toFixed(1)}%
+                                      </span>
+                                      {isPositive ? (
+                                        <TrendingUp className="h-2.5 w-2.5 text-green-600" />
+                                      ) : (
+                                        <TrendingDown className="h-2.5 w-2.5 text-red-600" />
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                            {column === 'clickCv' && formatPercentage(metrics.clickCv)}
+                            {column === 'epc' && formatCurrency(metrics.epc)}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  )}
+                  
+                  {/* 7 Days Metrics Row */}
+                  {expandedAdset === adset.id && detailMetrics[adset.id]?.sevenDay && (
+                    <TableRow>
+                      {getVisibleColumns('adsets').map((column) => {
+                        const isRightAligned = !['status', 'name'].includes(column);
+                        const metrics = detailMetrics[adset.id].sevenDay;
+                        
+                        return (
+                          <TableCell 
+                            key={column}
+                            className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'cpa' ? getCPAColorClass(metrics.cpa, allCPAs) : ''}`}
+                          >
+                            {column === 'status' && ''}
+                            {column === 'name' && (
+                              <span className="font-semibold">7 Dias</span>
+                            )}
+                            {column === 'dailyBudget' && ''}
+                            {column === 'spend' && formatCurrency(metrics.spend)}
+                            {column === 'revenue' && (
+                              <span className="text-green-600">{formatCurrency(metrics.revenue)}</span>
+                            )}
+                            {column === 'sales' && (
+                              <span className="font-semibold">{metrics.sales}</span>
+                            )}
+                            {column === 'profit' && (
+                              <span className={metrics.profit > 0 ? 'text-green-600' : 'text-red-600'}>
+                                {formatCurrency(metrics.profit)}
+                              </span>
+                            )}
+                            {column === 'cpa' && formatCurrency(metrics.cpa)}
+                            {column === 'cpm' && formatCurrency(metrics.cpm)}
+                            {column === 'roas' && (
+                              <span className="font-semibold">{metrics.roas.toFixed(2)}x</span>
+                            )}
+                            {column === 'ctr' && (
+                              <div className="relative flex items-center justify-end">
+                                <span>{formatPercentage(metrics.ctr)}</span>
+                                {(() => {
+                                  const delta = calculateCTRDelta(adset.ctr, metrics.ctr);
+                                  const isPositive = delta > 0;
+                                  return (
+                                    <div className="absolute -top-3 -right-9 flex items-center gap-0.5">
+                                      <span className="text-xs font-medium">
+                                        {isPositive ? '+' : ''}{delta.toFixed(1)}%
+                                      </span>
+                                      {isPositive ? (
+                                        <TrendingUp className="h-2.5 w-2.5 text-green-600" />
+                                      ) : (
+                                        <TrendingDown className="h-2.5 w-2.5 text-red-600" />
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                            {column === 'clickCv' && formatPercentage(metrics.clickCv)}
+                            {column === 'epc' && formatCurrency(metrics.epc)}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  )}
+                  
                   {expandedAdset === adset.id && (
                     <TableRow>
                       <TableCell colSpan={getVisibleColumns('adsets').length} className="p-0">
                         <DetailView 
                           type="adset" 
                           name={adset.name} 
-                          id={adset.realId} 
+                          id={adset.realId}
+                          onMetricsReady={(metrics) => handleMetricsReady(adset.id, metrics)}
                         />
                       </TableCell>
                     </TableRow>
@@ -505,7 +730,11 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                             {formatCurrency(summaryMetrics.profit)}
                           </span>
                         )}
-                        {column === 'cpa' && formatCurrency(summaryMetrics.cpa)}
+                        {column === 'cpa' && (
+                          <span className={getCPAColorClass(summaryMetrics.cpa, allCPAs)}>
+                            {formatCurrency(summaryMetrics.cpa)}
+                          </span>
+                        )}
                         {column === 'cpm' && formatCurrency(summaryMetrics.cpm)}
                         {column === 'roas' && (
                           <span className="font-semibold">{summaryMetrics.roas.toFixed(2)}x</span>
@@ -522,6 +751,32 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
           </Table>
         </div>
       </div>
+
+      {/* Budget Confirmation Dialog */}
+      <AlertDialog open={showBudgetConfirmation} onOpenChange={setShowBudgetConfirmation}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar alteração de orçamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingBudgetChange && (
+                <>
+                  Você está definindo um valor {(pendingBudgetChange.newBudget / pendingBudgetChange.currentBudget).toFixed(1)}x maior, tem certeza?
+                  <br /><br />
+                  A mudança vai saltar o orçamento de {formatCurrency(pendingBudgetChange.currentBudget)} para {formatCurrency(pendingBudgetChange.newBudget)}.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleBudgetConfirmationCancel}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleBudgetConfirmation}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

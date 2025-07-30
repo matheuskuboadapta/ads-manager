@@ -4,11 +4,12 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Target, Edit2, Check, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Target, Edit2, Check, X, ChevronDown, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
-import { formatCurrency, formatPercentage } from '@/utils/formatters';
+import { formatCurrency, formatPercentage, getCPAColorClass } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
 import { updateCampaign, createCampaign } from '@/utils/api';
 import { useCampaignsData } from '@/hooks/useAdsData';
@@ -18,6 +19,8 @@ import ColumnOrderDialog from './ColumnOrderDialog';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import DetailView from './DetailView';
+import { useTableSort } from '@/hooks/useTableSort';
+import { SortableHeader } from '@/components/ui/sortable-header';
 
 interface CampaignsTabProps {
   accountId: string | null;
@@ -30,23 +33,47 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   const [tempBudget, setTempBudget] = useState<string>('');
   const [newCampaign, setNewCampaign] = useState({ name: '', objective: 'CONVERSIONS' });
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
+  const [detailMetrics, setDetailMetrics] = useState<{ [campaignId: string]: { threeDay: any; sevenDay: any } }>({});
+  const [showBudgetConfirmation, setShowBudgetConfirmation] = useState(false);
+  const [pendingBudgetChange, setPendingBudgetChange] = useState<{ campaign: any; newBudget: number; currentBudget: number } | null>(null);
   const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
 
   const { data: campaigns, isLoading, error, updateOptimistic, clearOptimistic } = useCampaignsData(accountId, settings.dateFilter);
 
-  const filteredCampaigns = useMemo(() => {
-    if (!campaigns) return [];
+  // Sorting functionality with default sort by CPA descending
+  const { sortedData: sortedCampaigns, handleSort, getSortDirection } = useTableSort(campaigns || [], { column: 'cpa', direction: 'desc' });
 
-    return campaigns.filter(campaign => {
+  const filteredCampaigns = useMemo(() => {
+    if (!sortedCampaigns) return [];
+
+    return sortedCampaigns.filter(campaign => {
       const matchesName = campaign.name.toLowerCase().includes(settings.nameFilter.toLowerCase());
       const matchesStatus = settings.statusFilter === 'all' || 
         (settings.statusFilter === 'ACTIVE' && campaign.statusFinal === 'ATIVO') ||
         (settings.statusFilter === 'PAUSED' && campaign.statusFinal === 'DESATIVADA');
       return matchesName && matchesStatus;
     });
-  }, [campaigns, settings.nameFilter, settings.statusFilter]);
+  }, [sortedCampaigns, settings.nameFilter, settings.statusFilter]);
+
+  // Coletar todos os CPAs para o color scale (campanhas principais + 3 dias + 7 dias)
+  const allCPAs = useMemo(() => {
+    const cpas: number[] = [];
+    
+    // CPAs das campanhas principais
+    filteredCampaigns.forEach(campaign => {
+      if (campaign.cpa > 0) cpas.push(campaign.cpa);
+    });
+    
+    // CPAs das métricas de 3 e 7 dias
+    Object.values(detailMetrics).forEach(metrics => {
+      if (metrics.threeDay?.cpa > 0) cpas.push(metrics.threeDay.cpa);
+      if (metrics.sevenDay?.cpa > 0) cpas.push(metrics.sevenDay.cpa);
+    });
+    
+    return cpas;
+  }, [filteredCampaigns, detailMetrics]);
 
   // Cálculo das métricas de resumo
   const summaryMetrics = useMemo(() => {
@@ -95,56 +122,58 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
     };
   }, [filteredCampaigns]);
 
+  const handleMetricsReady = (campaignId: string, metrics: { threeDay: any; sevenDay: any }) => {
+    setDetailMetrics(prev => ({
+      ...prev,
+      [campaignId]: metrics
+    }));
+  };
+
   const handleStatusChange = async (campaign: any, newStatus: boolean) => {
-    // Atualização otimística - mostrar mudança imediatamente
-    updateOptimistic(campaign.firstAdId, { 
-      status: newStatus ? 'ACTIVE' : 'PAUSED',
-      statusFinal: newStatus ? 'ATIVO' : 'DESATIVADA'
-    });
+    const status = newStatus ? 'ATIVO' : 'DESATIVADA';
     
     try {
-      // Usar o realId que é o ID real da campanha
-      await updateCampaign(campaign.realId, 'status', newStatus ? 'ATIVO' : 'DESATIVADA');
+      await updateCampaign(campaign.realId, 'status', status);
+      
+      // Update optimistic
+      updateOptimistic(campaign.firstAdId, { statusFinal: status });
       
       toast({
         title: "Status atualizado",
-        description: `Campanha ${newStatus ? 'ativada' : 'pausada'} com sucesso.`,
+        description: `Campanha "${campaign.name}" ${newStatus ? 'ativada' : 'pausada'} com sucesso.`,
       });
     } catch (error) {
       console.error('Error updating campaign status:', error);
-      // Reverter a mudança otimística em caso de erro
-      clearOptimistic(campaign.firstAdId);
-      
       toast({
         title: "Erro",
-        description: "Falha ao atualizar status da campanha.",
+        description: "Não foi possível atualizar o status da campanha.",
         variant: "destructive",
       });
+      // Revert optimistic update
+      clearOptimistic(campaign.firstAdId);
     }
   };
 
   const handleObjectiveChange = async (campaign: any, newObjective: string) => {
-    // Atualização otimística - mostrar mudança imediatamente
-    updateOptimistic(campaign.firstAdId, { objective: newObjective });
-    
     try {
-      // Usar o realId que é o ID real da campanha
       await updateCampaign(campaign.realId, 'objective', newObjective);
+      
+      // Update optimistic
+      updateOptimistic(campaign.firstAdId, { objective: newObjective });
       
       toast({
         title: "Objetivo atualizado",
-        description: "Objetivo da campanha alterado com sucesso.",
+        description: `Objetivo da campanha "${campaign.name}" alterado para ${newObjective}.`,
       });
     } catch (error) {
       console.error('Error updating campaign objective:', error);
-      // Reverter a mudança otimística em caso de erro
-      clearOptimistic(campaign.firstAdId);
-      
       toast({
         title: "Erro",
-        description: "Falha ao atualizar objetivo da campanha.",
+        description: "Não foi possível atualizar o objetivo da campanha.",
         variant: "destructive",
       });
+      // Revert optimistic update
+      clearOptimistic(campaign.firstAdId);
     }
   };
 
@@ -154,40 +183,69 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   };
 
   const handleBudgetSave = async (campaign: any) => {
-    const newBudget = parseFloat(tempBudget);
-    if (isNaN(newBudget) || newBudget <= 0) {
+    const budget = parseFloat(tempBudget);
+    
+    if (isNaN(budget) || budget < 0) {
       toast({
-        title: "Erro",
-        description: "Valor de orçamento inválido.",
+        title: "Valor inválido",
+        description: "Por favor, insira um valor válido para o orçamento.",
         variant: "destructive",
       });
       return;
     }
 
-    // Atualização otimística - mostrar mudança imediatamente
-    updateOptimistic(campaign.firstAdId, { dailyBudget: newBudget });
+    // Check if the new budget is 4x bigger than the current budget
+    const currentBudget = campaign.dailyBudget;
+    const budgetIncrease = budget / currentBudget;
+    
+    if (budgetIncrease >= 4) {
+      // Show confirmation dialog
+      setPendingBudgetChange({ campaign, newBudget: budget, currentBudget });
+      setShowBudgetConfirmation(true);
+      return;
+    }
 
+    // Proceed with the update if no confirmation needed
+    await performBudgetUpdate(campaign, budget);
+  };
+
+  const performBudgetUpdate = async (campaign: any, budget: number) => {
     try {
-      // Usar o realId que é o ID real da campanha
-      await updateCampaign(campaign.realId, 'budget', newBudget);
+      await updateCampaign(campaign.realId, 'budget', budget);
+      
+      // Update optimistic
+      updateOptimistic(campaign.firstAdId, { dailyBudget: budget });
       
       setEditingBudget(null);
+      setTempBudget('');
+      
       toast({
         title: "Orçamento atualizado",
-        description: "Orçamento diário alterado com sucesso.",
+        description: `Orçamento da campanha "${campaign.name}" alterado para ${formatCurrency(budget)}.`,
       });
     } catch (error) {
       console.error('Error updating campaign budget:', error);
-      // Reverter a mudança otimística em caso de erro
-      clearOptimistic(campaign.firstAdId);
-      setEditingBudget(null);
-      
       toast({
         title: "Erro",
-        description: "Falha ao atualizar orçamento.",
+        description: "Não foi possível atualizar o orçamento da campanha.",
         variant: "destructive",
       });
+      // Revert optimistic update
+      clearOptimistic(campaign.firstAdId);
     }
+  };
+
+  const handleBudgetConfirmation = async () => {
+    if (pendingBudgetChange) {
+      await performBudgetUpdate(pendingBudgetChange.campaign, pendingBudgetChange.newBudget);
+      setShowBudgetConfirmation(false);
+      setPendingBudgetChange(null);
+    }
+  };
+
+  const handleBudgetConfirmationCancel = () => {
+    setShowBudgetConfirmation(false);
+    setPendingBudgetChange(null);
   };
 
   const handleBudgetCancel = () => {
@@ -198,8 +256,8 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   const handleCreateCampaign = async () => {
     if (!newCampaign.name.trim()) {
       toast({
-        title: "Erro",
-        description: "Nome da campanha é obrigatório.",
+        title: "Nome obrigatório",
+        description: "Por favor, insira um nome para a campanha.",
         variant: "destructive",
       });
       return;
@@ -209,52 +267,52 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
       await createCampaign({
         name: newCampaign.name,
         objective: newCampaign.objective,
-        level: 'campaign'
+        level: 'campaign',
       });
-
+      
+      setNewCampaign({ name: '', objective: 'CONVERSIONS' });
+      setShowCreateDialog(false);
+      
       toast({
         title: "Campanha criada",
-        description: "Nova campanha criada com sucesso.",
+        description: `Campanha "${newCampaign.name}" criada com sucesso.`,
       });
-
-      setShowCreateDialog(false);
-      setNewCampaign({ name: '', objective: 'CONVERSIONS' });
     } catch (error) {
+      console.error('Error creating campaign:', error);
       toast({
         title: "Erro",
-        description: "Falha ao criar campanha.",
+        description: "Não foi possível criar a campanha.",
         variant: "destructive",
       });
     }
   };
 
+  const handleExpandCampaign = (campaignId: string) => {
+    setExpandedCampaign(expandedCampaign === campaignId ? null : campaignId);
+  };
+
+  // Helper function to calculate CTR delta
+  const calculateCTRDelta = (currentCTR: number, periodCTR: number) => {
+    if (periodCTR === 0) return currentCTR > 0 ? 100 : 0;
+    return ((currentCTR - periodCTR) / periodCTR) * 100;
+  };
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-3 text-slate-600">Carregando campanhas...</span>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando campanhas...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <p className="text-red-600 mb-2">Erro ao carregar dados das campanhas</p>
-          <p className="text-slate-500 text-sm">{error.message}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!campaigns || campaigns.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <p className="text-slate-600 mb-2">Nenhuma campanha encontrada</p>
-          <p className="text-slate-500 text-sm">Selecione uma conta com campanhas ativas ou acesse todas as campanhas</p>
-        </div>
+      <div className="text-center py-8">
+        <p className="text-destructive mb-2">Erro ao carregar campanhas</p>
+        <p className="text-muted-foreground text-sm">Tente novamente mais tarde</p>
       </div>
     );
   }
@@ -262,238 +320,325 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Campanhas</h2>
-          <p className="text-muted-foreground">Gerencie suas campanhas publicitárias</p>
+        <div className="flex items-center gap-4">
+          <h2 className="text-2xl font-bold">Campanhas</h2>
+          <Badge variant="secondary">{filteredCampaigns.length} campanhas</Badge>
         </div>
-        <div className="flex items-center space-x-3">
-          <Badge variant="secondary" className="px-3 py-1">
-            {filteredCampaigns.length} campanhas
-          </Badge>
+        
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCreateDialog(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Nova Campanha
+          </Button>
+          
           <ColumnOrderDialog
             tableType="campaigns"
-            columnOrder={getVisibleColumns('campaigns')}
-            onColumnOrderChange={(newOrder) => updateColumnOrder('campaigns', newOrder)}
-            onReset={() => resetColumnOrder('campaigns')}
-            getAllColumns={() => getAllColumns('campaigns')}
-            isColumnVisible={(column) => isColumnVisible('campaigns', column)}
-            toggleColumnVisibility={(column) => toggleColumnVisibility('campaigns', column)}
+            columnOrders={columnOrders}
+            updateColumnOrder={updateColumnOrder}
+            resetColumnOrder={resetColumnOrder}
+            getVisibleColumns={getVisibleColumns}
+            getAllColumns={getAllColumns}
+            isColumnVisible={isColumnVisible}
+            toggleColumnVisibility={toggleColumnVisibility}
           />
-          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-            <DialogTrigger asChild>
-              <Button className="flex items-center space-x-2">
-                <Plus className="h-4 w-4" />
-                <span>Nova Campanha</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Criar Nova Campanha</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="campaign-name">Nome da Campanha</Label>
-                  <Input
-                    id="campaign-name"
-                    value={newCampaign.name}
-                    onChange={(e) => setNewCampaign(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Ex: Black Friday 2024 - Produtos"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="campaign-objective">Objetivo</Label>
-                  <Select
-                    value={newCampaign.objective}
-                    onValueChange={(value) => setNewCampaign(prev => ({ ...prev, objective: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="CONVERSIONS">Conversões</SelectItem>
-                      <SelectItem value="REACH">Alcance</SelectItem>
-                      <SelectItem value="TRAFFIC">Tráfego</SelectItem>
-                      <SelectItem value="AWARENESS">Reconhecimento da Marca</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-                    Cancelar
-                  </Button>
-                  <Button onClick={handleCreateCampaign}>
-                    Criar Campanha
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
 
       <FilterBar
         activeTab="campaigns"
-        onNameFilter={updateNameFilter}
-        onStatusFilter={updateStatusFilter}
-        onDateFilter={updateDateFilter}
+        dateFilter={settings.dateFilter}
         nameFilter={settings.nameFilter}
         statusFilter={settings.statusFilter}
-        dateFilter={settings.dateFilter}
+        onDateFilter={updateDateFilter}
+        onNameFilter={updateNameFilter}
+        onStatusFilter={updateStatusFilter}
       />
 
-      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+      <div className="border rounded-lg">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-slate-50 border-b-slate-200">
-                  {getVisibleColumns('campaigns').map((column) => {
-                    const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
-                    return (
-                      <TableHead 
-                        key={column}
-                        className={`font-semibold min-w-[80px] ${isRightAligned ? 'text-right' : ''} ${column === 'name' ? 'min-w-[200px]' : ''} ${column === 'dailyBudget' ? 'min-w-[150px]' : ''}`}
-                      >
-                        {column === 'status' && 'Status'}
-                        {column === 'name' && 'Nome da Campanha'}
-                        {column === 'dailyBudget' && 'Orçamento Diário'}
-                        {column === 'spend' && 'Valor Gasto'}
-                        {column === 'revenue' && 'Faturamento'}
-                        {column === 'sales' && 'Vendas'}
-                        {column === 'profit' && 'Profit'}
-                        {column === 'cpa' && 'CPA'}
-                        {column === 'cpm' && 'CPM'}
-                        {column === 'roas' && 'ROAS'}
-                        {column === 'ctr' && 'CTR'}
-                        {column === 'clickCv' && 'Click CV'}
-                        {column === 'epc' && 'EPC'}
-                      </TableHead>
-                    );
-                  })}
+              <TableRow>
+                <TableHead className="w-12"></TableHead>
+                {getVisibleColumns('campaigns').map((column) => (
+                  <TableHead 
+                    key={column}
+                    className={!['status', 'name', 'dailyBudget'].includes(column) ? 'text-right' : ''}
+                  >
+                    <SortableHeader
+                      column={column}
+                      onSort={handleSort}
+                      sortDirection={getSortDirection(column)}
+                      sortable={!['status', 'name', 'dailyBudget'].includes(column)}
+                    >
+                      {column === 'status' && 'Status'}
+                      {column === 'name' && 'Nome da Campanha'}
+                      {column === 'dailyBudget' && 'Orçamento Diário'}
+                      {column === 'spend' && 'Valor Gasto'}
+                      {column === 'revenue' && 'Faturamento'}
+                      {column === 'sales' && 'Vendas'}
+                      {column === 'profit' && 'Profit'}
+                      {column === 'cpa' && 'CPA'}
+                      {column === 'cpm' && 'CPM'}
+                      {column === 'roas' && 'ROAS'}
+                      {column === 'ctr' && 'CTR'}
+                      {column === 'clickCv' && 'Click CV'}
+                      {column === 'epc' && 'EPC'}
+                    </SortableHeader>
+                  </TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredCampaigns.map((campaign) => (
                 <>
-                  <TableRow key={campaign.id} className="hover:bg-slate-50">
-                  {getVisibleColumns('campaigns').map((column) => {
-                    const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
-                    
-                    return (
-                      <TableCell 
-                        key={column}
-                        className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'name' ? 'font-medium' : ''}`}
+                  <TableRow key={campaign.id} className="hover:bg-muted/50">
+                    <TableCell className="w-12">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleExpandCampaign(campaign.id)}
+                        className="h-6 w-6 p-0"
                       >
-                        {column === 'status' && (
-                          <Switch
-                            checked={campaign.statusFinal === 'ATIVO'}
-                            onCheckedChange={(checked) => handleStatusChange(campaign, checked)}
-                          />
+                        {expandedCampaign === campaign.id ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
                         )}
-                        {column === 'name' && (
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => setExpandedCampaign(expandedCampaign === campaign.id ? null : campaign.id)}
-                              className="flex items-center justify-center w-6 h-6 hover:bg-gray-100 rounded transition-colors"
-                            >
-                              {expandedCampaign === campaign.id ? (
-                                <ChevronDown className="h-4 w-4 text-gray-600" />
-                              ) : (
-                                <ChevronRight className="h-4 w-4 text-gray-600" />
-                              )}
-                            </button>
-                            <div 
-                              className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors flex-1"
-                              onClick={() => {
-                                console.log('Clicking on campaign:', campaign.name);
-                                onCampaignSelect(campaign.name);
-                              }}
-                            >
-                              <Target className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                              <span className="underline-offset-4 hover:underline truncate">{campaign.name}</span>
+                      </Button>
+                    </TableCell>
+                    {getVisibleColumns('campaigns').map((column) => {
+                      const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
+                      
+                      return (
+                        <TableCell 
+                          key={column}
+                          className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'cpa' ? getCPAColorClass(campaign.cpa, allCPAs) : ''}`}
+                        >
+                          {column === 'status' && (
+                            <Switch
+                              checked={campaign.statusFinal === 'ATIVO'}
+                              onCheckedChange={(checked) => handleStatusChange(campaign, checked)}
+                              className="data-[state=checked]:bg-green-600"
+                            />
+                          )}
+                          {column === 'name' && (
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{campaign.name}</span>
+                              <CopyButton text={campaign.name} />
                             </div>
-                            <CopyButton text={campaign.name} />
-                          </div>
-                        )}
-                        {column === 'dailyBudget' && (
-                          <div>
-                            {!campaign.isAdsetLevelBudget ? (
-                              editingBudget === campaign.id ? (
-                                <div className="flex items-center justify-start space-x-1">
-                                  <Input
-                                    type="number"
-                                    value={tempBudget}
-                                    onChange={(e) => setTempBudget(e.target.value)}
-                                    className="w-20 h-7 text-xs"
-                                    min="1"
-                                    step="0.01"
-                                  />
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleBudgetSave(campaign)}
-                                    className="h-7 w-7 p-0"
-                                  >
-                                    <Check className="h-3 w-3" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={handleBudgetCancel}
-                                    className="h-7 w-7 p-0"
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center justify-start space-x-1">
-                                  <span className="font-mono text-sm">{formatCurrency(campaign.dailyBudget)}</span>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => handleBudgetEdit(campaign.id, campaign.dailyBudget)}
-                                    className="h-6 w-6 p-0"
-                                  >
-                                    <Edit2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              )
-                            ) : (
+                          )}
+                          {column === 'dailyBudget' && (
+                            campaign.isAdsetLevelBudget ? (
                               <div className="text-xs text-yellow-600">
                                 Orçamento a nível de conjunto
                               </div>
-                            )}
-                          </div>
-                        )}
-                        {column === 'spend' && formatCurrency(campaign.spend)}
-                        {column === 'revenue' && (
-                          <span className="text-green-600">{formatCurrency(campaign.revenue)}</span>
-                        )}
-                        {column === 'sales' && (
-                          <span className="font-semibold">{campaign.sales}</span>
-                        )}
-                        {column === 'profit' && (
-                          <span className={campaign.profit > 0 ? 'text-green-600' : 'text-red-600'}>
-                            {formatCurrency(campaign.profit)}
-                          </span>
-                        )}
-                        {column === 'cpa' && formatCurrency(campaign.cpa)}
-                        {column === 'cpm' && formatCurrency(campaign.cpm)}
-                        {column === 'roas' && (
-                          <span className="font-semibold">{campaign.roas.toFixed(2)}x</span>
-                        )}
-                        {column === 'ctr' && formatPercentage(campaign.ctr)}
-                        {column === 'clickCv' && formatPercentage(campaign.clickCv)}
-                        {column === 'epc' && formatCurrency(campaign.epc)}
-                      </TableCell>
-                    );
-                  })}
+                            ) : editingBudget === campaign.id ? (
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  value={tempBudget}
+                                  onChange={(e) => setTempBudget(e.target.value)}
+                                  className="w-20 h-8 text-xs"
+                                  step="0.01"
+                                  min="0"
+                                />
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleBudgetSave(campaign)}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Check className="h-3 w-3" />
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={handleBudgetCancel}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <span>{formatCurrency(campaign.dailyBudget)}</span>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleBudgetEdit(campaign.id, campaign.dailyBudget)}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Edit2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )
+                          )}
+                          {column === 'spend' && formatCurrency(campaign.spend)}
+                          {column === 'revenue' && (
+                            <span className="text-green-600">{formatCurrency(campaign.revenue)}</span>
+                          )}
+                          {column === 'sales' && (
+                            <span className="font-semibold">{campaign.sales}</span>
+                          )}
+                          {column === 'profit' && (
+                            <span className={campaign.profit > 0 ? 'text-green-600' : 'text-red-600'}>
+                              {formatCurrency(campaign.profit)}
+                            </span>
+                          )}
+                          {column === 'cpa' && formatCurrency(campaign.cpa)}
+                          {column === 'cpm' && formatCurrency(campaign.cpm)}
+                          {column === 'roas' && (
+                            <span className="font-semibold">{campaign.roas.toFixed(2)}x</span>
+                          )}
+                          {column === 'ctr' && formatPercentage(campaign.ctr)}
+                          {column === 'clickCv' && formatPercentage(campaign.clickCv)}
+                          {column === 'epc' && formatCurrency(campaign.epc)}
+                        </TableCell>
+                      );
+                    })}
                   </TableRow>
+                  
+                  {/* 3 Days Metrics Row */}
+                  {expandedCampaign === campaign.id && detailMetrics[campaign.id]?.threeDay && (
+                    <TableRow>
+                      <TableCell className="w-12"></TableCell>
+                      {getVisibleColumns('campaigns').map((column) => {
+                        const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
+                        const metrics = detailMetrics[campaign.id].threeDay;
+                        
+                        return (
+                          <TableCell 
+                            key={column}
+                            className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'cpa' ? getCPAColorClass(metrics.cpa, allCPAs) : ''}`}
+                          >
+                            {column === 'status' && ''}
+                            {column === 'name' && (
+                              <span className="font-semibold">3 Dias</span>
+                            )}
+                            {column === 'dailyBudget' && ''}
+                            {column === 'spend' && formatCurrency(metrics.spend)}
+                            {column === 'revenue' && (
+                              <span className="text-green-600">{formatCurrency(metrics.revenue)}</span>
+                            )}
+                            {column === 'sales' && (
+                              <span className="font-semibold">{metrics.sales}</span>
+                            )}
+                            {column === 'profit' && (
+                              <span className={metrics.profit > 0 ? 'text-green-600' : 'text-red-600'}>
+                                {formatCurrency(metrics.profit)}
+                              </span>
+                            )}
+                            {column === 'cpa' && formatCurrency(metrics.cpa)}
+                            {column === 'cpm' && formatCurrency(metrics.cpm)}
+                            {column === 'roas' && (
+                              <span className="font-semibold">{metrics.roas.toFixed(2)}x</span>
+                            )}
+                            {column === 'ctr' && (
+                              <div className="relative flex items-center justify-end">
+                                <span>{formatPercentage(metrics.ctr)}</span>
+                                {(() => {
+                                  const delta = calculateCTRDelta(campaign.ctr, metrics.ctr);
+                                  const isPositive = delta > 0;
+                                  return (
+                                    <div className="absolute -top-3 -right-9 flex items-center gap-0.5">
+                                      <span className="text-xs font-medium">
+                                        {isPositive ? '+' : ''}{delta.toFixed(1)}%
+                                      </span>
+                                      {isPositive ? (
+                                        <TrendingUp className="h-2.5 w-2.5 text-green-600" />
+                                      ) : (
+                                        <TrendingDown className="h-2.5 w-2.5 text-red-600" />
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                            {column === 'clickCv' && formatPercentage(metrics.clickCv)}
+                            {column === 'epc' && formatCurrency(metrics.epc)}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  )}
+                  
+                  {/* 7 Days Metrics Row */}
+                  {expandedCampaign === campaign.id && detailMetrics[campaign.id]?.sevenDay && (
+                    <TableRow>
+                      <TableCell className="w-12"></TableCell>
+                      {getVisibleColumns('campaigns').map((column) => {
+                        const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
+                        const metrics = detailMetrics[campaign.id].sevenDay;
+                        
+                        return (
+                          <TableCell 
+                            key={column}
+                            className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'cpa' ? getCPAColorClass(metrics.cpa, allCPAs) : ''}`}
+                          >
+                            {column === 'status' && ''}
+                            {column === 'name' && (
+                              <span className="font-semibold">7 Dias</span>
+                            )}
+                            {column === 'dailyBudget' && ''}
+                            {column === 'spend' && formatCurrency(metrics.spend)}
+                            {column === 'revenue' && (
+                              <span className="text-green-600">{formatCurrency(metrics.revenue)}</span>
+                            )}
+                            {column === 'sales' && (
+                              <span className="font-semibold">{metrics.sales}</span>
+                            )}
+                            {column === 'profit' && (
+                              <span className={metrics.profit > 0 ? 'text-green-600' : 'text-red-600'}>
+                                {formatCurrency(metrics.profit)}
+                              </span>
+                            )}
+                            {column === 'cpa' && formatCurrency(metrics.cpa)}
+                            {column === 'cpm' && formatCurrency(metrics.cpm)}
+                            {column === 'roas' && (
+                              <span className="font-semibold">{metrics.roas.toFixed(2)}x</span>
+                            )}
+                            {column === 'ctr' && (
+                              <div className="relative flex items-center justify-end">
+                                <span>{formatPercentage(metrics.ctr)}</span>
+                                {(() => {
+                                  const delta = calculateCTRDelta(campaign.ctr, metrics.ctr);
+                                  const isPositive = delta > 0;
+                                  return (
+                                    <div className="absolute -top-3 -right-9 flex items-center gap-0.5">
+                                      <span className="text-xs font-medium">
+                                        {isPositive ? '+' : ''}{delta.toFixed(1)}%
+                                      </span>
+                                      {isPositive ? (
+                                        <TrendingUp className="h-2.5 w-2.5 text-green-600" />
+                                      ) : (
+                                        <TrendingDown className="h-2.5 w-2.5 text-red-600" />
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            )}
+                            {column === 'clickCv' && formatPercentage(metrics.clickCv)}
+                            {column === 'epc' && formatCurrency(metrics.epc)}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  )}
+                  
                   {expandedCampaign === campaign.id && (
                     <TableRow>
-                      <TableCell colSpan={getVisibleColumns('campaigns').length} className="p-0">
+                      <TableCell colSpan={getVisibleColumns('campaigns').length + 1} className="p-0">
                         <DetailView 
                           type="campaign" 
                           name={campaign.name} 
-                          id={campaign.realId} 
+                          id={campaign.realId}
+                          onMetricsReady={(metrics) => handleMetricsReady(campaign.id, metrics)}
                         />
                       </TableCell>
                     </TableRow>
@@ -502,6 +647,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
               ))}
               {summaryMetrics && (
                 <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-semibold">
+                  <TableCell className="w-12"></TableCell>
                   {getVisibleColumns('campaigns').map((column) => {
                     const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
                     
@@ -529,7 +675,11 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                             {formatCurrency(summaryMetrics.profit)}
                           </span>
                         )}
-                        {column === 'cpa' && formatCurrency(summaryMetrics.cpa)}
+                        {column === 'cpa' && (
+                          <span className={getCPAColorClass(summaryMetrics.cpa, allCPAs)}>
+                            {formatCurrency(summaryMetrics.cpa)}
+                          </span>
+                        )}
                         {column === 'cpm' && formatCurrency(summaryMetrics.cpm)}
                         {column === 'roas' && (
                           <span className="font-semibold">{summaryMetrics.roas.toFixed(2)}x</span>
@@ -546,6 +696,32 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
           </Table>
         </div>
       </div>
+
+      {/* Budget Confirmation Dialog */}
+      <AlertDialog open={showBudgetConfirmation} onOpenChange={setShowBudgetConfirmation}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar alteração de orçamento</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingBudgetChange && (
+                <>
+                  Você está definindo um valor {(pendingBudgetChange.newBudget / pendingBudgetChange.currentBudget).toFixed(1)}x maior, tem certeza?
+                  <br /><br />
+                  A mudança vai saltar o orçamento de {formatCurrency(pendingBudgetChange.currentBudget)} para {formatCurrency(pendingBudgetChange.newBudget)}.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleBudgetConfirmationCancel}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleBudgetConfirmation}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
