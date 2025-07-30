@@ -8,7 +8,7 @@ interface GlobalSettings {
 }
 
 const DEFAULT_SETTINGS: GlobalSettings = {
-  dateFilter: null,
+  dateFilter: null, // Deixar null para que useAdsData use seu próprio filtro padrão
   nameFilter: '',
   statusFilter: 'all'
 };
@@ -30,6 +30,9 @@ export const useGlobalSettings = () => {
           parsed.dateFilter.to = new Date(parsed.dateFilter.to);
         }
         setSettings(parsed);
+        console.log('Loaded settings from localStorage:', parsed);
+      } else {
+        console.log('No saved settings found, using defaults:', DEFAULT_SETTINGS);
       }
     } catch (error) {
       console.error('Erro ao carregar configurações:', error);
@@ -41,12 +44,14 @@ export const useGlobalSettings = () => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
       setSettings(newSettings);
+      console.log('Saved new settings:', newSettings);
     } catch (error) {
       console.error('Erro ao salvar configurações:', error);
     }
   }, []);
 
   const updateDateFilter = useCallback((dateFilter: DateFilter | null) => {
+    console.log('Updating date filter:', dateFilter);
     saveSettings({ ...settings, dateFilter });
   }, [settings, saveSettings]);
 

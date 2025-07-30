@@ -42,7 +42,21 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
 
   // Cálculo das métricas de resumo
   const summaryMetrics = useMemo(() => {
-    if (!filteredAds.length) return null;
+    if (!filteredAds.length) {
+      console.log('No ads data available for the selected period');
+      return {
+        spend: 0,
+        revenue: 0,
+        sales: 0,
+        profit: 0,
+        cpa: 0,
+        cpm: 0,
+        roas: 0,
+        ctr: 0,
+        clickCv: 0,
+        epc: 0,
+      };
+    }
 
     const totalSpend = filteredAds.reduce((sum, ad) => sum + ad.spend, 0);
     const totalRevenue = filteredAds.reduce((sum, ad) => sum + ad.revenue, 0);
@@ -50,6 +64,14 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
     const totalProfit = filteredAds.reduce((sum, ad) => sum + ad.profit, 0);
     const totalClicks = filteredAds.reduce((sum, ad) => sum + ad.clicks, 0);
     const totalImpressions = filteredAds.reduce((sum, ad) => sum + ad.impressions, 0);
+
+    console.log('Ads summary metrics calculated for period:', {
+      adsCount: filteredAds.length,
+      totalSpend,
+      totalSales,
+      totalRevenue,
+      totalProfit
+    });
 
     return {
       spend: totalSpend,

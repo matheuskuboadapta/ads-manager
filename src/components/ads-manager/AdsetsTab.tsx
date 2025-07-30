@@ -49,7 +49,22 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
 
   // Cálculo das métricas de resumo
   const summaryMetrics = useMemo(() => {
-    if (!filteredAdsets.length) return null;
+    if (!filteredAdsets.length) {
+      console.log('No adsets data available for the selected period');
+      return {
+        dailyBudget: 0,
+        spend: 0,
+        revenue: 0,
+        sales: 0,
+        profit: 0,
+        cpa: 0,
+        cpm: 0,
+        roas: 0,
+        ctr: 0,
+        clickCv: 0,
+        epc: 0,
+      };
+    }
 
     const totalSpend = filteredAdsets.reduce((sum, adset) => sum + adset.spend, 0);
     const totalRevenue = filteredAdsets.reduce((sum, adset) => sum + adset.revenue, 0);
@@ -58,6 +73,15 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
     const totalClicks = filteredAdsets.reduce((sum, adset) => sum + adset.clicks, 0);
     const totalImpressions = filteredAdsets.reduce((sum, adset) => sum + adset.impressions, 0);
     const totalDailyBudget = filteredAdsets.reduce((sum, adset) => sum + adset.dailyBudget, 0);
+
+    console.log('Adsets summary metrics calculated for period:', {
+      adsetsCount: filteredAdsets.length,
+      totalSpend,
+      totalSales,
+      totalRevenue,
+      totalProfit,
+      totalDailyBudget
+    });
 
     return {
       dailyBudget: totalDailyBudget,

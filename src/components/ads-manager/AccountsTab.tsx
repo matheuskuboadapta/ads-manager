@@ -18,8 +18,10 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
   
+  // Sempre carregar dados, mesmo que o dateFilter seja null
   const { data: accounts, isLoading, error } = useAccountsData(settings.dateFilter);
 
+  // Filtrar contas por nome
   const filteredAccounts = useMemo(() => {
     if (!accounts) return [];
 
@@ -31,7 +33,21 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
 
   // Cálculo das métricas de resumo
   const summaryMetrics = useMemo(() => {
-    if (!filteredAccounts.length) return null;
+    if (!filteredAccounts.length) {
+      console.log('No accounts data available for the selected period');
+      return {
+        spend: 0,
+        revenue: 0,
+        sales: 0,
+        profit: 0,
+        cpa: 0,
+        cpm: 0,
+        roas: 0,
+        ctr: 0,
+        clickCv: 0,
+        epc: 0,
+      };
+    }
 
     const totalSpend = filteredAccounts.reduce((sum, acc) => sum + acc.spend, 0);
     const totalRevenue = filteredAccounts.reduce((sum, acc) => sum + acc.revenue, 0);
@@ -39,6 +55,14 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
     const totalProfit = filteredAccounts.reduce((sum, acc) => sum + acc.profit, 0);
     const totalClicks = filteredAccounts.reduce((sum, acc) => sum + acc.clicks, 0);
     const totalImpressions = filteredAccounts.reduce((sum, acc) => sum + acc.impressions, 0);
+
+    console.log('Summary metrics calculated for period:', {
+      accountsCount: filteredAccounts.length,
+      totalSpend,
+      totalSales,
+      totalRevenue,
+      totalProfit
+    });
 
     return {
       spend: totalSpend,
@@ -54,39 +78,9 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
     };
   }, [filteredAccounts]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-3 text-slate-600">Carregando contas...</span>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <p className="text-red-600 mb-2">Erro ao carregar dados das contas</p>
-          <p className="text-slate-500 text-sm">{error.message}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!accounts || accounts.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <p className="text-slate-600 mb-2">Nenhuma conta encontrada</p>
-          <p className="text-slate-500 text-sm">Verifique se há dados na view meta_ads_view</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
+      {/* Header sempre visível */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Contas Publicitárias</h2>
@@ -108,6 +102,7 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
         </div>
       </div>
 
+      {/* FilterBar sempre visível */}
       <FilterBar
         activeTab="accounts"
         onNameFilter={updateNameFilter}
@@ -118,6 +113,7 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
         dateFilter={settings.dateFilter}
       />
 
+      {/* Tabela sempre visível */}
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
@@ -147,7 +143,44 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAccounts.map((account) => (
+              {/* Loading state */}
+              {isLoading && (
+                <TableRow>
+                  <TableCell colSpan={getVisibleColumns('accounts').length} className="text-center py-8">
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                      <span className="ml-3 text-slate-600">Carregando contas...</span>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+
+              {/* Error state */}
+              {error && !isLoading && (
+                <TableRow>
+                  <TableCell colSpan={getVisibleColumns('accounts').length} className="text-center py-8">
+                    <div className="text-center">
+                      <p className="text-red-600 mb-2">Erro ao carregar dados das contas</p>
+                      <p className="text-slate-500 text-sm">{error.message}</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+
+              {/* Empty state */}
+              {!isLoading && !error && (!accounts || accounts.length === 0) && (
+                <TableRow>
+                  <TableCell colSpan={getVisibleColumns('accounts').length} className="text-center py-8">
+                    <div className="text-center">
+                      <p className="text-slate-600 mb-2">Nenhuma conta encontrada</p>
+                      <p className="text-slate-500 text-sm">Verifique se há dados na view meta_ads_view</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+
+              {/* Data rows */}
+              {!isLoading && !error && filteredAccounts.map((account) => (
                 <TableRow key={account.id} className="hover:bg-slate-50">
                   {getVisibleColumns('accounts').map((column) => {
                     const isRightAligned = column !== 'name';
@@ -191,6 +224,8 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
                   })}
                 </TableRow>
               ))}
+
+              {/* Summary row */}
               {summaryMetrics && (
                 <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-semibold">
                   {getVisibleColumns('accounts').map((column) => {
@@ -199,22 +234,18 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
                     return (
                       <TableCell 
                         key={column}
-                        className={`${isRightAligned ? 'text-right font-mono text-sm text-blue-900' : ''}`}
+                        className={`${isRightAligned ? 'text-right font-mono text-sm' : 'font-medium'}`}
                       >
-                        {column === 'name' && (
-                          <span className="font-bold text-blue-900">
-                            RESUMO ({filteredAccounts.length} contas)
-                          </span>
-                        )}
+                        {column === 'name' && 'Total'}
                         {column === 'spend' && formatCurrency(summaryMetrics.spend)}
                         {column === 'revenue' && (
-                          <span className="text-green-700">{formatCurrency(summaryMetrics.revenue)}</span>
+                          <span className="text-green-600">{formatCurrency(summaryMetrics.revenue)}</span>
                         )}
                         {column === 'sales' && (
                           <span className="font-semibold">{summaryMetrics.sales}</span>
                         )}
                         {column === 'profit' && (
-                          <span className={summaryMetrics.profit > 0 ? 'text-green-700' : 'text-red-700'}>
+                          <span className={summaryMetrics.profit > 0 ? 'text-green-600' : 'text-red-600'}>
                             {formatCurrency(summaryMetrics.profit)}
                           </span>
                         )}

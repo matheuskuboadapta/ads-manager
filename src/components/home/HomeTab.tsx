@@ -54,25 +54,25 @@ export function HomeTab() {
           chartData={metrics?.last7DaysSales}
         />
         <MetricsScorecard
-          title="Receita"
-          currentValue={metrics?.todayRevenue || 0}
-          previousValue={metrics?.previousDayRevenue || 0}
+          title="Profit"
+          currentValue={metrics?.todayProfit || 0}
+          previousValue={metrics?.previousDayProfit || 0}
           format="currency"
-          chartData={metrics?.last7DaysRevenue}
+          chartData={metrics?.last7DaysProfit}
         />
         <MetricsScorecard
-          title="Impressões"
-          currentValue={metrics?.todayImpressions || 0}
-          previousValue={metrics?.previousDayImpressions || 0}
-          format="number"
-          chartData={metrics?.last7DaysImpressions}
+          title="CPM"
+          currentValue={metrics?.todayCPM || 0}
+          previousValue={metrics?.previousDayCPM || 0}
+          format="currency"
+          chartData={metrics?.last7DaysCPM}
         />
         <MetricsScorecard
-          title="Cliques"
-          currentValue={metrics?.todayClicks || 0}
-          previousValue={metrics?.previousDayClicks || 0}
-          format="number"
-          chartData={metrics?.last7DaysClicks}
+          title="CTR"
+          currentValue={metrics?.todayCTR || 0}
+          previousValue={metrics?.previousDayCTR || 0}
+          format="percentage"
+          chartData={metrics?.last7DaysCTR}
         />
         <MetricsScorecard
           title="CPA"

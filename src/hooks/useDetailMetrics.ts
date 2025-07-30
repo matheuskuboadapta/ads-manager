@@ -12,14 +12,23 @@ const useDetailMetrics = (type: 'campaign' | 'adset' | 'ad', name: string) => {
   return useQuery({
     queryKey: ['detailMetrics', type, name],
     queryFn: async (): Promise<DetailMetricsData[]> => {
-      const today = new Date();
-      const sevenDaysAgo = subDays(today, 6);
+      // Use current local time directly since we're already in GMT-3
+      const now = new Date();
+      
+      // Create dates using YYYY-MM-DD format to avoid timezone issues
+      const todayStr = now.toISOString().split('T')[0];
+      const sevenDaysAgoStr = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6).toISOString().split('T')[0];
+      
+      // For the end date, we need to include the entire day, so we use the next day as the upper limit
+      const nextDay = new Date(todayStr);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const upperLimit = nextDay.toISOString().split('T')[0];
 
       let query = supabase
         .from('meta_ads_view')
-        .select('date_start, spend, real_sales')
-        .gte('date_start', format(sevenDaysAgo, 'yyyy-MM-dd'))
-        .lte('date_start', format(today, 'yyyy-MM-dd'))
+        .select('date_start, spend, real_sales, ad_id')
+        .gte('date_start', sevenDaysAgoStr)
+        .lt('date_start', upperLimit)
         .order('date_start', { ascending: true });
 
       // Filtrar baseado no tipo
@@ -60,7 +69,7 @@ const useDetailMetrics = (type: 'campaign' | 'adset' | 'ad', name: string) => {
       // Criar array dos últimos 7 dias com os dados
       const result: DetailMetricsData[] = [];
       for (let i = 6; i >= 0; i--) {
-        const date = format(subDays(today, i), 'yyyy-MM-dd');
+        const date = format(subDays(now, i), 'yyyy-MM-dd');
         const metrics = dailyMetrics.get(date) || { spend: 0, sales: 0 };
         
         // Para CPA, só mostrar quando há vendas
@@ -70,7 +79,7 @@ const useDetailMetrics = (type: 'campaign' | 'adset' | 'ad', name: string) => {
         }
         
         result.push({
-          date: format(subDays(today, i), 'dd/MM'),
+          date: format(subDays(now, i), 'dd/MM'),
           spend: Number(metrics.spend.toFixed(2)),
           cpa: cpa
         });

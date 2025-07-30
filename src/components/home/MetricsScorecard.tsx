@@ -1,7 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatNumber } from '@/utils/formatters';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { MiniChart } from './MiniChart';
 
 interface MetricsScoreCardProps {
@@ -24,35 +22,10 @@ export function MetricsScorecard({ title, currentValue, previousValue, format, c
     }
   };
 
-  const calculateVariation = () => {
-    if (previousValue === 0) {
-      return currentValue > 0 ? 100 : 0;
-    }
-    return ((currentValue - previousValue) / previousValue) * 100;
-  };
-
-  const variation = calculateVariation();
-  const isPositive = variation > 0;
-  const isNeutral = variation === 0;
-
-  const getVariationIcon = () => {
-    if (isNeutral) return <Minus className="h-3 w-3" />;
-    return isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />;
-  };
-
-  const getVariationColor = () => {
-    if (isNeutral) return 'secondary';
-    return isPositive ? 'default' : 'destructive';
-  };
-
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <Badge variant={getVariationColor()} className="flex items-center space-x-1">
-          {getVariationIcon()}
-          <span>{Math.abs(variation).toFixed(1)}%</span>
-        </Badge>
       </CardHeader>
       <CardContent>
         <div className="flex items-end justify-between">
@@ -63,7 +36,7 @@ export function MetricsScorecard({ title, currentValue, previousValue, format, c
             </CardDescription>
           </div>
           {chartData && chartData.length > 0 && (
-            <div className="w-16">
+            <div className="w-20">
               <MiniChart data={chartData} format={format} />
             </div>
           )}

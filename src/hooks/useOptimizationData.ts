@@ -26,10 +26,13 @@ interface OptimizationData {
 const fetchOptimizationData = async (type: 'campaigns' | 'adsets' | 'ads', dateRange: number) => {
   console.log('Fetching optimization data for:', type, 'dateRange:', dateRange);
   
-  const today = new Date();
-  const todayStr = format(today, 'yyyy-MM-dd');
-  const threeDaysAgoStr = format(subDays(today, 2), 'yyyy-MM-dd');
-  const dateRangeStartStr = format(subDays(today, dateRange - 1), 'yyyy-MM-dd');
+  // Use current local time directly since we're already in GMT-3
+  const now = new Date();
+  
+  // Create dates using YYYY-MM-DD format to avoid timezone issues
+  const todayStr = now.toISOString().split('T')[0];
+  const threeDaysAgoStr = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2).toISOString().split('T')[0];
+  const dateRangeStartStr = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (dateRange - 1)).toISOString().split('T')[0];
 
   console.log('Date filters:', {
     today: todayStr,
@@ -38,11 +41,18 @@ const fetchOptimizationData = async (type: 'campaigns' | 'adsets' | 'ads', dateR
   });
 
   // Fetch data from the period we need
+  // For the end date, we need to include the entire day, so we use the next day as the upper limit
+  const nextDay = new Date(todayStr);
+  nextDay.setDate(nextDay.getDate() + 1);
+  const upperLimit = nextDay.toISOString().split('T')[0];
+  
+  console.log('Query parameters:', { dateRangeStartStr, todayStr, upperLimit });
+  
   const { data: rawData, error } = await supabase
     .from('meta_ads_view')
     .select('*')
     .gte('date_start', dateRangeStartStr)
-    .lte('date_start', todayStr)
+    .lt('date_start', upperLimit)
     .order('date_start', { ascending: true });
 
   console.log('Raw optimization data fetched:', rawData?.length, 'records');

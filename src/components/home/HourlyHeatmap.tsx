@@ -25,41 +25,23 @@ export function HourlyHeatmap() {
     );
   }
 
-  // Aggregate data by date and hour in case there are multiple records
-  const aggregateData = (data: typeof hourlyData): typeof hourlyData => {
-    if (!data) return [];
-    
-    const aggregatedMap = new Map<string, any>();
-    
-    data.forEach(row => {
-      const key = `${row.date_brt}-${row.hour_of_day}`;
-      
-      if (aggregatedMap.has(key)) {
-        const existing = aggregatedMap.get(key);
-        existing.spend_hour += row.spend_hour || 0;
-        existing.real_sales_hour += row.real_sales_hour || 0;
-        existing.impressions_hour += row.impressions_hour || 0;
-        existing.clicks_hour += row.clicks_hour || 0;
-      } else {
-        aggregatedMap.set(key, { ...row });
-      }
-    });
-    
-    return Array.from(aggregatedMap.values());
-  };
-
-  const processedData = aggregateData(hourlyData);
-
-  // Prepare data for heatmap
+  // Prepare data for heatmap - use the same logic as the hook
+  const now = new Date();
+  const brasilOffset = -3 * 60; // GMT-3 in minutes
+  const localOffset = now.getTimezoneOffset();
+  const brasilTime = new Date(now.getTime() + (localOffset - brasilOffset) * 60 * 1000);
+  
+  // Use exactly the same logic as the hook
+  const sevenDaysAgo = new Date(brasilTime);
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+  sevenDaysAgo.setHours(0, 0, 0, 0); // startOfDay equivalent
+  
+  const today = new Date(brasilTime);
+  today.setHours(0, 0, 0, 0); // startOfDay equivalent
+  
   const last7Days = Array.from({ length: 7 }, (_, i) => {
-    // Force timezone to Brazil (GMT-3) to ensure correct date calculation
-    const now = new Date();
-    const brasilOffset = -3 * 60; // GMT-3 in minutes
-    const localOffset = now.getTimezoneOffset();
-    const brasilTime = new Date(now.getTime() + (localOffset - brasilOffset) * 60 * 1000);
-    
-    const date = new Date(brasilTime);
-    date.setDate(date.getDate() - (6 - i));
+    const date = new Date(sevenDaysAgo);
+    date.setDate(date.getDate() + i);
     return date.toISOString().split('T')[0];
   });
 
@@ -67,14 +49,14 @@ export function HourlyHeatmap() {
 
   // Create a map for quick data lookup using processed data
   const dataMap = new Map();
-  processedData.forEach(row => {
+  hourlyData.forEach(row => {
     const key = `${row.date_brt}-${row.hour_of_day}`;
     dataMap.set(key, row);
   });
 
   // Calculate metric values and find min/max for color scaling
   const values: number[] = [];
-  const heatmapData = last7Days.map(date => {
+  const heatmapData = last7Days.map((date, dateIndex) => {
     return hours.map(hour => {
       const key = `${date}-${hour}`;
       const row = dataMap.get(key);
@@ -99,6 +81,19 @@ export function HourlyHeatmap() {
       values.push(value);
       return { date, hour, value, row };
     });
+  });
+
+  // Calculate daily totals
+  const dailyTotals = heatmapData.map((dayData, index) => {
+    if (selectedMetric === 'cpa') {
+      // For CPA, calculate the average instead of sum
+      const nonZeroValues = dayData.filter(({ value }) => value > 0);
+      if (nonZeroValues.length === 0) return 0;
+      return nonZeroValues.reduce((sum, { value }) => sum + value, 0) / nonZeroValues.length;
+    } else {
+      // For spend and sales, sum all values
+      return dayData.reduce((sum, { value }) => sum + value, 0);
+    }
   });
 
   const maxValue = Math.max(...values);
@@ -194,25 +189,33 @@ export function HourlyHeatmap() {
 
       {/* Heatmap */}
       <div className="bg-card rounded-lg p-4 overflow-x-auto">
-        <div className="min-w-[800px]">
+        <div className="min-w-[1400px] flex flex-col">
           {/* Hour labels */}
           <div className="flex mb-2">
-            <div className="w-20"></div> {/* Space for day labels */}
+            <div className="w-32"></div> {/* Space for day labels */}
             {hours.map(hour => (
-              <div key={hour} className="w-8 text-xs text-center text-muted-foreground">
+              <div key={hour} className="w-14 text-xs text-center text-muted-foreground flex justify-center items-center px-0 mx-0">
                 {hour.toString().padStart(2, '0')}
               </div>
             ))}
+            <div className="w-36 text-xs text-center text-muted-foreground font-medium flex justify-center items-center px-0 mx-0">
+              Total
+            </div>
           </div>
           
           {/* Heatmap grid */}
           {heatmapData.map((dayData, dayIndex) => (
-            <div key={last7Days[dayIndex]} className="flex items-center mb-1">
+            <div key={last7Days[dayIndex]} className="flex items-center mb-1 justify-start">
               {/* Day label */}
-              <div className="w-20 text-xs text-muted-foreground pr-2">
+              <div className="w-32 text-xs text-muted-foreground pr-2">
                 {new Date(last7Days[dayIndex]).toLocaleDateString('pt-BR', { 
-                  weekday: 'short',
-                  day: '2-digit'
+                  weekday: 'long'
+                }).split(',')[0].substring(0, 3).charAt(0).toUpperCase() + 
+                new Date(last7Days[dayIndex]).toLocaleDateString('pt-BR', { 
+                  weekday: 'long'
+                }).split(',')[0].substring(1, 3)} - {new Date(last7Days[dayIndex]).toLocaleDateString('pt-BR', { 
+                  day: '2-digit',
+                  month: '2-digit'
                 })}
               </div>
               
@@ -220,7 +223,7 @@ export function HourlyHeatmap() {
               {dayData.map(({ hour, value }) => (
                 <div
                   key={hour}
-                  className="w-8 h-6 mx-px rounded-sm border border-border relative group"
+                  className="w-14 h-10 mx-0 rounded-sm border border-border relative group flex-shrink-0"
                   style={{
                     backgroundColor: getColorForIntensity(getIntensity(value))
                   }}
@@ -233,6 +236,11 @@ export function HourlyHeatmap() {
                   </div>
                 </div>
               ))}
+              
+              {/* Daily total */}
+              <div className="w-36 text-xs text-center font-medium text-foreground bg-muted/50 rounded px-2 py-1 ml-0 flex-shrink-0">
+                {formatValue(dailyTotals[dayIndex])}
+              </div>
             </div>
           ))}
         </div>

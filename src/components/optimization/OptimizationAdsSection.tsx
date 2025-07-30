@@ -13,20 +13,20 @@ export function OptimizationAdsSection({ dateRange }: OptimizationAdsSectionProp
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Card>
             <CardContent className="pt-6">
-              <div className="text-center text-muted-foreground">Carregando dados...</div>
+              <div className="text-center text-muted-foreground">Carregando dados de hoje...</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
-              <div className="text-center text-muted-foreground">Carregando dados...</div>
+              <div className="text-center text-muted-foreground">Carregando últimos 3 dias...</div>
             </CardContent>
           </Card>
         </div>
-        <div className="col-span-2">
+        <div>
           <Card>
             <CardContent className="pt-6">
               <div className="text-center text-muted-foreground">Carregando anúncios...</div>
@@ -38,7 +38,7 @@ export function OptimizationAdsSection({ dateRange }: OptimizationAdsSectionProp
   }
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-2 gap-4">
       {/* Left side - Last 3 days and period data */}
       <div className="space-y-2">
         <Card>
@@ -199,7 +199,7 @@ export function OptimizationAdsSection({ dateRange }: OptimizationAdsSectionProp
       </div>
 
       {/* Right side - Today's ads table */}
-      <div className="col-span-2">
+      <div>
         <Card>
           <CardHeader>
             <CardTitle>Anúncios - Hoje</CardTitle>

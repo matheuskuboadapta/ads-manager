@@ -480,6 +480,18 @@ export type Database = {
         }
         Relationships: []
       }
+      meta_ads_account_hourly_view: {
+        Row: {
+          account_name: string | null
+          date_brt: string | null
+          hour_of_day: number | null
+          spend_hour: number | null
+          real_sales_hour: number | null
+          impressions_hour: number | null
+          clicks_hour: number | null
+        }
+        Relationships: []
+      }
       meta_ads_view_temp: {
         Row: {
           account_name: string | null

@@ -59,44 +59,81 @@ const FilterBar = ({
   const showStatusFilter = ['campaigns', 'adsets', 'ads'].includes(activeTab);
 
   const getPresetDateRanges = (): DateFilter[] => {
-    // Force timezone to Brazil (GMT-3) to ensure correct date calculation
+    // Use current local time directly since we're already in GMT-3
     const now = new Date();
-    const brasilOffset = -3 * 60; // GMT-3 in minutes
-    const localOffset = now.getTimezoneOffset();
-    const brasilTime = new Date(now.getTime() + (localOffset - brasilOffset) * 60 * 1000);
     
-    const today = startOfDay(brasilTime);
-    const yesterday = startOfDay(subDays(brasilTime, 1));
+    console.log('=== FILTERBAR DATE RANGES DEBUG ===');
+    console.log('Current time (local):', now.toISOString());
+    console.log('Current time (local):', now.toString());
+    console.log('Current date (YYYY-MM-DD):', now.toISOString().split('T')[0]);
+    
+    // Create dates using YYYY-MM-DD format to avoid timezone issues
+    const todayStr = now.toISOString().split('T')[0];
+    const yesterdayStr = subDays(now, 1).toISOString().split('T')[0];
+    
+    const today = new Date(todayStr + 'T00:00:00');
+    const yesterday = new Date(yesterdayStr + 'T00:00:00');
+    
+    console.log('Today (start):', today.toISOString());
+    console.log('Today (start):', today.toString());
+    console.log('Today date (YYYY-MM-DD):', today.toISOString().split('T')[0]);
+    console.log('Yesterday (start):', yesterday.toISOString());
+    console.log('Yesterday (start):', yesterday.toString());
+    console.log('Yesterday date (YYYY-MM-DD):', yesterday.toISOString().split('T')[0]);
+    
+    // Create end dates using the same day to avoid timezone issues
+    const todayEnd = new Date(todayStr + 'T00:00:00');
+    const yesterdayEnd = new Date(yesterdayStr + 'T00:00:00');
+    
+    console.log('Today (end):', todayEnd.toISOString());
+    console.log('Today (end):', todayEnd.toString());
+    console.log('Today end date (YYYY-MM-DD):', todayEnd.toISOString().split('T')[0]);
+    console.log('Yesterday (end):', yesterdayEnd.toISOString());
+    console.log('Yesterday (end):', yesterdayEnd.toString());
+    console.log('Yesterday end date (YYYY-MM-DD):', yesterdayEnd.toISOString().split('T')[0]);
+    
+    console.log('=== END FILTERBAR DATE RANGES DEBUG ===');
+    
+    // Create dates for other ranges using YYYY-MM-DD format
+    const last3DaysStartStr = subDays(now, 2).toISOString().split('T')[0];
+    const last7DaysStartStr = subDays(now, 6).toISOString().split('T')[0];
+    const last14DaysStartStr = subDays(now, 13).toISOString().split('T')[0];
+    const last30DaysStartStr = subDays(now, 29).toISOString().split('T')[0];
+    
+    const last3DaysStart = new Date(last3DaysStartStr + 'T00:00:00');
+    const last7DaysStart = new Date(last7DaysStartStr + 'T00:00:00');
+    const last14DaysStart = new Date(last14DaysStartStr + 'T00:00:00');
+    const last30DaysStart = new Date(last30DaysStartStr + 'T00:00:00');
     
     return [
       {
         from: today,
-        to: endOfDay(today),
+        to: todayEnd,
         label: 'Hoje'
       },
       {
         from: yesterday,
-        to: endOfDay(yesterday),
+        to: yesterdayEnd,
         label: 'Ontem'
       },
       {
-        from: startOfDay(subDays(brasilTime, 2)),
-        to: endOfDay(brasilTime),
+        from: last3DaysStart,
+        to: todayEnd,
         label: 'Últimos 3 dias'
       },
       {
-        from: startOfDay(subDays(brasilTime, 6)),
-        to: endOfDay(brasilTime),
+        from: last7DaysStart,
+        to: todayEnd,
         label: 'Últimos 7 dias'
       },
       {
-        from: startOfDay(subDays(brasilTime, 13)),
-        to: endOfDay(brasilTime),
+        from: last14DaysStart,
+        to: todayEnd,
         label: 'Últimos 14 dias'
       },
       {
-        from: startOfDay(subDays(brasilTime, 29)),
-        to: endOfDay(brasilTime),
+        from: last30DaysStart,
+        to: todayEnd,
         label: 'Últimos 30 dias'
       }
     ];
@@ -121,9 +158,19 @@ const FilterBar = ({
   const handleCustomDateSelect = (range: {from: Date | undefined, to: Date | undefined}) => {
     setCustomDateRange(range);
     if (range.from && range.to) {
+      // Use the same approach as preset filters to avoid timezone issues
+      const fromStr = range.from.toISOString().split('T')[0];
+      const toStr = range.to.toISOString().split('T')[0];
+      
+      // Create dates in local timezone to avoid conversion issues
+      const fromDate = new Date(fromStr + 'T00:00:00');
+      const toDate = new Date(toStr + 'T00:00:00');
+      
+      console.log('Custom date filter:', { fromStr, toStr, fromDate: fromDate.toISOString(), toDate: toDate.toISOString() });
+      
       onDateFilter({
-        from: startOfDay(range.from),
-        to: endOfDay(range.to),
+        from: fromDate,
+        to: toDate,
         label: 'Período personalizado'
       });
       setIsDatePickerOpen(false);
@@ -241,7 +288,18 @@ const FilterBar = ({
           
           {dateFilter && (
             <p className="text-xs text-slate-500">
-              {format(dateFilter.from, "dd/MM/yyyy", { locale: ptBR })} - {format(dateFilter.to, "dd/MM/yyyy", { locale: ptBR })}
+              {(() => {
+                const fromDate = dateFilter.from.toISOString().split('T')[0];
+                const toDate = dateFilter.to.toISOString().split('T')[0];
+                
+                if (fromDate === toDate) {
+                  // Same day - show only one date
+                  return format(dateFilter.from, "dd/MM/yyyy", { locale: ptBR });
+                } else {
+                  // Different days - show range
+                  return `${format(dateFilter.from, "dd/MM/yyyy", { locale: ptBR })} - ${format(dateFilter.to, "dd/MM/yyyy", { locale: ptBR })}`;
+                }
+              })()}
             </p>
           )}
         </div>

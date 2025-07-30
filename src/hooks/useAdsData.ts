@@ -31,26 +31,128 @@ export const useAdsData = (dateFilter?: DateFilter | null) => {
   return useQuery({
     queryKey: ['ads-data', dateFilter],
     queryFn: async () => {
+      console.log('=== USEADS_DATA DEBUG ===');
       console.log('Fetching ads data from Supabase with date filter:', dateFilter);
       
-      let query = supabase.from('meta_ads_view').select('*');
-      
-      if (dateFilter) {
-        const fromDate = dateFilter.from.toISOString().split('T')[0];
-        const toDate = dateFilter.to.toISOString().split('T')[0];
-        query = query.gte('date_start', fromDate).lte('date_start', toDate);
+      // Se não há dateFilter, retornar array vazio - NÃO usar filtro padrão
+      if (!dateFilter) {
+        console.log('❌ No date filter provided - returning empty array');
+        return [];
       }
 
-      const { data, error } = await query;
+      const fromDate = dateFilter.from.toISOString().split('T')[0];
+      const toDate = dateFilter.to.toISOString().split('T')[0];
+      console.log('Date filter applied:', { fromDate, toDate, label: dateFilter.label });
+      console.log('Date filter raw dates:', { 
+        from: dateFilter.from.toISOString(), 
+        to: dateFilter.to.toISOString() 
+      });
+      console.log('Date filter local dates:', { 
+        from: dateFilter.from.toString(), 
+        to: dateFilter.to.toString() 
+      });
+      console.log('Date filter from.toDateString():', dateFilter.from.toDateString());
+      console.log('Date filter to.toDateString():', dateFilter.to.toDateString());
+      
+      // Debug: Check if this is a single day filter
+      if (fromDate === toDate) {
+        console.log('✅ Single day filter detected:', fromDate);
+        console.log('Expected SQL: SELECT SUM(spend) FROM meta_ads_view WHERE date_start = \'' + fromDate + '\'');
+      } else {
+        console.log('⚠️ Date range filter detected:', { fromDate, toDate });
+        console.log('Expected SQL: SELECT SUM(spend) FROM meta_ads_view WHERE date_start >= \'' + fromDate + '\' AND date_start <= \'' + toDate + '\'');
+      }
+
+      // Query to meta_ads_view with exact date range - NO substitutions
+      // For the end date, we need to include the entire day, so we use the next day as the upper limit
+      const nextDay = new Date(toDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      const upperLimit = nextDay.toISOString().split('T')[0];
+      
+      console.log('Query parameters:', { fromDate, toDate, upperLimit });
+      
+      const { data: rawData, error } = await supabase
+        .from('meta_ads_view')
+        .select('*')
+        .gte('date_start', fromDate)
+        .lt('date_start', upperLimit);
 
       if (error) {
-        console.error('Error fetching ads data:', error);
+        console.error('❌ Error fetching data:', error);
         throw error;
       }
 
-      console.log('Ads data fetched successfully:', data?.length, 'records');
-      console.log('Sample of raw data:', data?.slice(0, 3));
-      return data as AdsViewData[];
+      if (!rawData || rawData.length === 0) {
+        console.log('❌ No data found for exact date range - returning empty array');
+        console.log('Query parameters:', { fromDate, toDate });
+        console.log('This means there are NO records for the requested period');
+        return [];
+      }
+
+      console.log('✅ Raw data fetched:', rawData.length, 'records for exact date range');
+      console.log('Sample data:', rawData.slice(0, 2));
+
+      // IMPORTANTE: NÃO fazer deduplicação - usar todos os registros como vêm do banco
+      // Isso garante que os dados sejam idênticos à query SQL direta
+      console.log('✅ Using ALL records without deduplication to match SQL query exactly');
+
+      // Return data as-is without any deduplication
+      const result = rawData.map(row => ({
+        account_name: row.account_name,
+        ad_id: row.ad_id,
+        ad_name: row.ad_name,
+        adset_id: row.adset_id,
+        adset_name: row.adset_name,
+        campaign_id: row.campaign_id,
+        campaign_name: row.campaign_name,
+        date_start: row.date_start,
+        ad_status_final: row.ad_status_final,
+        adset_status_final: row.adset_status_final,
+        campaign_status_final: row.campaign_status_final,
+        is_adset_level_budget: row.is_adset_level_budget,
+        daily_budget_per_row: row.daily_budget_per_row,
+        preview_shareable_link: row.preview_shareable_link,
+        spend: Number(row.spend) || 0,
+        real_revenue: Number(row.real_revenue) || 0,
+        real_sales: Number(row.real_sales) || 0,
+        profit: Number(row.profit) || 0,
+        clicks: Number(row.clicks) || 0,
+        impressions: Number(row.impressions) || 0,
+      }));
+
+      console.log('✅ Processed data:', result.length, 'records');
+
+      // Debug: Show total spend by date
+      const spendByDate = new Map<string, number>();
+      result.forEach(row => {
+        const date = row.date_start;
+        const spend = row.spend || 0;
+        spendByDate.set(date, (spendByDate.get(date) || 0) + spend);
+      });
+      console.log('Total spend by date:', Object.fromEntries(spendByDate));
+
+      // Debug: Calculate total spend
+      const totalSpend = result.reduce((sum, row) => sum + (row.spend || 0), 0);
+      console.log('Total spend for exact date range:', totalSpend);
+      
+      // Debug: Compare with expected SQL result
+      console.log('=== SQL COMPARISON DEBUG ===');
+      console.log('Expected SQL result for date range:', { fromDate, toDate });
+      console.log('Current total spend:', totalSpend);
+      console.log('If this matches your SQL query, the data is correct');
+      
+      // Additional verification: Check if we're getting the exact same data as SQL
+      if (fromDate === toDate) {
+        console.log('Single date query - should match: SELECT SUM(spend) FROM meta_ads_view WHERE date_start = \'' + fromDate + '\'');
+      } else {
+        console.log('Date range query - should match: SELECT SUM(spend) FROM meta_ads_view WHERE date_start >= \'' + fromDate + '\' AND date_start < \'' + upperLimit + '\'');
+      }
+      
+      console.log('=== END SQL COMPARISON DEBUG ===');
+      
+      console.log('=== END USEADS_DATA DEBUG ===');
+
+      return result as AdsViewData[];
     },
     staleTime: 15 * 60 * 1000, // 15 minutes
     refetchInterval: 15 * 60 * 1000, // Auto-refresh every 15 minutes
@@ -61,15 +163,32 @@ export const useAccountsData = (dateFilter?: DateFilter | null) => {
   const { data: adsData, isLoading, error } = useAdsData(dateFilter);
 
   const accountsData = React.useMemo(() => {
-    if (!adsData) return [];
+    console.log('=== USEACCOUNTS_DATA DEBUG ===');
+    console.log('Processing accounts data with dateFilter:', dateFilter);
+    console.log('Ads data received:', adsData?.length || 0, 'records');
+    
+    if (!adsData) {
+      console.log('❌ No ads data available - returning empty array');
+      return [];
+    }
+
+    if (adsData.length === 0) {
+      console.log('❌ Empty ads data array - returning empty accounts array');
+      console.log('This means there are NO records for the requested period');
+      return [];
+    }
 
     console.log('Processing accounts data...');
-    const accountsMap = new Map();
+    console.log('Total raw ads data records:', adsData.length);
+    
+    // Group by account_name and sum all metrics, ensuring no duplicates
+    const accountsMap = new Map<string, any>();
 
     adsData.forEach(row => {
       if (!row.account_name) return;
 
       const accountKey = row.account_name;
+      
       if (!accountsMap.has(accountKey)) {
         accountsMap.set(accountKey, {
           id: `acc_${accountKey.toLowerCase().replace(/\s+/g, '_')}`,
@@ -81,7 +200,6 @@ export const useAccountsData = (dateFilter?: DateFilter | null) => {
           profit: 0,
           clicks: 0,
           impressions: 0,
-          // Store the first ad_id found for this account
           firstAdId: row.ad_id,
         });
       }
@@ -95,6 +213,49 @@ export const useAccountsData = (dateFilter?: DateFilter | null) => {
       account.impressions += row.impressions || 0;
     });
 
+    console.log('Processed accounts:', accountsMap.size);
+    console.log('Accounts data:', Array.from(accountsMap.values()).map(acc => ({ name: acc.name, spend: acc.spend, sales: acc.sales })));
+    
+    // Debug: Calculate total spend across all accounts
+    const totalSpend = Array.from(accountsMap.values()).reduce((sum, acc) => sum + acc.spend, 0);
+    console.log('Total spend across all accounts:', totalSpend);
+    
+    // Debug: Verify against raw data total
+    const rawDataTotalSpend = adsData.reduce((sum, row) => sum + (row.spend || 0), 0);
+    console.log('Raw data total spend:', rawDataTotalSpend);
+    console.log('Accounts aggregation total spend:', totalSpend);
+    console.log('Difference:', Math.abs(rawDataTotalSpend - totalSpend));
+    
+    if (Math.abs(rawDataTotalSpend - totalSpend) > 0.01) {
+      console.error('❌ MISMATCH: Raw data total and accounts aggregation total are different!');
+      console.error('Raw data total:', rawDataTotalSpend);
+      console.error('Accounts aggregation total:', totalSpend);
+      console.error('Difference:', rawDataTotalSpend - totalSpend);
+    } else {
+      console.log('✅ MATCH: Raw data total and accounts aggregation total are identical');
+    }
+    
+    // Debug: Execute direct SQL query for comparison
+    if (dateFilter) {
+      const fromDate = dateFilter.from.toISOString().split('T')[0];
+      const toDate = dateFilter.to.toISOString().split('T')[0];
+      
+      console.log('=== DIRECT SQL COMPARISON ===');
+      console.log('Date range for comparison:', { fromDate, toDate });
+      console.log('Expected SQL query: SELECT SUM(spend) FROM meta_ads_view WHERE date_start >= \'' + fromDate + '\' AND date_start <= \'' + toDate + '\'');
+      console.log('Current processed total spend:', totalSpend);
+      console.log('If this matches your SQL query result, the data is correct');
+      console.log('=== END DIRECT SQL COMPARISON ===');
+    }
+    
+    // Debug: Check for any unusually high values
+    const highSpendAccounts = Array.from(accountsMap.values()).filter(acc => acc.spend > 50000);
+    if (highSpendAccounts.length > 0) {
+      console.warn('Found accounts with unusually high spend:', highSpendAccounts.map(acc => ({ name: acc.name, spend: acc.spend })));
+    }
+    
+    console.log('=== END USEACCOUNTS_DATA DEBUG ===');
+    
     const accounts = Array.from(accountsMap.values()).map(account => ({
       ...account,
       cpa: account.sales > 0 ? account.spend / account.sales : 0,
@@ -106,9 +267,8 @@ export const useAccountsData = (dateFilter?: DateFilter | null) => {
       roas: account.spend > 0 ? account.revenue / account.spend : 0,
     }));
 
-    console.log('Processed accounts:', accounts.length);
     return accounts;
-  }, [adsData]);
+  }, [adsData, dateFilter]);
 
   return { data: accountsData, isLoading, error };
 };
@@ -120,41 +280,42 @@ export const useCampaignsData = (accountName?: string | null, dateFilter?: DateF
   const campaignsData = React.useMemo(() => {
     if (!adsData) return [];
 
+    if (adsData.length === 0) {
+      console.log('No campaigns data available for the selected period');
+      return [];
+    }
+
     console.log('Processing campaigns data for account:', accountName);
     console.log('Total raw ads data records:', adsData.length);
     
-    const campaignsMap = new Map();
-    let filteredRows = 0;
+    // Group by campaign_name and sum all metrics
+    const campaignsMap = new Map<string, any>();
 
     adsData
-      .filter(row => {
-        const shouldInclude = !accountName || row.account_name === accountName;
-        if (shouldInclude) filteredRows++;
-        return shouldInclude;
-      })
+      .filter(row => !accountName || row.account_name === accountName)
       .forEach(row => {
         if (!row.campaign_name) return;
 
         const campaignKey = row.campaign_name;
+        
         if (!campaignsMap.has(campaignKey)) {
-        campaignsMap.set(campaignKey, {
-          id: `camp_${campaignKey.toLowerCase().replace(/\s+/g, '_')}`,
-          realId: row.campaign_id, // Use actual campaign_id from database
-          name: row.campaign_name,
-          objective: 'CONVERSIONS',
-          status: row.campaign_status_final === 'ATIVO' ? 'ACTIVE' : 'PAUSED',
-          statusFinal: row.campaign_status_final,
-          isAdsetLevelBudget: row.is_adset_level_budget,
-          dailyBudget: row.daily_budget_per_row || 0,
-          spend: 0,
-          revenue: 0,
-          sales: 0,
-          profit: 0,
-          clicks: 0,
-          impressions: 0,
-          // Store the first ad_id found for this campaign
-          firstAdId: row.ad_id,
-        });
+          campaignsMap.set(campaignKey, {
+            id: `camp_${campaignKey.toLowerCase().replace(/\s+/g, '_')}`,
+            realId: row.campaign_id,
+            name: row.campaign_name,
+            objective: 'CONVERSIONS',
+            status: row.campaign_status_final === 'ATIVO' ? 'ACTIVE' : 'PAUSED',
+            statusFinal: row.campaign_status_final,
+            isAdsetLevelBudget: row.is_adset_level_budget,
+            dailyBudget: row.daily_budget_per_row || 0,
+            spend: 0,
+            revenue: 0,
+            sales: 0,
+            profit: 0,
+            clicks: 0,
+            impressions: 0,
+            firstAdId: row.ad_id,
+          });
         }
 
         const campaign = campaignsMap.get(campaignKey);
@@ -166,9 +327,7 @@ export const useCampaignsData = (accountName?: string | null, dateFilter?: DateF
         campaign.impressions += row.impressions || 0;
       });
 
-    console.log('Filtered rows for account:', filteredRows);
     console.log('Unique campaigns found:', campaignsMap.size);
-    console.log('Campaign names:', Array.from(campaignsMap.keys()));
 
     const campaigns = Array.from(campaignsMap.values()).map(campaign => {
       const updates = optimisticUpdates[campaign.firstAdId] || {};
@@ -214,72 +373,54 @@ export const useAdsetsData = (campaignName?: string | null, dateFilter?: DateFil
   const adsetsData = React.useMemo(() => {
     if (!adsData) return [];
 
+    if (adsData.length === 0) {
+      console.log('No adsets data available for the selected period');
+      return [];
+    }
+
     console.log('=== ADSETS DATA PROCESSING ===');
     console.log('Processing adsets data for campaign:', campaignName);
     console.log('Total raw ads data records:', adsData.length);
     
-    // Log all campaign names available in the data
-    const uniqueCampaignNames = [...new Set(adsData.map(row => row.campaign_name).filter(Boolean))];
-    console.log('Available campaign names in data:', uniqueCampaignNames);
-    
-    const adsetsMap = new Map();
-    let filteredRows = 0;
+    // Group by adset_name and sum all metrics
+    const adsetsMap = new Map<string, any>();
 
-    const filteredData = adsData.filter(row => {
-      const shouldInclude = !campaignName || row.campaign_name === campaignName;
-      if (shouldInclude) filteredRows++;
-      if (campaignName && row.campaign_name === campaignName) {
-        console.log('Matching row found:', {
-          campaign_name: row.campaign_name,
-          adset_name: row.adset_name,
-          ad_name: row.ad_name
-        });
-      }
-      return shouldInclude;
-    });
+    adsData
+      .filter(row => !campaignName || row.campaign_name === campaignName)
+      .forEach(row => {
+        if (!row.adset_name) return;
 
-    console.log('Filtered rows for campaign:', filteredRows);
-    console.log('Filtered data sample:', filteredData.slice(0, 3));
+        const adsetKey = row.adset_name;
+        
+        if (!adsetsMap.has(adsetKey)) {
+          adsetsMap.set(adsetKey, {
+            id: `adset_${adsetKey.toLowerCase().replace(/\s+/g, '_')}`,
+            realId: row.adset_id,
+            name: row.adset_name,
+            status: row.adset_status_final === 'ATIVO' ? 'ACTIVE' : 'PAUSED',
+            statusFinal: row.adset_status_final,
+            isAdsetLevelBudget: row.is_adset_level_budget,
+            dailyBudget: row.daily_budget_per_row || 0,
+            spend: 0,
+            revenue: 0,
+            sales: 0,
+            profit: 0,
+            clicks: 0,
+            impressions: 0,
+            firstAdId: row.ad_id,
+          });
+        }
 
-    filteredData.forEach(row => {
-      if (!row.adset_name) {
-        console.log('Row missing adset_name:', row);
-        return;
-      }
-
-      const adsetKey = row.adset_name;
-      if (!adsetsMap.has(adsetKey)) {
-        console.log('Creating new adset:', adsetKey);
-        adsetsMap.set(adsetKey, {
-          id: `adset_${adsetKey.toLowerCase().replace(/\s+/g, '_')}`,
-          realId: row.adset_id, // Use actual adset_id from database
-          name: row.adset_name,
-          status: row.adset_status_final === 'ATIVO' ? 'ACTIVE' : 'PAUSED',
-          statusFinal: row.adset_status_final,
-          isAdsetLevelBudget: row.is_adset_level_budget,
-          dailyBudget: row.daily_budget_per_row || 0,
-          spend: 0,
-          revenue: 0,
-          sales: 0,
-          profit: 0,
-          clicks: 0,
-          impressions: 0,
-          // Store the first ad_id found for this adset
-          firstAdId: row.ad_id,
-        });
-      }
-
-      const adset = adsetsMap.get(adsetKey);
-      adset.spend += row.spend || 0;
-      adset.revenue += row.real_revenue || 0;
-      adset.sales += row.real_sales || 0;
-      adset.profit += row.profit || 0;
-      adset.clicks += row.clicks || 0;
-      adset.impressions += row.impressions || 0;
-    });
+        const adset = adsetsMap.get(adsetKey);
+        adset.spend += row.spend || 0;
+        adset.revenue += row.real_revenue || 0;
+        adset.sales += row.real_sales || 0;
+        adset.profit += row.profit || 0;
+        adset.clicks += row.clicks || 0;
+        adset.impressions += row.impressions || 0;
+      });
 
     console.log('Unique adsets found:', adsetsMap.size);
-    console.log('Adset names:', Array.from(adsetsMap.keys()));
 
     const adsets = Array.from(adsetsMap.values()).map(adset => {
       const updates = optimisticUpdates[adset.firstAdId] || {};
@@ -333,7 +474,16 @@ export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilte
       if (dateFilter) {
         const fromDate = dateFilter.from.toISOString().split('T')[0];
         const toDate = dateFilter.to.toISOString().split('T')[0];
-        query = query.gte('date_start', fromDate).lte('date_start', toDate);
+        
+        // For the end date, we need to include the entire day, so we use the next day as the upper limit
+        const nextDay = new Date(toDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        const upperLimit = nextDay.toISOString().split('T')[0];
+        
+        query = query.gte('date_start', fromDate).lt('date_start', upperLimit);
+      } else {
+        console.log('No date filter provided - returning empty array');
+        return [];
       }
       
       if (adsetName) {
@@ -347,7 +497,10 @@ export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilte
         throw error;
       }
 
-      if (!adsData) return [];
+      if (!adsData || adsData.length === 0) {
+        console.log('No ads data found for the selected period');
+        return [];
+      }
 
       // Get unique ad IDs
       const adIds = [...new Set(adsData.map(row => row.ad_id).filter(Boolean))];
@@ -369,12 +522,14 @@ export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilte
         }
       }
 
-      const adsMap = new Map();
+      // Group by ad_id and sum all metrics
+      const adsMap = new Map<string, any>();
 
       adsData.forEach(row => {
         if (!row.ad_name || !row.ad_id) return;
 
         const adKey = row.ad_id;
+        
         if (!adsMap.has(adKey)) {
           adsMap.set(adKey, {
             id: row.ad_id,

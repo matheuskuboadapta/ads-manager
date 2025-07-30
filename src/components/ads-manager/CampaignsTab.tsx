@@ -50,7 +50,21 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
 
   // Cálculo das métricas de resumo
   const summaryMetrics = useMemo(() => {
-    if (!filteredCampaigns.length) return null;
+    if (!filteredCampaigns.length) {
+      console.log('No campaigns data available for the selected period');
+      return {
+        spend: 0,
+        revenue: 0,
+        sales: 0,
+        profit: 0,
+        cpa: 0,
+        cpm: 0,
+        roas: 0,
+        ctr: 0,
+        clickCv: 0,
+        epc: 0,
+      };
+    }
 
     const totalSpend = filteredCampaigns.reduce((sum, campaign) => sum + campaign.spend, 0);
     const totalRevenue = filteredCampaigns.reduce((sum, campaign) => sum + campaign.revenue, 0);
@@ -58,6 +72,14 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
     const totalProfit = filteredCampaigns.reduce((sum, campaign) => sum + campaign.profit, 0);
     const totalClicks = filteredCampaigns.reduce((sum, campaign) => sum + campaign.clicks, 0);
     const totalImpressions = filteredCampaigns.reduce((sum, campaign) => sum + campaign.impressions, 0);
+
+    console.log('Campaigns summary metrics calculated for period:', {
+      campaignsCount: filteredCampaigns.length,
+      totalSpend,
+      totalSales,
+      totalRevenue,
+      totalProfit
+    });
 
     return {
       spend: totalSpend,

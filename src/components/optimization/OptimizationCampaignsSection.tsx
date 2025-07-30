@@ -13,7 +13,7 @@ export function OptimizationCampaignsSection({ dateRange }: OptimizationCampaign
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Card>
             <CardContent className="pt-6">
@@ -26,7 +26,7 @@ export function OptimizationCampaignsSection({ dateRange }: OptimizationCampaign
             </CardContent>
           </Card>
         </div>
-        <div className="col-span-2">
+        <div>
           <Card>
             <CardContent className="pt-6">
               <div className="text-center text-muted-foreground">Carregando campanhas...</div>
@@ -40,7 +40,7 @@ export function OptimizationCampaignsSection({ dateRange }: OptimizationCampaign
   const hasData = campaignsData.main.length > 0 || campaignsData.today.length > 0 || campaignsData.last3Days.length > 0;
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-2 gap-4">
       {/* Left side - Last 3 days and period data */}
       <div className="space-y-2">
         <Card>
@@ -201,7 +201,7 @@ export function OptimizationCampaignsSection({ dateRange }: OptimizationCampaign
       </div>
 
       {/* Right side - Today's campaigns table */}
-      <div className="col-span-2">
+      <div>
         <Card>
           <CardHeader>
             <CardTitle>Campanhas - Hoje</CardTitle>
