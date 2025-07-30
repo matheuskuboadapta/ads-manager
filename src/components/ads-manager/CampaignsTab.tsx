@@ -360,7 +360,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
       />
 
       <div className="border rounded-lg">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto chat-table-container">
           <Table>
             <TableHeader>
               <TableRow>

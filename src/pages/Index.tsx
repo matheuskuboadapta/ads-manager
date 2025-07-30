@@ -13,13 +13,15 @@ import AdsetsTab from '@/components/ads-manager/AdsetsTab';
 import AdsTab from '@/components/ads-manager/AdsTab';
 import RulesTab from '@/components/ads-manager/RulesTab';
 import { HomeTab } from '@/components/home/HomeTab';
-import { FloatingChatButton } from '@/components/chat/FloatingChatButton';
+import { ChatSidebar } from '@/components/chat/ChatSidebar';
 
 export default function Index() {
   const [activeTab, setActiveTab] = useState('home');
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
   const [selectedAdset, setSelectedAdset] = useState<string | null>(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatWidth, setChatWidth] = useState(400);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, signOut } = useAuth();
@@ -150,6 +152,7 @@ export default function Index() {
             <Badge variant="outline" className="text-muted-foreground">
               Última atualização: {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </Badge>
+            <ChatSidebar onToggle={setIsChatOpen} onWidthChange={setChatWidth} />
             <Button onClick={handleRefresh} variant="outline" size="sm">
               <RefreshCw className="h-4 w-4 mr-2" />
               Atualizar
@@ -162,8 +165,13 @@ export default function Index() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="p-6">
+      {/* Main Content Container */}
+      <div 
+        className={`chat-responsive-container ${isChatOpen ? '' : ''}`}
+        style={{ paddingRight: isChatOpen ? `${chatWidth}px` : '0px' }}
+      >
+        <main className={`p-6 chat-responsive-main ${isChatOpen ? 'overflow-x-auto' : ''}`}>
+          <div className={`${isChatOpen ? 'min-w-max' : ''}`}>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="grid w-full grid-cols-6 lg:w-[600px]">
             <TabsTrigger value="home" className="flex items-center space-x-2">
@@ -216,10 +224,9 @@ export default function Index() {
             <RulesTab />
           </TabsContent>
         </Tabs>
-      </main>
-
-      {/* Floating Chat Button */}
-      <FloatingChatButton />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

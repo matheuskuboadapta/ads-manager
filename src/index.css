@@ -109,3 +109,77 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Chat sidebar responsive behavior */
+.chat-responsive-container {
+  transition: padding-right 0.3s ease-in-out;
+}
+
+.chat-responsive-main {
+  transition: min-width 0.3s ease-in-out;
+}
+
+/* Ensure proper horizontal scrolling when chat is open */
+.chat-responsive-main.overflow-x-auto {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted)) transparent;
+}
+
+.chat-responsive-main.overflow-x-auto::-webkit-scrollbar {
+  height: 8px;
+}
+
+.chat-responsive-main.overflow-x-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-responsive-main.overflow-x-auto::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+.chat-responsive-main.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground));
+}
+
+/* Ensure tables can scroll horizontally when chat is open */
+.chat-responsive-main .overflow-auto {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted)) transparent;
+}
+
+.chat-responsive-main .overflow-auto::-webkit-scrollbar {
+  height: 8px;
+}
+
+.chat-responsive-main .overflow-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-responsive-main .overflow-auto::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+.chat-responsive-main .overflow-auto::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground));
+}
+
+/* Chat table container specific styling */
+.chat-table-container {
+  min-width: max-content;
+}
+
+.chat-table-container table {
+  min-width: max-content;
+}
+
+/* Resize handle styling */
+.cursor-col-resize {
+  cursor: col-resize;
+}
+
+/* Smooth transitions for chat width changes */
+.chat-responsive-container {
+  transition: padding-right 0.1s ease-out;
+}

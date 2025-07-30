@@ -166,7 +166,7 @@ const LogsView = ({ objectId, objectName }: LogsViewProps) => {
     };
 
     return (
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto chat-table-container">
         {/* Layout para alinhar com as colunas da tabela principal */}
         <div className="min-w-full">
           <div className="flex border-b pb-2 mb-2 text-xs font-medium text-muted-foreground">
