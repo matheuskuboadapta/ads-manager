@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, AlertCircle, Trash2, HelpCircle } from 'lucide-react';
+import { Plus, AlertCircle, Trash2, HelpCircle, Search, X } from 'lucide-react';
 import { useAdRules, type AdRule } from '@/hooks/useAdRules';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -24,6 +24,160 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+
+// Utility functions to parse conditions and actions
+const parseConditions = (conditions: any): string => {
+  if (!conditions || typeof conditions !== 'object') {
+    return 'Nenhuma condição definida';
+  }
+
+  try {
+    // Handle the new JSONB format
+    if (conditions.filters && Array.isArray(conditions.filters)) {
+      const filterDescriptions = conditions.filters.map((filter: any) => {
+        const field = filter.field || '';
+        const operator = filter.operator || '';
+        const value = filter.value;
+        
+        // Map field names to readable Portuguese
+        const fieldMap: { [key: string]: string } = {
+          'adset.id': 'ID do Conjunto de Anúncios',
+          'entity_type': 'Tipo de Entidade',
+          'time_preset': 'Período de Tempo',
+          'campaign.id': 'ID da Campanha',
+          'ad.id': 'ID do Anúncio'
+        };
+
+        // Map operators to readable Portuguese
+        const operatorMap: { [key: string]: string } = {
+          'IN': 'contém',
+          'EQUAL': 'igual a',
+          'GREATER_THAN': 'maior que',
+          'LESS_THAN': 'menor que',
+          'GREATER_THAN_OR_EQUAL': 'maior ou igual a',
+          'LESS_THAN_OR_EQUAL': 'menor ou igual a'
+        };
+
+        const readableField = fieldMap[field] || field;
+        const readableOperator = operatorMap[operator] || operator;
+        
+        let readableValue = value;
+        if (Array.isArray(value)) {
+          readableValue = value.join(', ');
+        } else if (typeof value === 'object') {
+          readableValue = JSON.stringify(value);
+        }
+
+        return `${readableField} ${readableOperator} ${readableValue}`;
+      });
+
+      const evaluationType = conditions.evaluation_type ? ` (${conditions.evaluation_type})` : '';
+      return filterDescriptions.join(' E ') + evaluationType;
+    }
+
+    // Handle legacy format
+    if (Array.isArray(conditions)) {
+      return conditions.map((condition: any) => {
+        const metric = condition.metric || '';
+        const operator = condition.operator || '';
+        const value = condition.value || '';
+        return `${metric} ${operator} ${value}`;
+      }).join(' E ');
+    }
+
+    // Handle object format
+    if (typeof conditions === 'object') {
+      return Object.entries(conditions).map(([key, condition]: [string, any]) => {
+        const metric = condition.metric || '';
+        const operator = condition.operator || '';
+        const value = condition.value || '';
+        return `${metric} ${operator} ${value}`;
+      }).join(' E ');
+    }
+
+    return 'Formato de condição não reconhecido';
+  } catch (error) {
+    console.error('Error parsing conditions:', error);
+    return 'Erro ao processar condições';
+  }
+};
+
+const parseActions = (actions: any): string => {
+  if (!actions || typeof actions !== 'object') {
+    return 'Nenhuma ação definida';
+  }
+
+  try {
+    // Handle the new JSONB format
+    if (actions.execution_type) {
+      const executionType = actions.execution_type;
+      
+      // Map execution types to readable Portuguese
+      const executionTypeMap: { [key: string]: string } = {
+        'UNPAUSE': 'Despausar',
+        'PAUSE': 'Pausar',
+        'NOTIFY': 'Notificar',
+        'EDIT_BUDGET': 'Editar Orçamento',
+        'CHANGE_STATUS': 'Alterar Status'
+      };
+
+      const readableExecutionType = executionTypeMap[executionType] || executionType;
+      
+      let details = '';
+      if (actions.execution_options && Array.isArray(actions.execution_options)) {
+        const optionDescriptions = actions.execution_options.map((option: any) => {
+          const field = option.field || '';
+          const value = option.value;
+          
+          // Map field names to readable Portuguese
+          const fieldMap: { [key: string]: string } = {
+            'user_ids': 'Usuários',
+            'alert_preferences': 'Preferências de Alerta'
+          };
+
+          const readableField = fieldMap[field] || field;
+          
+          let readableValue = value;
+          if (Array.isArray(value)) {
+            readableValue = value.join(', ');
+          } else if (typeof value === 'object') {
+            readableValue = JSON.stringify(value);
+          }
+
+          return `${readableField}: ${readableValue}`;
+        });
+        
+        details = ` (${optionDescriptions.join(', ')})`;
+      }
+
+      return readableExecutionType + details;
+    }
+
+    // Handle legacy format
+    if (Array.isArray(actions)) {
+      return actions.map((action: any) => {
+        const actionType = action.action_type || '';
+        const order = action.order || '';
+        return `${actionType} (#${order})`;
+      }).join(', ');
+    }
+
+    // Handle object format
+    if (typeof actions === 'object') {
+      return Object.entries(actions).map(([key, action]: [string, any]) => {
+        const actionType = action.action_type || '';
+        const order = action.order || '';
+        return `${actionType} (#${order})`;
+      }).join(', ');
+    }
+
+    return 'Formato de ação não reconhecido';
+  } catch (error) {
+    console.error('Error parsing actions:', error);
+    return 'Erro ao processar ações';
+  }
+};
 
 type Condition = {
   id: string;
@@ -50,7 +204,169 @@ type Action = {
 const RulesTab = () => {
   const { data: rules, isLoading, error, refetch } = useAdRules();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isExcludeDialogOpen, setIsExcludeDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  // Filter states
+  const [searchName, setSearchName] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  
+  // Sort states
+  const [sortField, setSortField] = useState<'created_at' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Selection states
+  const [selectedRules, setSelectedRules] = useState<Set<number>>(new Set());
+  const [selectAll, setSelectAll] = useState(false);
+
+  // Filter and sort the rules
+  const filteredAndSortedRules = rules?.filter((rule) => {
+    // Name search filter
+    if (searchName && !rule.name.toLowerCase().includes(searchName.toLowerCase())) {
+      return false;
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      const isActive = statusFilter === 'active';
+      if (rule.is_active !== isActive) {
+        return false;
+      }
+    }
+
+    // Date filter
+    if (dateFilter !== 'all' && rule.created_at) {
+      const ruleDate = new Date(rule.created_at);
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      switch (dateFilter) {
+        case 'today':
+          if (ruleDate < today) return false;
+          break;
+        case 'week':
+          if (ruleDate < weekAgo) return false;
+          break;
+        case 'month':
+          if (ruleDate < monthAgo) return false;
+          break;
+      }
+    }
+
+    return true;
+  }).sort((a, b) => {
+    // Sort by creation date if sort field is set
+    if (sortField === 'created_at') {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      
+      if (sortDirection === 'asc') {
+        return dateA - dateB;
+      } else {
+        return dateB - dateA;
+      }
+    }
+    
+    return 0;
+  }) || [];
+
+  // Handle select all
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedRules(new Set(filteredAndSortedRules.map(rule => rule.id)));
+      setSelectAll(true);
+    } else {
+      setSelectedRules(new Set());
+      setSelectAll(false);
+    }
+  };
+
+  // Handle individual rule selection
+  const handleRuleSelection = (ruleId: number, checked: boolean) => {
+    const newSelected = new Set(selectedRules);
+    if (checked) {
+      newSelected.add(ruleId);
+    } else {
+      newSelected.delete(ruleId);
+    }
+    setSelectedRules(newSelected);
+    setSelectAll(newSelected.size === filteredAndSortedRules.length);
+  };
+
+  // Handle exclude selected rules
+  const handleExcludeRules = async () => {
+    if (selectedRules.size === 0) {
+      toast({
+        title: "Nenhuma regra selecionada",
+        description: "Selecione pelo menos uma regra para excluir.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsExcludeDialogOpen(true);
+  };
+
+  // Confirm and execute exclude
+  const confirmExcludeRules = async () => {
+    try {
+      const response = await fetch('https://mkthooks.adaptahub.org/webhook/ads-manager/exclude-rules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          user_id: user?.id,
+          rule_ids: Array.from(selectedRules)
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao excluir regras');
+      }
+
+      toast({
+        title: "Regras excluídas",
+        description: `${selectedRules.size} regra(s) foram excluída(s) com sucesso.`
+      });
+
+      // Clear selection and refetch rules
+      setSelectedRules(new Set());
+      setSelectAll(false);
+      setIsExcludeDialogOpen(false);
+      refetch();
+    } catch (error) {
+      console.error('Error excluding rules:', error);
+      toast({
+        title: "Erro ao excluir regras",
+        description: error instanceof Error ? error.message : "Ocorreu um erro ao excluir as regras",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Clear all filters
+  const clearFilters = () => {
+    setSearchName('');
+    setStatusFilter('all');
+    setDateFilter('all');
+  };
+
+  // Handle column sorting
+  const handleSort = (field: 'created_at') => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new field with default direction
+      setSortField(field);
+      setSortDirection('desc');
+    }
+  };
 
   const handleToggleRule = async (ruleId: number, isActive: boolean) => {
     try {
@@ -526,30 +842,153 @@ const RulesTab = () => {
         </Dialog>
       </div>
 
+      {/* Filters Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            {(searchName || statusFilter !== 'all' || dateFilter !== 'all') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearFilters}
+                className="flex items-center space-x-2 text-muted-foreground"
+              >
+                <X className="h-4 w-4" />
+                <span>Limpar Filtros</span>
+              </Button>
+            )}
+          </div>
+          
+          {selectedRules.size > 0 && (
+            <div className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground">
+                {selectedRules.size} regra(s) selecionada(s)
+              </span>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleExcludeRules}
+                className="flex items-center space-x-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Excluir Selecionadas</span>
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 border rounded-lg bg-muted/30">
+          <div>
+            <Label htmlFor="search-name">Buscar por nome</Label>
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="search-name"
+                placeholder="Digite o nome da regra..."
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="status-filter">Status</Label>
+            <Select value={statusFilter} onValueChange={(value: 'all' | 'active' | 'inactive') => setStatusFilter(value)}>
+              <SelectTrigger id="status-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="active">Ativas</SelectItem>
+                <SelectItem value="inactive">Inativas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="date-filter">Data de Criação</Label>
+            <Select value={dateFilter} onValueChange={(value: 'all' | 'today' | 'week' | 'month') => setDateFilter(value)}>
+              <SelectTrigger id="date-filter">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as datas</SelectItem>
+                <SelectItem value="today">Hoje</SelectItem>
+                <SelectItem value="week">Última semana</SelectItem>
+                <SelectItem value="month">Último mês</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-end">
+            <div className="text-sm text-muted-foreground">
+              {filteredAndSortedRules.length} de {rules?.length || 0} regras
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="border rounded-lg overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[50px]">ID</TableHead>
+              <TableHead className="w-[50px]">
+                <Checkbox
+                  checked={selectAll}
+                  onCheckedChange={handleSelectAll}
+                  disabled={filteredAndSortedRules.length === 0}
+                />
+              </TableHead>
               <TableHead>Nome</TableHead>
-              <TableHead>Nível</TableHead>
-              <TableHead>Status</TableHead>
               <TableHead>Condições</TableHead>
               <TableHead>Ações</TableHead>
-              <TableHead className="w-[180px]">Data de Criação</TableHead>
-              
+              <TableHead 
+                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => handleSort('created_at')}
+              >
+                <div className="flex items-center space-x-1">
+                  <span>Data de Criação</span>
+                  {sortField === 'created_at' && (
+                    <span className="text-xs">
+                      {sortDirection === 'asc' ? '↑' : '↓'}
+                    </span>
+                  )}
+                </div>
+              </TableHead>
+              <TableHead>Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rules && rules.length > 0 ? (
-              rules.map((rule) => (
-                <TableRow key={rule.id}>
-                  <TableCell>{rule.id}</TableCell>
+            {filteredAndSortedRules.length > 0 ? (
+              filteredAndSortedRules.map((rule) => (
+                <TableRow 
+                  key={rule.id}
+                  className={selectedRules.has(rule.id) ? 'bg-muted/50' : ''}
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedRules.has(rule.id)}
+                      onCheckedChange={(checked) => handleRuleSelection(rule.id, checked as boolean)}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{rule.name}</TableCell>
                   <TableCell>
-                    {rule.level === 'campaign' ? 'Campanha' : 
-                     rule.level === 'adset' ? 'Conjunto de Anúncios' : 
-                     rule.level === 'ad' ? 'Anúncio' : rule.level}
+                    <div className="max-w-xs">
+                      <div className="text-sm bg-muted/50 p-2 rounded">
+                        {parseConditions(rule.conditions)}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="max-w-xs">
+                      <div className="text-sm bg-muted/50 p-2 rounded">
+                        {parseActions(rule.actions)}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {rule.created_at ? new Date(rule.created_at).toLocaleString('pt-BR') : 'N/A'}
                   </TableCell>
                   <TableCell>
                     <Switch
@@ -558,91 +997,50 @@ const RulesTab = () => {
                       disabled={false}
                     />
                   </TableCell>
-                   <TableCell>
-                     <div className="max-w-xs">
-                       {rule.conditions && typeof rule.conditions === 'object' ? (
-                         <div className="text-sm space-y-1">
-                           {Array.isArray(rule.conditions) ? (
-                             // Legacy array format support
-                             rule.conditions.map((condition: any, index: number) => (
-                               <div key={index} className="bg-muted/50 p-2 rounded text-xs">
-                                 {condition.metric} {condition.operator} {condition.value}
-                                 {index < rule.conditions.length - 1 && (
-                                   <span className="text-muted-foreground ml-1">{condition.logic}</span>
-                                 )}
-                               </div>
-                             ))
-                           ) : (
-                             // New object format with string keys
-                             Object.entries(rule.conditions).map(([key, condition]: [string, any], index, entries) => (
-                               <div key={key} className="bg-muted/50 p-2 rounded text-xs">
-                                 {condition.metric} {condition.operator} {condition.value}
-                                 {index < entries.length - 1 && (
-                                   <span className="text-muted-foreground ml-1">{condition.logic}</span>
-                                 )}
-                               </div>
-                             ))
-                           )}
-                         </div>
-                       ) : (
-                         <span className="text-muted-foreground">0 condições</span>
-                       )}
-                     </div>
-                   </TableCell>
-                   <TableCell>
-                     <div className="max-w-xs">
-                       {rule.actions && typeof rule.actions === 'object' ? (
-                         <div className="text-sm space-y-1">
-                           {Array.isArray(rule.actions) ? (
-                             // Legacy array format support
-                             rule.actions.map((action: any, index: number) => (
-                               <div key={index} className="bg-muted/50 p-2 rounded text-xs">
-                                 {action.action_type} (#{action.order})
-                                 {action.params && Object.keys(action.params).length > 0 && (
-                                   <div className="text-muted-foreground mt-1">
-                                     {Object.entries(action.params).map(([key, value]) => (
-                                       <div key={key}>{key}: {value as string}</div>
-                                     ))}
-                                   </div>
-                                 )}
-                               </div>
-                             ))
-                           ) : (
-                             // New object format with string keys
-                             Object.entries(rule.actions).map(([key, action]: [string, any]) => (
-                               <div key={key} className="bg-muted/50 p-2 rounded text-xs">
-                                 {action.action_type} (#{action.order})
-                                 {action.params && Object.keys(action.params).length > 0 && (
-                                   <div className="text-muted-foreground mt-1">
-                                     {Object.entries(action.params).map(([paramKey, value]) => (
-                                       <div key={paramKey}>{paramKey}: {value as string}</div>
-                                     ))}
-                                   </div>
-                                 )}
-                               </div>
-                             ))
-                           )}
-                         </div>
-                       ) : (
-                         <span className="text-muted-foreground">0 ações</span>
-                       )}
-                     </div>
-                   </TableCell>
-                  <TableCell>
-                    {rule.created_at ? new Date(rule.created_at).toLocaleString('pt-BR') : 'N/A'}
-                  </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-                  Nenhuma regra encontrada. Crie uma nova regra para começar.
+                <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                  {rules && rules.length > 0 
+                    ? 'Nenhuma regra encontrada com os filtros aplicados.'
+                    : 'Nenhuma regra encontrada. Crie uma nova regra para começar.'
+                  }
                 </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
+
+      {/* Exclude Confirmation Dialog */}
+      <Dialog open={isExcludeDialogOpen} onOpenChange={setIsExcludeDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              Tem certeza que deseja excluir {selectedRules.size} regra(s) selecionada(s)? 
+              Esta ação não pode ser desfeita.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsExcludeDialogOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmExcludeRules}
+            >
+              Excluir Regras
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

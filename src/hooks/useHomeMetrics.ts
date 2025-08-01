@@ -38,7 +38,7 @@ interface HourlyMetrics {
 }
 
 // Create a custom hook that uses the same logic as AccountsTab
-export function useHomeMetrics() {
+export function useHomeMetrics(selectedAccount?: string | null) {
   const { settings } = useGlobalSettings();
   
   // Use the same date filter logic as AccountsTab - NO substitutions
@@ -104,19 +104,30 @@ export function useHomeMetrics() {
   const { data: todayAccounts, isLoading: todayLoading } = useAccountsData(todayFilter);
   const { data: yesterdayAccounts, isLoading: yesterdayLoading } = useAccountsData(yesterdayFilter);
 
+  // Filter accounts by selected account if specified
+  const filteredTodayAccounts = useMemo(() => {
+    if (!selectedAccount || !todayAccounts) return todayAccounts;
+    return todayAccounts.filter(account => account.name === selectedAccount);
+  }, [todayAccounts, selectedAccount]);
+
+  const filteredYesterdayAccounts = useMemo(() => {
+    if (!selectedAccount || !yesterdayAccounts) return yesterdayAccounts;
+    return yesterdayAccounts.filter(account => account.name === selectedAccount);
+  }, [yesterdayAccounts, selectedAccount]);
 
 
   // Debug: Log the raw data being processed
   console.log('Raw data comparison:', {
-    todayAccountsCount: todayAccounts?.length || 0,
-    yesterdayAccountsCount: yesterdayAccounts?.length || 0,
-    todayAccounts: todayAccounts?.map(acc => ({ name: acc.name, spend: acc.spend, sales: acc.sales })),
-    yesterdayAccounts: yesterdayAccounts?.map(acc => ({ name: acc.name, spend: acc.spend, sales: acc.sales }))
+    todayAccountsCount: filteredTodayAccounts?.length || 0,
+    yesterdayAccountsCount: filteredYesterdayAccounts?.length || 0,
+    todayAccounts: filteredTodayAccounts?.map(acc => ({ name: acc.name, spend: acc.spend, sales: acc.sales })),
+    yesterdayAccounts: filteredYesterdayAccounts?.map(acc => ({ name: acc.name, spend: acc.spend, sales: acc.sales })),
+    selectedAccount
   });
 
   // Debug: Verify that we're not double-counting accounts
-  if (yesterdayAccounts) {
-    const accountNames = yesterdayAccounts.map(acc => acc.name);
+  if (filteredYesterdayAccounts) {
+    const accountNames = filteredYesterdayAccounts.map(acc => acc.name);
     const uniqueAccountNames = new Set(accountNames);
     
     if (accountNames.length !== uniqueAccountNames.size) {
@@ -130,9 +141,9 @@ export function useHomeMetrics() {
 
   // Enhanced debug: Compare today vs yesterday data
   console.log('=== TODAY vs YESTERDAY COMPARISON ===');
-  if (todayAccounts && yesterdayAccounts) {
-    const todayTotalSpend = todayAccounts.reduce((sum, acc) => sum + acc.spend, 0);
-    const yesterdayTotalSpend = yesterdayAccounts.reduce((sum, acc) => sum + acc.spend, 0);
+  if (filteredTodayAccounts && filteredYesterdayAccounts) {
+    const todayTotalSpend = filteredTodayAccounts.reduce((sum, acc) => sum + acc.spend, 0);
+    const yesterdayTotalSpend = filteredYesterdayAccounts.reduce((sum, acc) => sum + acc.spend, 0);
     
     console.log('Total spend comparison:', {
       today: todayTotalSpend,
@@ -157,12 +168,12 @@ export function useHomeMetrics() {
     }
     
     // Compare individual accounts
-    const todayAccountMap = new Map(todayAccounts.map(acc => [acc.name, acc]));
-    const yesterdayAccountMap = new Map(yesterdayAccounts.map(acc => [acc.name, acc]));
+    const todayAccountMap = new Map(filteredTodayAccounts.map(acc => [acc.name, acc]));
+    const yesterdayAccountMap = new Map(filteredYesterdayAccounts.map(acc => [acc.name, acc]));
     
     const allAccountNames = new Set([
-      ...todayAccounts.map(acc => acc.name),
-      ...yesterdayAccounts.map(acc => acc.name)
+      ...filteredTodayAccounts.map(acc => acc.name),
+      ...filteredYesterdayAccounts.map(acc => acc.name)
     ]);
     
     console.log('Individual account comparison:');
@@ -197,16 +208,16 @@ export function useHomeMetrics() {
   console.log('=== END TODAY vs YESTERDAY COMPARISON ===');
 
   // Debug: Check if there are any accounts with unusually high spend
-  if (yesterdayAccounts && yesterdayAccounts.length > 0) {
-    const highSpendAccounts = yesterdayAccounts.filter(acc => acc.spend > 10000);
+  if (filteredYesterdayAccounts && filteredYesterdayAccounts.length > 0) {
+    const highSpendAccounts = filteredYesterdayAccounts.filter(acc => acc.spend > 10000);
     if (highSpendAccounts.length > 0) {
       console.warn('Found accounts with unusually high spend yesterday:', highSpendAccounts.map(acc => ({ name: acc.name, spend: acc.spend })));
     }
   }
 
   // Debug: Check if there are any accounts with unusually high spend today
-  if (todayAccounts && todayAccounts.length > 0) {
-    const highSpendAccounts = todayAccounts.filter(acc => acc.spend > 10000);
+  if (filteredTodayAccounts && filteredTodayAccounts.length > 0) {
+    const highSpendAccounts = filteredTodayAccounts.filter(acc => acc.spend > 10000);
     if (highSpendAccounts.length > 0) {
       console.warn('Found accounts with unusually high spend today:', highSpendAccounts.map(acc => ({ name: acc.name, spend: acc.spend })));
     }
@@ -214,7 +225,7 @@ export function useHomeMetrics() {
 
   // Calculate metrics using the same logic as AccountsTab summaryMetrics
   const todayMetrics = useMemo(() => {
-    if (!todayAccounts || todayAccounts.length === 0) {
+    if (!filteredTodayAccounts || filteredTodayAccounts.length === 0) {
       console.log('No today accounts data available');
       return {
         spend: 0,
@@ -226,12 +237,12 @@ export function useHomeMetrics() {
       };
     }
 
-    console.log('Calculating today metrics with', todayAccounts.length, 'accounts');
-    console.log('Today accounts data:', todayAccounts.map(acc => ({ name: acc.name, spend: acc.spend, sales: acc.sales })));
+    console.log('Calculating today metrics with', filteredTodayAccounts.length, 'accounts');
+    console.log('Today accounts data:', filteredTodayAccounts.map(acc => ({ name: acc.name, spend: acc.spend, sales: acc.sales })));
 
     // Ensure we're not double-counting by using unique account data
     const uniqueAccounts = new Map<string, any>();
-    todayAccounts.forEach(acc => {
+    filteredTodayAccounts.forEach(acc => {
       if (!uniqueAccounts.has(acc.name)) {
         uniqueAccounts.set(acc.name, acc);
       } else {
@@ -273,10 +284,10 @@ export function useHomeMetrics() {
       cpa: totalSales > 0 ? totalSpend / totalSales : 0
     });
     return result;
-  }, [todayAccounts]);
+  }, [filteredTodayAccounts]);
 
   const yesterdayMetrics = useMemo(() => {
-    if (!yesterdayAccounts || yesterdayAccounts.length === 0) {
+    if (!filteredYesterdayAccounts || filteredYesterdayAccounts.length === 0) {
       console.log('No yesterday accounts data available');
       return {
         spend: 0,
@@ -288,12 +299,12 @@ export function useHomeMetrics() {
       };
     }
 
-    console.log('Calculating yesterday metrics with', yesterdayAccounts.length, 'accounts');
-    console.log('Yesterday accounts data:', yesterdayAccounts.map(acc => ({ name: acc.name, spend: acc.spend, sales: acc.sales })));
+    console.log('Calculating yesterday metrics with', filteredYesterdayAccounts.length, 'accounts');
+    console.log('Yesterday accounts data:', filteredYesterdayAccounts.map(acc => ({ name: acc.name, spend: acc.spend, sales: acc.sales })));
 
     // Ensure we're not double-counting by using unique account data
     const uniqueAccounts = new Map<string, any>();
-    yesterdayAccounts.forEach(acc => {
+    filteredYesterdayAccounts.forEach(acc => {
       if (!uniqueAccounts.has(acc.name)) {
         uniqueAccounts.set(acc.name, acc);
       } else {
@@ -335,7 +346,7 @@ export function useHomeMetrics() {
       cpa: totalSales > 0 ? totalSpend / totalSales : 0
     });
     return result;
-  }, [yesterdayAccounts]);
+  }, [filteredYesterdayAccounts]);
 
   // Generate date filters for last 7 days using the same logic as FilterBar
   const last7DaysFilters = useMemo(() => {
@@ -450,7 +461,10 @@ export function useHomeMetrics() {
 }
 
 const fetchRealHourlyMetrics = async (accountName?: string | null): Promise<HourlyMetrics[]> => {
+  console.log('=== FETCH REAL HOURLY METRICS DEBUG ===');
   console.log('Fetching real hourly metrics from meta_ads_account_hourly_view for account:', accountName);
+  console.log('Account name type:', typeof accountName);
+  console.log('Account name value:', accountName);
   
   // Use current local time directly since we're already in GMT-3
   const now = new Date();
@@ -476,8 +490,17 @@ const fetchRealHourlyMetrics = async (accountName?: string | null): Promise<Hour
     .order('hour_of_day', { ascending: true });
 
   // Filter by account if specified
-  if (accountName) {
+  if (accountName && accountName !== 'all' && accountName !== '' && accountName !== null) {
+    console.log('Applying account filter for:', accountName);
+    console.log('Account filter type:', typeof accountName);
+    console.log('Account filter value:', JSON.stringify(accountName));
     query = query.eq('account_name', accountName);
+  } else {
+    console.log('No account filter applied - fetching all accounts');
+    console.log('accountName value:', accountName);
+    console.log('accountName type:', typeof accountName);
+    console.log('accountName === null:', accountName === null);
+    console.log('accountName === "all":', accountName === 'all');
   }
 
   const { data: hourlyData, error } = await query;
@@ -488,6 +511,9 @@ const fetchRealHourlyMetrics = async (accountName?: string | null): Promise<Hour
   }
 
   console.log('Successfully fetched data from meta_ads_account_hourly_view:', hourlyData?.length, 'records');
+  console.log('Sample account names in data:', hourlyData?.slice(0, 5).map(row => row.account_name));
+  console.log('Unique account names in data:', [...new Set(hourlyData?.map(row => row.account_name) || [])]);
+  console.log('=== END FETCH REAL HOURLY METRICS DEBUG ===');
 
   if (!hourlyData || hourlyData.length === 0) {
     console.log('No hourly data found in meta_ads_account_hourly_view');
@@ -561,11 +587,30 @@ const fetchRealHourlyMetrics = async (accountName?: string | null): Promise<Hour
 
 
 export function useHourlyMetrics(accountName?: string | null) {
+  // Use a more explicit query key that clearly distinguishes between null and 'all'
+  const queryKey = ['hourly-metrics', accountName === null ? 'all' : accountName];
+  
+  console.log('=== USE HOURLY METRICS DEBUG ===');
+  console.log('accountName parameter:', accountName);
+  console.log('accountName type:', typeof accountName);
+  console.log('accountName === null:', accountName === null);
+  console.log('queryKey:', queryKey);
+  console.log('queryKey stringified:', JSON.stringify(queryKey));
+  console.log('================================');
+  
   return useQuery({
-    queryKey: ['hourly-metrics', accountName],
+    queryKey,
     queryFn: () => fetchRealHourlyMetrics(accountName),
-    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes
-    staleTime: 2 * 60 * 1000, // 2 minutes
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    // Force refetch when account changes
+    refetchInterval: false,
+    // Ensure the query refetches when accountName changes
+    enabled: true,
+    // Force cache invalidation when account changes
+    gcTime: 0,
   });
 }
 

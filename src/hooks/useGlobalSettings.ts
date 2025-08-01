@@ -5,12 +5,14 @@ interface GlobalSettings {
   dateFilter: DateFilter | null;
   nameFilter: string;
   statusFilter: string;
+  selectedAccount: string | null;
 }
 
 const DEFAULT_SETTINGS: GlobalSettings = {
   dateFilter: null, // Deixar null para que useAdsData use seu próprio filtro padrão
   nameFilter: '',
-  statusFilter: 'all'
+  statusFilter: 'all',
+  selectedAccount: null
 };
 
 const STORAGE_KEY = 'ads-manager-global-settings';
@@ -63,6 +65,15 @@ export const useGlobalSettings = () => {
     saveSettings({ ...settings, statusFilter });
   }, [settings, saveSettings]);
 
+  const updateSelectedAccount = useCallback((selectedAccount: string | null) => {
+    console.log('=== UPDATE SELECTED ACCOUNT DEBUG ===');
+    console.log('Previous selectedAccount:', settings.selectedAccount);
+    console.log('New selectedAccount:', selectedAccount);
+    console.log('Will save settings:', { ...settings, selectedAccount });
+    console.log('=====================================');
+    saveSettings({ ...settings, selectedAccount });
+  }, [settings, saveSettings]);
+
   const resetSettings = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     setSettings(DEFAULT_SETTINGS);
@@ -73,6 +84,7 @@ export const useGlobalSettings = () => {
     updateDateFilter,
     updateNameFilter,
     updateStatusFilter,
+    updateSelectedAccount,
     resetSettings
   };
 };

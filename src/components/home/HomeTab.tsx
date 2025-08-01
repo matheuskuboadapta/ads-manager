@@ -1,17 +1,21 @@
 import { useAuth } from '@/hooks/useAuth';
-import { useHomeMetrics } from '@/hooks/useHomeMetrics';
+import { useHomeMetrics, useAvailableAccounts } from '@/hooks/useHomeMetrics';
+import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MetricsScorecard } from './MetricsScorecard';
 import { HourlyHeatmap } from './HourlyHeatmap';
 
 export function HomeTab() {
   const { user } = useAuth();
-  const { data: metrics, isLoading: metricsLoading } = useHomeMetrics();
+  const { settings, updateSelectedAccount } = useGlobalSettings();
+  const { data: metrics, isLoading: metricsLoading } = useHomeMetrics(settings.selectedAccount);
+  const { data: availableAccounts, isLoading: isLoadingAccounts } = useAvailableAccounts();
 
   const userName = user?.email?.split('@')[0] || 'Usuário';
 
-  if (metricsLoading) {
+  if (metricsLoading || isLoadingAccounts) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-12 w-full" />
@@ -27,7 +31,7 @@ export function HomeTab() {
 
   return (
     <div className="space-y-6">
-      {/* Welcome Message */}
+      {/* Account Selection Dropdown */}
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl">Boas vindas, {userName}!</CardTitle>
@@ -35,6 +39,34 @@ export function HomeTab() {
             Aqui está um resumo das suas métricas de hoje
           </CardDescription>
         </CardHeader>
+        <CardContent>
+          <div className="flex items-center space-x-4">
+            <label className="text-sm font-medium text-foreground">Filtrar por conta:</label>
+            <Select 
+              value={settings.selectedAccount || 'all'} 
+              onValueChange={(value) => {
+                console.log('=== ACCOUNT SELECTION DEBUG ===');
+                console.log('Selected value:', value);
+                console.log('Previous selectedAccount:', settings.selectedAccount);
+                console.log('Will update to:', value === 'all' ? null : value);
+                console.log('==============================');
+                updateSelectedAccount(value === 'all' ? null : value);
+              }}
+            >
+              <SelectTrigger className="w-64">
+                <SelectValue placeholder="Selecione uma conta" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as contas</SelectItem>
+                {availableAccounts?.map((account) => (
+                  <SelectItem key={account} value={account}>
+                    {account}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
       </Card>
 
       {/* Metrics Scorecards */}
@@ -92,7 +124,7 @@ export function HomeTab() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <HourlyHeatmap />
+          <HourlyHeatmap key={settings.selectedAccount || 'all'} />
         </CardContent>
       </Card>
     </div>

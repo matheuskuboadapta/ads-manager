@@ -1,19 +1,33 @@
 import { useState } from 'react';
-import { useHourlyMetrics, useAvailableAccounts } from '@/hooks/useHomeMetrics';
+import { useHourlyMetrics } from '@/hooks/useHomeMetrics';
+import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { formatCurrency, formatNumber } from '@/utils/formatters';
 
 type MetricType = 'spend' | 'sales' | 'cpa';
 
 export function HourlyHeatmap() {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('spend');
-  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
-  const { data: hourlyData, isLoading } = useHourlyMetrics(selectedAccount);
-  const { data: availableAccounts, isLoading: isLoadingAccounts } = useAvailableAccounts();
+  const { settings } = useGlobalSettings();
+  const { data: hourlyData, isLoading } = useHourlyMetrics(settings.selectedAccount);
 
-  if (isLoading || isLoadingAccounts) {
+  // Debug: Log when component re-renders
+  console.log('=== HOURLY HEATMAP RENDER ===');
+  console.log('Component re-rendering with account:', settings.selectedAccount);
+  console.log('====================================');
+
+  // Debug logs
+  console.log('=== HOURLY HEATMAP DEBUG ===');
+  console.log('settings.selectedAccount:', settings.selectedAccount);
+  console.log('settings.selectedAccount type:', typeof settings.selectedAccount);
+  console.log('settings.selectedAccount value:', JSON.stringify(settings.selectedAccount));
+  console.log('hourlyData length:', hourlyData?.length || 0);
+  console.log('isLoading:', isLoading);
+  console.log('Sample hourlyData:', hourlyData?.slice(0, 3));
+  console.log('===========================');
+
+  if (isLoading) {
     return <Skeleton className="h-64 w-full" />;
   }
 
@@ -144,24 +158,6 @@ export function HourlyHeatmap() {
 
   return (
     <div className="space-y-4">
-      {/* Account Selection Dropdown */}
-      <div className="flex items-center space-x-4">
-        <label className="text-sm font-medium text-foreground">Conta:</label>
-        <Select value={selectedAccount || 'all'} onValueChange={(value) => setSelectedAccount(value === 'all' ? null : value)}>
-          <SelectTrigger className="w-64">
-            <SelectValue placeholder="Selecione uma conta" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas as contas</SelectItem>
-            {availableAccounts?.map((account) => (
-              <SelectItem key={account} value={account}>
-                {account}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* Metric Selection Buttons */}
       <div className="flex space-x-2">
         <Button

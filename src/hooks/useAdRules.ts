@@ -5,14 +5,10 @@ export interface AdRule {
   id: number;
   name: string;
   is_active: boolean;
-  level: string;
-  conditions: any[];
-  actions: any[];
-  target_id: string | null;
+  conditions: any;
+  actions: any;
   created_at: string | null;
   updated_at: string | null;
-  description: string | null;
-  sql_query: string | null;
 }
 
 export const useAdRules = () => {
