@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -8,11 +8,11 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Target, Edit2, Check, X, ChevronDown, ChevronRight, TrendingUp, TrendingDown, Power, PowerOff } from 'lucide-react';
+import { Plus, Target, Edit2, Check, X, ChevronDown, ChevronRight, TrendingUp, TrendingDown, Power, PowerOff, Trash2 } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage, getCPAColorClass } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
-import { updateCampaign, createCampaign } from '@/utils/api';
+import { updateCampaign, createCampaign, createAdset } from '@/utils/api';
 import { useCampaignsData } from '@/hooks/useAdsData';
 import FilterBar from './FilterBar';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,8 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/sortable-header';
 import RuleCreationDialog from './RuleCreationDialog';
 import { useAvailableAccounts } from '@/hooks/useHomeMetrics';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface CampaignsTabProps {
   accountId: string | null;
@@ -34,7 +36,56 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
   const [tempBudget, setTempBudget] = useState<string>('');
-  const [newCampaign, setNewCampaign] = useState({ name: '', objective: 'CONVERSIONS', account_name: '' });
+  const [newCampaign, setNewCampaign] = useState({ 
+    name: '', 
+    account_name: '', 
+    budgetEnabled: false, 
+    budget: '' 
+  });
+  
+  // Adset creation states
+  const [adsets, setAdsets] = useState<Array<{
+    id: string;
+    name: string;
+    dailyBudget: string;
+    gender: string;
+    ageMin: string;
+    ageMax: string;
+    platforms: string[];
+    placements: string[];
+  }>>([]);
+  const [currentAdset, setCurrentAdset] = useState({
+    name: '',
+    dailyBudget: '',
+    gender: 'all',
+    ageMin: '18',
+    ageMax: '65+',
+    platforms: ['Facebook', 'Instagram', 'Messenger', 'Audience Network', 'Threads'],
+    placements: [
+      'Feed do Facebook',
+      'Feed do perfil do Facebook', 
+      'Feed do Instagram',
+      'Feed do perfil do Instagram',
+      'Facebook Marketplace',
+      'Feeds de vídeo do Facebook',
+      'Coluna da direita do Facebook',
+      'Explorar do Instagram',
+      'Página inicial do Explorar do Instagram',
+      'Caixa de Entrada do Messenger',
+      'Facebook Business Explore',
+      'Feed do Threads',
+      'Notificações do Facebook',
+      'Stories do Facebook',
+      'Stories do Instagram',
+      'Reels do Instagram'
+    ]
+  });
+  const [showAdsetForm, setShowAdsetForm] = useState(false);
+  const [creationStep, setCreationStep] = useState<'campaign' | 'adsets'>('campaign');
+  const [platformsOpen, setPlatformsOpen] = useState(false);
+  const [placementsOpen, setPlacementsOpen] = useState(false);
+  const platformsRef = useRef<HTMLDivElement>(null);
+  const placementsRef = useRef<HTMLDivElement>(null);
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
   const [detailMetrics, setDetailMetrics] = useState<{ [campaignId: string]: { threeDay: any; sevenDay: any } }>({});
   const [showBudgetConfirmation, setShowBudgetConfirmation] = useState(false);
@@ -53,6 +104,23 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
+
+  // Fechar dropdowns quando clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (platformsRef.current && !platformsRef.current.contains(event.target as Node)) {
+        setPlatformsOpen(false);
+      }
+      if (placementsRef.current && !placementsRef.current.contains(event.target as Node)) {
+        setPlacementsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const { data: campaigns, isLoading, error, updateOptimistic, clearOptimistic } = useCampaignsData(accountId, settings.dateFilter);
   const { data: availableAccounts, isLoading: accountsLoading } = useAvailableAccounts();
@@ -333,26 +401,92 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
       return;
     }
 
+    if (newCampaign.budgetEnabled && (!newCampaign.budget || parseFloat(newCampaign.budget) <= 0)) {
+      toast({
+        title: "Orçamento obrigatório",
+        description: "Por favor, insira um valor válido para o orçamento.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Se estamos no primeiro step, ir para o próximo
+    if (creationStep === 'campaign') {
+      setCreationStep('adsets');
+      return;
+    }
+
+    // Se estamos no segundo step, criar tudo
+    if (adsets.length === 0) {
+      toast({
+        title: "Conjuntos obrigatórios",
+        description: "Por favor, adicione pelo menos um conjunto à campanha.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
+      // Criar a campanha primeiro
       await createCampaign({
         name: newCampaign.name,
-        objective: newCampaign.objective,
         level: 'campaign',
         account_name: newCampaign.account_name,
+        daily_budget: newCampaign.budgetEnabled ? parseFloat(newCampaign.budget) : undefined,
       });
       
-      setNewCampaign({ name: '', objective: 'CONVERSIONS', account_name: '' });
+      // Criar os conjuntos
+      for (const adset of adsets) {
+        await createAdset({
+          name: adset.name,
+          level: 'adset',
+          daily_budget: parseFloat(adset.dailyBudget),
+          // Aqui você pode adicionar os campos específicos do conjunto
+          // como gender, age, platforms, placements, etc.
+        });
+      }
+      
+      // Resetar todos os estados
+      setNewCampaign({ name: '', account_name: '', budgetEnabled: false, budget: '' });
+      setAdsets([]);
+      setCurrentAdset({
+        name: '',
+        dailyBudget: '',
+        gender: 'all',
+        ageMin: '18',
+        ageMax: '65+',
+        platforms: ['Facebook', 'Instagram', 'Messenger', 'Audience Network', 'Threads'],
+        placements: [
+          'Feed do Facebook',
+          'Feed do perfil do Facebook', 
+          'Feed do Instagram',
+          'Feed do perfil do Instagram',
+          'Facebook Marketplace',
+          'Feeds de vídeo do Facebook',
+          'Coluna da direita do Facebook',
+          'Explorar do Instagram',
+          'Página inicial do Explorar do Instagram',
+          'Caixa de Entrada do Messenger',
+          'Facebook Business Explore',
+          'Feed do Threads',
+          'Notificações do Facebook',
+          'Stories do Facebook',
+          'Stories do Instagram',
+          'Reels do Instagram'
+        ]
+      });
+      setCreationStep('campaign');
       setShowCreateDialog(false);
       
       toast({
-        title: "Campanha criada",
-        description: `Campanha "${newCampaign.name}" criada com sucesso na conta ${newCampaign.account_name}.`,
+        title: "Campanha e Conjuntos criados",
+        description: `Campanha "${newCampaign.name}" criada com ${adsets.length} conjunto(s) na conta ${newCampaign.account_name}.`,
       });
     } catch (error) {
-      console.error('Error creating campaign:', error);
+      console.error('Error creating campaign and adsets:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível criar a campanha.",
+        description: "Não foi possível criar a campanha e os conjuntos.",
         variant: "destructive",
       });
     }
@@ -360,6 +494,93 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
 
   const handleExpandCampaign = (campaignId: string) => {
     setExpandedCampaign(expandedCampaign === campaignId ? null : campaignId);
+  };
+
+  // Adset management functions
+  const handleAddAdset = () => {
+    if (!currentAdset.name.trim()) {
+      toast({
+        title: "Nome obrigatório",
+        description: "Por favor, insira um nome para o conjunto.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!newCampaign.budgetEnabled && (!currentAdset.dailyBudget || parseFloat(currentAdset.dailyBudget) <= 0)) {
+      toast({
+        title: "Orçamento obrigatório",
+        description: "Por favor, insira um orçamento válido para o conjunto.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const newAdset = {
+      id: `adset_${Date.now()}`,
+      ...currentAdset,
+      dailyBudget: newCampaign.budgetEnabled ? '0' : currentAdset.dailyBudget
+    };
+
+    setAdsets(prev => [...prev, newAdset]);
+          setCurrentAdset({
+        name: '',
+        dailyBudget: '',
+        gender: 'all',
+        ageMin: '18',
+        ageMax: '65+',
+        platforms: ['Facebook', 'Instagram', 'Messenger', 'Audience Network', 'Threads'],
+        placements: [
+          'Feed do Facebook',
+          'Feed do perfil do Facebook', 
+          'Feed do Instagram',
+          'Feed do perfil do Instagram',
+          'Facebook Marketplace',
+          'Feeds de vídeo do Facebook',
+          'Coluna da direita do Facebook',
+          'Explorar do Instagram',
+          'Página inicial do Explorar do Instagram',
+          'Caixa de Entrada do Messenger',
+          'Facebook Business Explore',
+          'Feed do Threads',
+          'Notificações do Facebook',
+          'Stories do Facebook',
+          'Stories do Instagram',
+          'Reels do Instagram'
+        ]
+      });
+    setShowAdsetForm(false);
+
+    toast({
+      title: "Conjunto adicionado",
+      description: `Conjunto "${currentAdset.name}" adicionado à campanha.`,
+    });
+  };
+
+  const handleRemoveAdset = (adsetId: string) => {
+    setAdsets(prev => prev.filter(adset => adset.id !== adsetId));
+  };
+
+  const handlePlatformToggle = (platform: string) => {
+    setCurrentAdset(prev => ({
+      ...prev,
+      platforms: prev.platforms.includes(platform)
+        ? prev.platforms.filter(p => p !== platform)
+        : [...prev.platforms, platform]
+    }));
+  };
+
+  const handlePlacementToggle = (placement: string) => {
+    setCurrentAdset(prev => ({
+      ...prev,
+      placements: prev.placements.includes(placement)
+        ? prev.placements.filter(p => p !== placement)
+        : [...prev.placements, placement]
+    }));
+  };
+
+  const handleBackToCampaign = () => {
+    setCreationStep('campaign');
   };
 
   // Rule creation handlers
@@ -949,66 +1170,359 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
 
       {/* Campaign Creation Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Criar Nova Campanha</DialogTitle>
+            <DialogTitle>
+              {creationStep === 'campaign' ? 'Criar Nova Campanha' : 'Adicionar Conjuntos'}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {creationStep === 'campaign' ? (
+            // Step 1: Campaign Information
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Informações da Campanha</h3>
+                <div>
+                  <Label htmlFor="campaign-name">Nome da Campanha</Label>
+                  <Input
+                    id="campaign-name"
+                    placeholder="Digite o nome da campanha"
+                    value={newCampaign.name}
+                    onChange={(e) => setNewCampaign(prev => ({ ...prev, name: e.target.value }))}
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="campaign-account">Conta</Label>
+                  <Select
+                    value={newCampaign.account_name}
+                    onValueChange={(value) => setNewCampaign(prev => ({ ...prev, account_name: value }))}
+                    disabled={accountsLoading}
+                  >
+                    <SelectTrigger id="campaign-account">
+                      <SelectValue placeholder={accountsLoading ? "Carregando contas..." : "Selecione uma conta"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableAccounts?.map((account) => (
+                        <SelectItem key={account} value={account}>
+                          {account}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="campaign-budget-toggle">Orçamento a nível de campanha?</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Ative para definir um orçamento específico para esta campanha
+                    </p>
+                  </div>
+                  <Switch
+                    id="campaign-budget-toggle"
+                    checked={newCampaign.budgetEnabled}
+                    onCheckedChange={(checked) => setNewCampaign(prev => ({ ...prev, budgetEnabled: checked }))}
+                  />
+                </div>
+                
+                {newCampaign.budgetEnabled && (
+                  <div>
+                    <Label htmlFor="campaign-budget">Orçamento Diário (R$)</Label>
+                    <Input
+                      id="campaign-budget"
+                      type="number"
+                      placeholder="150.00"
+                      value={newCampaign.budget}
+                      onChange={(e) => setNewCampaign(prev => ({ ...prev, budget: e.target.value }))}
+                      min="1"
+                      step="0.01"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            // Step 2: Adsets Section
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Conjuntos de Anúncios</h3>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAdsetForm(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Adicionar Conjunto
+                  </Button>
+                </div>
+
+                {/* Existing Adsets */}
+                {adsets.length > 0 && (
+                  <div className="space-y-2">
+                    {adsets.map((adset) => (
+                      <div key={adset.id} className="flex items-center justify-between p-3 border rounded-lg bg-slate-50">
+                        <div className="flex-1">
+                          <div className="font-medium">{adset.name}</div>
+                          <div className="text-sm text-slate-600">
+                            {!newCampaign.budgetEnabled && `Orçamento: R$ ${adset.dailyBudget} | `}
+                            Gênero: {adset.gender === 'all' ? 'Todos' : adset.gender} | 
+                            Idade: {adset.ageMin}-{adset.ageMax} anos
+                          </div>
+                          {adset.platforms.length > 0 && (
+                            <div className="text-sm text-slate-600">
+                              Plataformas: {adset.platforms.join(', ')}
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRemoveAdset(adset.id)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {adsets.length === 0 && (
+                  <div className="text-center py-8 text-slate-500">
+                    <p>Nenhum conjunto adicionado ainda</p>
+                    <p className="text-sm">Clique em "Adicionar Conjunto" para começar</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          <div className="flex justify-between space-x-2 pt-4">
+            <div className="flex space-x-2">
+              {creationStep === 'adsets' && (
+                <Button variant="outline" onClick={handleBackToCampaign}>
+                  Voltar
+                </Button>
+              )}
+            </div>
+            <div className="flex space-x-2">
+              <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleCreateCampaign}>
+                {creationStep === 'campaign' ? 'Próximo' : 'Criar Conjuntos'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Adset Creation Dialog */}
+      <Dialog open={showAdsetForm} onOpenChange={setShowAdsetForm}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Adicionar Conjunto</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="campaign-name">Nome da Campanha</Label>
+              <Label htmlFor="adset-name">Nome do Conjunto</Label>
               <Input
-                id="campaign-name"
-                placeholder="Digite o nome da campanha"
-                value={newCampaign.name}
-                onChange={(e) => setNewCampaign(prev => ({ ...prev, name: e.target.value }))}
+                id="adset-name"
+                placeholder="Ex: Lookalike 2% - Compradoras"
+                value={currentAdset.name}
+                onChange={(e) => setCurrentAdset(prev => ({ ...prev, name: e.target.value }))}
               />
             </div>
-            
-            <div>
-              <Label htmlFor="campaign-account">Conta</Label>
-              <Select
-                value={newCampaign.account_name}
-                onValueChange={(value) => setNewCampaign(prev => ({ ...prev, account_name: value }))}
-                disabled={accountsLoading}
-              >
-                <SelectTrigger id="campaign-account">
-                  <SelectValue placeholder={accountsLoading ? "Carregando contas..." : "Selecione uma conta"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableAccounts?.map((account) => (
-                    <SelectItem key={account} value={account}>
-                      {account}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+
+            {!newCampaign.budgetEnabled && (
+              <div>
+                <Label htmlFor="adset-budget">Orçamento Diário (R$)</Label>
+                <Input
+                  id="adset-budget"
+                  type="number"
+                  placeholder="150.00"
+                  value={currentAdset.dailyBudget}
+                  onChange={(e) => setCurrentAdset(prev => ({ ...prev, dailyBudget: e.target.value }))}
+                  min="1"
+                  step="0.01"
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="adset-gender">Gênero</Label>
+                <Select
+                  value={currentAdset.gender}
+                  onValueChange={(value) => setCurrentAdset(prev => ({ ...prev, gender: value }))}
+                >
+                  <SelectTrigger id="adset-gender">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos</SelectItem>
+                    <SelectItem value="men">Homens</SelectItem>
+                    <SelectItem value="women">Mulheres</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <Label htmlFor="adset-age-min">Idade Mínima</Label>
+                  <Select
+                    value={currentAdset.ageMin}
+                    onValueChange={(value) => setCurrentAdset(prev => ({ ...prev, ageMin: value }))}
+                  >
+                    <SelectTrigger id="adset-age-min">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 48 }, (_, i) => i + 13).map(age => (
+                        <SelectItem key={age} value={age.toString()}>{age}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="adset-age-max">Idade Máxima</Label>
+                  <Select
+                    value={currentAdset.ageMax}
+                    onValueChange={(value) => setCurrentAdset(prev => ({ ...prev, ageMax: value }))}
+                  >
+                    <SelectTrigger id="adset-age-max">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 48 }, (_, i) => i + 13).map(age => (
+                        <SelectItem key={age} value={age.toString()}>{age}</SelectItem>
+                      ))}
+                      <SelectItem value="65+">65+</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
-            
-            <div>
-              <Label htmlFor="campaign-objective">Objetivo</Label>
-              <Select
-                value={newCampaign.objective}
-                onValueChange={(value) => setNewCampaign(prev => ({ ...prev, objective: value }))}
+
+            <div className="relative" ref={platformsRef}>
+              <Label>Plataformas</Label>
+              <Button
+                variant="outline"
+                onClick={() => setPlatformsOpen(!platformsOpen)}
+                className="w-full justify-between"
               >
-                <SelectTrigger id="campaign-objective">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CONVERSIONS">Conversões</SelectItem>
-                  <SelectItem value="REACH">Alcance</SelectItem>
-                  <SelectItem value="TRAFFIC">Tráfego</SelectItem>
-                  <SelectItem value="BRAND_AWARENESS">Reconhecimento da Marca</SelectItem>
-                  <SelectItem value="VIDEO_VIEWS">Visualizações de Vídeo</SelectItem>
-                </SelectContent>
-              </Select>
+                {currentAdset.platforms.length === 0
+                  ? "Selecione as plataformas"
+                  : currentAdset.platforms.length === 5
+                  ? "Todas as plataformas"
+                  : `${currentAdset.platforms.length} plataforma${currentAdset.platforms.length > 1 ? 's' : ''} selecionada${currentAdset.platforms.length > 1 ? 's' : ''}`}
+                <ChevronDown className={`ml-2 h-4 w-4 shrink-0 opacity-50 transition-transform ${platformsOpen ? 'rotate-180' : ''}`} />
+              </Button>
+              
+              {platformsOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                  <div className="p-2">
+                    <Input 
+                      placeholder="Buscar plataforma..." 
+                      className="mb-2"
+                      onChange={(e) => {
+                        // Implementar busca se necessário
+                      }}
+                    />
+                    <div className="space-y-1">
+                      {['Facebook', 'Instagram', 'Messenger', 'Audience Network', 'Threads'].map((platform) => (
+                        <div
+                          key={platform}
+                          className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer"
+                          onClick={() => handlePlatformToggle(platform)}
+                        >
+                          <Checkbox
+                            checked={currentAdset.platforms.includes(platform)}
+                            className="mr-2"
+                          />
+                          <span className="text-sm">{platform}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="relative" ref={placementsRef}>
+              <Label>Posicionamentos</Label>
+              <Button
+                variant="outline"
+                onClick={() => setPlacementsOpen(!placementsOpen)}
+                className="w-full justify-between"
+              >
+                {currentAdset.placements.length === 0
+                  ? "Selecione os posicionamentos"
+                  : currentAdset.placements.length === 16
+                  ? "Todos os posicionamentos"
+                  : `${currentAdset.placements.length} posicionamento${currentAdset.placements.length > 1 ? 's' : ''} selecionado${currentAdset.placements.length > 1 ? 's' : ''}`}
+                <ChevronDown className={`ml-2 h-4 w-4 shrink-0 opacity-50 transition-transform ${placementsOpen ? 'rotate-180' : ''}`} />
+              </Button>
+              
+              {placementsOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                  <div className="p-2">
+                    <Input 
+                      placeholder="Buscar posicionamento..." 
+                      className="mb-2"
+                      onChange={(e) => {
+                        // Implementar busca se necessário
+                      }}
+                    />
+                    <div className="space-y-1">
+                      {[
+                        'Feed do Facebook',
+                        'Feed do perfil do Facebook', 
+                        'Feed do Instagram',
+                        'Feed do perfil do Instagram',
+                        'Facebook Marketplace',
+                        'Feeds de vídeo do Facebook',
+                        'Coluna da direita do Facebook',
+                        'Explorar do Instagram',
+                        'Página inicial do Explorar do Instagram',
+                        'Caixa de Entrada do Messenger',
+                        'Facebook Business Explore',
+                        'Feed do Threads',
+                        'Notificações do Facebook',
+                        'Stories do Facebook',
+                        'Stories do Instagram',
+                        'Reels do Instagram'
+                      ].map((placement) => (
+                        <div
+                          key={placement}
+                          className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded cursor-pointer"
+                          onClick={() => handlePlacementToggle(placement)}
+                        >
+                          <Checkbox
+                            checked={currentAdset.placements.includes(placement)}
+                            className="mr-2"
+                          />
+                          <span className="text-sm">{placement}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+            <Button variant="outline" onClick={() => setShowAdsetForm(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleCreateCampaign}>
-              Criar Campanha
+            <Button onClick={handleAddAdset}>
+              Adicionar Conjunto
             </Button>
           </div>
         </DialogContent>
