@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
-import { Plus, BarChart3, Edit2, Check, X, ChevronDown, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, BarChart3, Edit2, Check, X, ChevronDown, ChevronRight, TrendingUp, TrendingDown, Target } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage, getCPAColorClass } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +21,7 @@ import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import DetailView from './DetailView';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/sortable-header';
+import RuleCreationDialog from './RuleCreationDialog';
 
 interface AdsetsTabProps {
   campaignId: string | null;
@@ -35,6 +37,12 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
   const [detailMetrics, setDetailMetrics] = useState<{ [adsetId: string]: { threeDay: any; sevenDay: any } }>({});
   const [showBudgetConfirmation, setShowBudgetConfirmation] = useState(false);
   const [pendingBudgetChange, setPendingBudgetChange] = useState<{ adset: any; newBudget: number; currentBudget: number } | null>(null);
+  
+  // Rule creation states
+  const [showRuleCreation, setShowRuleCreation] = useState(false);
+  const [selectedTargets, setSelectedTargets] = useState<Array<{ id: string; name: string; type: 'campaign' | 'adset' | 'ad' }>>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  
   const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
@@ -275,6 +283,45 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
     }));
   };
 
+  // Rule creation handlers
+  const handleToggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    if (isSelectionMode) {
+      setSelectedTargets([]); // Clear selection when exiting selection mode
+    }
+  };
+
+  const handleTargetToggle = (adset: any, checked: boolean) => {
+    if (checked) {
+      setSelectedTargets(prev => [...prev, {
+        id: adset.realId || adset.id,
+        name: adset.name,
+        type: 'adset' as const
+      }]);
+    } else {
+      setSelectedTargets(prev => prev.filter(t => t.id !== (adset.realId || adset.id)));
+    }
+  };
+
+  const handleSelectAllTargets = (checked: boolean) => {
+    if (checked) {
+      setSelectedTargets(filteredAdsets.map(adset => ({
+        id: adset.realId || adset.id,
+        name: adset.name,
+        type: 'adset' as const
+      })));
+    } else {
+      setSelectedTargets([]);
+    }
+  };
+
+  const handleRuleCreated = () => {
+    setShowRuleCreation(false);
+    setSelectedTargets([]);
+    setIsSelectionMode(false);
+    // Optionally refresh data or show success message
+  };
+
   // Helper function to calculate CTR delta
   const calculateCTRDelta = (currentCTR: number, periodCTR: number) => {
     if (periodCTR === 0) return currentCTR > 0 ? 100 : 0;
@@ -320,6 +367,34 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
           <p className="text-slate-600">Configure orçamentos e públicos-alvo</p>
         </div>
         <div className="flex items-center space-x-3">
+          <Button
+            variant={isSelectionMode ? "default" : "outline"}
+            size="sm"
+            onClick={handleToggleSelectionMode}
+            className="flex items-center gap-2"
+          >
+            <Target className="h-4 w-4" />
+            {isSelectionMode ? "Sair da Seleção" : "Selecionar Conjuntos"}
+          </Button>
+          
+          {isSelectionMode && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowRuleCreation(true)}
+              className="flex items-center gap-2"
+              disabled={selectedTargets.length === 0}
+            >
+              <Plus className="h-4 w-4" />
+              Nova Regra
+              {selectedTargets.length > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {selectedTargets.length}
+                </Badge>
+              )}
+            </Button>
+          )}
+          
           <Badge variant="secondary" className="px-3 py-1">
             {filteredAdsets.length} conjuntos
           </Badge>
@@ -394,6 +469,15 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 border-b-slate-200">
+                {isSelectionMode && (
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={selectedTargets.length === filteredAdsets.length && filteredAdsets.length > 0}
+                      onCheckedChange={handleSelectAllTargets}
+                      disabled={filteredAdsets.length === 0}
+                    />
+                  </TableHead>
+                )}
                 {getVisibleColumns('adsets').map((column) => {
                   const isRightAligned = !['status', 'name'].includes(column);
                   const isSortable = !['status', 'name', 'dailyBudget'].includes(column);
@@ -451,6 +535,14 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
               {filteredAdsets.map((adset) => (
                 <>
                   <TableRow key={adset.id} className="hover:bg-slate-50">
+                    {isSelectionMode && (
+                      <TableCell className="w-12">
+                        <Checkbox
+                          checked={selectedTargets.some(t => t.id === (adset.realId || adset.id))}
+                          onCheckedChange={(checked) => handleTargetToggle(adset, checked as boolean)}
+                        />
+                      </TableCell>
+                    )}
                   {getVisibleColumns('adsets').map((column) => {
                     const isRightAligned = !['status', 'name'].includes(column);
                     
@@ -564,6 +656,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                   {/* 3 Days Metrics Row */}
                   {expandedAdset === adset.id && detailMetrics[adset.id]?.threeDay && (
                     <TableRow>
+                      {isSelectionMode && <TableCell className="w-12"></TableCell>}
                       {getVisibleColumns('adsets').map((column) => {
                         const isRightAligned = !['status', 'name'].includes(column);
                         const metrics = detailMetrics[adset.id].threeDay;
@@ -627,6 +720,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                   {/* 7 Days Metrics Row */}
                   {expandedAdset === adset.id && detailMetrics[adset.id]?.sevenDay && (
                     <TableRow>
+                      {isSelectionMode && <TableCell className="w-12"></TableCell>}
                       {getVisibleColumns('adsets').map((column) => {
                         const isRightAligned = !['status', 'name'].includes(column);
                         const metrics = detailMetrics[adset.id].sevenDay;
@@ -689,7 +783,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                   
                   {expandedAdset === adset.id && (
                     <TableRow>
-                      <TableCell colSpan={getVisibleColumns('adsets').length} className="p-0">
+                      <TableCell colSpan={getVisibleColumns('adsets').length + (isSelectionMode ? 1 : 0)} className="p-0">
                         <DetailView 
                           type="adset" 
                           name={adset.name} 
@@ -777,6 +871,17 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+
+
+      {/* Rule Creation Dialog */}
+      <RuleCreationDialog
+        isOpen={showRuleCreation}
+        onOpenChange={setShowRuleCreation}
+        selectedTargets={selectedTargets}
+        level="adset"
+        onRuleCreated={handleRuleCreated}
+      />
     </div>
   );
 };

@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Target, Edit2, Check, X, ChevronDown, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage, getCPAColorClass } from '@/utils/formatters';
@@ -21,6 +22,8 @@ import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import DetailView from './DetailView';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/sortable-header';
+import RuleCreationDialog from './RuleCreationDialog';
+import { useAvailableAccounts } from '@/hooks/useHomeMetrics';
 
 interface CampaignsTabProps {
   accountId: string | null;
@@ -31,16 +34,23 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
   const [tempBudget, setTempBudget] = useState<string>('');
-  const [newCampaign, setNewCampaign] = useState({ name: '', objective: 'CONVERSIONS' });
+  const [newCampaign, setNewCampaign] = useState({ name: '', objective: 'CONVERSIONS', account_name: '' });
   const [expandedCampaign, setExpandedCampaign] = useState<string | null>(null);
   const [detailMetrics, setDetailMetrics] = useState<{ [campaignId: string]: { threeDay: any; sevenDay: any } }>({});
   const [showBudgetConfirmation, setShowBudgetConfirmation] = useState(false);
   const [pendingBudgetChange, setPendingBudgetChange] = useState<{ campaign: any; newBudget: number; currentBudget: number } | null>(null);
+  
+  // Rule creation states
+  const [showRuleCreation, setShowRuleCreation] = useState(false);
+  const [selectedTargets, setSelectedTargets] = useState<Array<{ id: string; name: string; type: 'campaign' | 'adset' | 'ad' }>>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  
   const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
 
   const { data: campaigns, isLoading, error, updateOptimistic, clearOptimistic } = useCampaignsData(accountId, settings.dateFilter);
+  const { data: availableAccounts, isLoading: accountsLoading } = useAvailableAccounts();
 
   // Sorting functionality with default sort by CPA descending
   const { sortedData: sortedCampaigns, handleSort, getSortDirection } = useTableSort(campaigns || [], { column: 'cpa', direction: 'desc' });
@@ -263,19 +273,29 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
       return;
     }
 
+    if (!newCampaign.account_name) {
+      toast({
+        title: "Conta obrigatória",
+        description: "Por favor, selecione uma conta para criar a campanha.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       await createCampaign({
         name: newCampaign.name,
         objective: newCampaign.objective,
         level: 'campaign',
+        account_name: newCampaign.account_name,
       });
       
-      setNewCampaign({ name: '', objective: 'CONVERSIONS' });
+      setNewCampaign({ name: '', objective: 'CONVERSIONS', account_name: '' });
       setShowCreateDialog(false);
       
       toast({
         title: "Campanha criada",
-        description: `Campanha "${newCampaign.name}" criada com sucesso.`,
+        description: `Campanha "${newCampaign.name}" criada com sucesso na conta ${newCampaign.account_name}.`,
       });
     } catch (error) {
       console.error('Error creating campaign:', error);
@@ -289,6 +309,45 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
 
   const handleExpandCampaign = (campaignId: string) => {
     setExpandedCampaign(expandedCampaign === campaignId ? null : campaignId);
+  };
+
+  // Rule creation handlers
+  const handleToggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    if (isSelectionMode) {
+      setSelectedTargets([]); // Clear selection when exiting selection mode
+    }
+  };
+
+  const handleTargetToggle = (campaign: any, checked: boolean) => {
+    if (checked) {
+      setSelectedTargets(prev => [...prev, {
+        id: campaign.realId || campaign.id,
+        name: campaign.name,
+        type: 'campaign' as const
+      }]);
+    } else {
+      setSelectedTargets(prev => prev.filter(t => t.id !== (campaign.realId || campaign.id)));
+    }
+  };
+
+  const handleSelectAllTargets = (checked: boolean) => {
+    if (checked) {
+      setSelectedTargets(filteredCampaigns.map(campaign => ({
+        id: campaign.realId || campaign.id,
+        name: campaign.name,
+        type: 'campaign' as const
+      })));
+    } else {
+      setSelectedTargets([]);
+    }
+  };
+
+  const handleRuleCreated = () => {
+    setShowRuleCreation(false);
+    setSelectedTargets([]);
+    setIsSelectionMode(false);
+    // Optionally refresh data or show success message
   };
 
   // Helper function to calculate CTR delta
@@ -327,6 +386,34 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
         
         <div className="flex items-center gap-2">
           <Button
+            variant={isSelectionMode ? "default" : "outline"}
+            size="sm"
+            onClick={handleToggleSelectionMode}
+            className="flex items-center gap-2"
+          >
+            <Target className="h-4 w-4" />
+            {isSelectionMode ? "Sair da Seleção" : "Selecionar Campanhas"}
+          </Button>
+          
+          {isSelectionMode && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowRuleCreation(true)}
+              className="flex items-center gap-2"
+              disabled={selectedTargets.length === 0}
+            >
+              <Plus className="h-4 w-4" />
+              Nova Regra
+              {selectedTargets.length > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {selectedTargets.length}
+                </Badge>
+              )}
+            </Button>
+          )}
+          
+          <Button
             variant="outline"
             size="sm"
             onClick={() => setShowCreateDialog(true)}
@@ -347,6 +434,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
             toggleColumnVisibility={toggleColumnVisibility}
           />
         </div>
+
       </div>
 
       <FilterBar
@@ -364,6 +452,15 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
           <Table>
             <TableHeader>
               <TableRow>
+                {isSelectionMode && (
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={selectedTargets.length === filteredCampaigns.length && filteredCampaigns.length > 0}
+                      onCheckedChange={handleSelectAllTargets}
+                      disabled={filteredCampaigns.length === 0}
+                    />
+                  </TableHead>
+                )}
                 <TableHead className="w-12"></TableHead>
                 {getVisibleColumns('campaigns').map((column) => (
                   <TableHead 
@@ -398,6 +495,14 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
               {filteredCampaigns.map((campaign) => (
                 <>
                   <TableRow key={campaign.id} className="hover:bg-muted/50">
+                    {isSelectionMode && (
+                      <TableCell className="w-12">
+                        <Checkbox
+                          checked={selectedTargets.some(t => t.id === (campaign.realId || campaign.id))}
+                          onCheckedChange={(checked) => handleTargetToggle(campaign, checked as boolean)}
+                        />
+                      </TableCell>
+                    )}
                     <TableCell className="w-12">
                       <Button
                         variant="ghost"
@@ -506,6 +611,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                   {/* 3 Days Metrics Row */}
                   {expandedCampaign === campaign.id && detailMetrics[campaign.id]?.threeDay && (
                     <TableRow>
+                      {isSelectionMode && <TableCell className="w-12"></TableCell>}
                       <TableCell className="w-12"></TableCell>
                       {getVisibleColumns('campaigns').map((column) => {
                         const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
@@ -570,6 +676,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                   {/* 7 Days Metrics Row */}
                   {expandedCampaign === campaign.id && detailMetrics[campaign.id]?.sevenDay && (
                     <TableRow>
+                      {isSelectionMode && <TableCell className="w-12"></TableCell>}
                       <TableCell className="w-12"></TableCell>
                       {getVisibleColumns('campaigns').map((column) => {
                         const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
@@ -633,7 +740,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                   
                   {expandedCampaign === campaign.id && (
                     <TableRow>
-                      <TableCell colSpan={getVisibleColumns('campaigns').length + 1} className="p-0">
+                      <TableCell colSpan={getVisibleColumns('campaigns').length + (isSelectionMode ? 2 : 1)} className="p-0">
                         <DetailView 
                           type="campaign" 
                           name={campaign.name} 
@@ -647,6 +754,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
               ))}
               {summaryMetrics && (
                 <TableRow className="bg-blue-50 border-t-2 border-blue-200 font-semibold">
+                  {isSelectionMode && <TableCell className="w-12"></TableCell>}
                   <TableCell className="w-12"></TableCell>
                   {getVisibleColumns('campaigns').map((column) => {
                     const isRightAligned = !['status', 'name', 'dailyBudget'].includes(column);
@@ -722,8 +830,87 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+
+
+      {/* Campaign Creation Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Criar Nova Campanha</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="campaign-name">Nome da Campanha</Label>
+              <Input
+                id="campaign-name"
+                placeholder="Digite o nome da campanha"
+                value={newCampaign.name}
+                onChange={(e) => setNewCampaign(prev => ({ ...prev, name: e.target.value }))}
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="campaign-account">Conta</Label>
+              <Select
+                value={newCampaign.account_name}
+                onValueChange={(value) => setNewCampaign(prev => ({ ...prev, account_name: value }))}
+                disabled={accountsLoading}
+              >
+                <SelectTrigger id="campaign-account">
+                  <SelectValue placeholder={accountsLoading ? "Carregando contas..." : "Selecione uma conta"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableAccounts?.map((account) => (
+                    <SelectItem key={account} value={account}>
+                      {account}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <Label htmlFor="campaign-objective">Objetivo</Label>
+              <Select
+                value={newCampaign.objective}
+                onValueChange={(value) => setNewCampaign(prev => ({ ...prev, objective: value }))}
+              >
+                <SelectTrigger id="campaign-objective">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CONVERSIONS">Conversões</SelectItem>
+                  <SelectItem value="REACH">Alcance</SelectItem>
+                  <SelectItem value="TRAFFIC">Tráfego</SelectItem>
+                  <SelectItem value="BRAND_AWARENESS">Reconhecimento da Marca</SelectItem>
+                  <SelectItem value="VIDEO_VIEWS">Visualizações de Vídeo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateCampaign}>
+              Criar Campanha
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rule Creation Dialog */}
+      <RuleCreationDialog
+        isOpen={showRuleCreation}
+        onOpenChange={setShowRuleCreation}
+        selectedTargets={selectedTargets}
+        level="campaign"
+        onRuleCreated={handleRuleCreated}
+      />
     </div>
   );
 };
 
 export default CampaignsTab;
+

@@ -25,6 +25,26 @@ export function HourlyHeatmap() {
   console.log('hourlyData length:', hourlyData?.length || 0);
   console.log('isLoading:', isLoading);
   console.log('Sample hourlyData:', hourlyData?.slice(0, 3));
+  
+  // Debug: Check the date range of the data
+  if (hourlyData && hourlyData.length > 0) {
+    const dates = [...new Set(hourlyData.map(row => row.date_brt))].sort();
+    console.log('Date range in hourlyData:', {
+      earliest: dates[0],
+      latest: dates[dates.length - 1],
+      allDates: dates,
+      totalRecords: hourlyData.length
+    });
+    
+    // Check if today's date is in the data
+    const now = new Date();
+    const todayStr = now.getFullYear() + '-' + 
+      String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(now.getDate()).padStart(2, '0');
+    console.log('Today should be:', todayStr);
+    console.log('Today found in data:', dates.includes(todayStr));
+  }
+  
   console.log('===========================');
 
   if (isLoading) {
@@ -39,25 +59,17 @@ export function HourlyHeatmap() {
     );
   }
 
-  // Prepare data for heatmap - use the same logic as the hook
-  const now = new Date();
-  const brasilOffset = -3 * 60; // GMT-3 in minutes
-  const localOffset = now.getTimezoneOffset();
-  const brasilTime = new Date(now.getTime() + (localOffset - brasilOffset) * 60 * 1000);
+  // Get the actual dates from the data instead of calculating them
+  const datesFromData = [...new Set(hourlyData.map(row => row.date_brt))].sort();
   
-  // Use exactly the same logic as the hook
-  const sevenDaysAgo = new Date(brasilTime);
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-  sevenDaysAgo.setHours(0, 0, 0, 0); // startOfDay equivalent
+  // Debug: Show the dates from the data
+  console.log('=== HEATMAP DATE RANGE DEBUG ===');
+  console.log('Dates from hourlyData:', datesFromData);
+  console.log('Number of unique dates:', datesFromData.length);
+  console.log('================================');
   
-  const today = new Date(brasilTime);
-  today.setHours(0, 0, 0, 0); // startOfDay equivalent
-  
-  const last7Days = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(sevenDaysAgo);
-    date.setDate(date.getDate() + i);
-    return date.toISOString().split('T')[0];
-  });
+  // Use the dates from the data for the heatmap
+  const last7Days = datesFromData;
 
   const hours = Array.from({ length: 24 }, (_, i) => i);
 
@@ -204,15 +216,25 @@ export function HourlyHeatmap() {
             <div key={last7Days[dayIndex]} className="flex items-center mb-1 justify-start">
               {/* Day label */}
               <div className="w-32 text-xs text-muted-foreground pr-2">
-                {new Date(last7Days[dayIndex]).toLocaleDateString('pt-BR', { 
-                  weekday: 'long'
-                }).split(',')[0].substring(0, 3).charAt(0).toUpperCase() + 
-                new Date(last7Days[dayIndex]).toLocaleDateString('pt-BR', { 
-                  weekday: 'long'
-                }).split(',')[0].substring(1, 3)} - {new Date(last7Days[dayIndex]).toLocaleDateString('pt-BR', { 
-                  day: '2-digit',
-                  month: '2-digit'
-                })}
+                {(() => {
+                  // Parse the date string properly to avoid timezone issues
+                  const [year, month, day] = last7Days[dayIndex].split('-').map(Number);
+                  const date = new Date(year, month - 1, day); // month is 0-indexed
+                  
+                  const weekday = date.toLocaleDateString('pt-BR', { 
+                    weekday: 'long'
+                  }).split(',')[0].substring(0, 3).charAt(0).toUpperCase() + 
+                  date.toLocaleDateString('pt-BR', { 
+                    weekday: 'long'
+                  }).split(',')[0].substring(1, 3);
+                  
+                  const dateStr = date.toLocaleDateString('pt-BR', { 
+                    day: '2-digit',
+                    month: '2-digit'
+                  });
+                  
+                  return `${weekday} - ${dateStr}`;
+                })()}
               </div>
               
               {/* Hour cells */}
@@ -223,11 +245,19 @@ export function HourlyHeatmap() {
                   style={{
                     backgroundColor: getColorForIntensity(getIntensity(value))
                   }}
-                  title={`${new Date(last7Days[dayIndex]).toLocaleDateString('pt-BR')} às ${hour}h: ${formatValue(value)}`}
+                  title={`${(() => {
+                    const [year, month, day] = last7Days[dayIndex].split('-').map(Number);
+                    const date = new Date(year, month - 1, day);
+                    return date.toLocaleDateString('pt-BR');
+                  })()} às ${hour}h: ${formatValue(value)}`}
                 >
                   {/* Tooltip */}
                   <div className="invisible group-hover:visible absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-popover text-popover-foreground text-xs p-2 rounded shadow-lg border z-10 whitespace-nowrap">
-                    <div>{new Date(last7Days[dayIndex]).toLocaleDateString('pt-BR')}</div>
+                    <div>{(() => {
+                      const [year, month, day] = last7Days[dayIndex].split('-').map(Number);
+                      const date = new Date(year, month - 1, day);
+                      return date.toLocaleDateString('pt-BR');
+                    })()}</div>
                     <div>{hour}h: {formatValue(value)}</div>
                   </div>
                 </div>

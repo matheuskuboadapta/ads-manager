@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, AlertCircle, Trash2, HelpCircle, Search, X } from 'lucide-react';
+import { Plus, AlertCircle, Trash2, HelpCircle, Search, X, Target } from 'lucide-react';
 import { useAdRules, type AdRule } from '@/hooks/useAdRules';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import RuleCreationDialog from './RuleCreationDialog';
 
 // Utility functions to parse conditions and actions
 const parseConditions = (conditions: any): string => {
@@ -205,6 +206,11 @@ const RulesTab = () => {
   const { data: rules, isLoading, error, refetch } = useAdRules();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isExcludeDialogOpen, setIsExcludeDialogOpen] = useState(false);
+  
+  // Rule creation states
+  const [showRuleCreation, setShowRuleCreation] = useState(false);
+  const [selectedTargets, setSelectedTargets] = useState<Array<{ id: string; name: string; type: 'campaign' | 'adset' | 'ad' }>>([]);
+  
   const { toast } = useToast();
   const { user } = useAuth();
 
@@ -357,6 +363,13 @@ const RulesTab = () => {
   };
 
   // Handle column sorting
+  // Rule creation handlers
+  const handleRuleCreated = () => {
+    setShowRuleCreation(false);
+    setSelectedTargets([]);
+    refetch(); // Refresh rules list
+  };
+
   const handleSort = (field: 'created_at') => {
     if (sortField === field) {
       // Toggle direction if same field
@@ -613,14 +626,25 @@ const RulesTab = () => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold">Regras de Automação</h2>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="flex items-center space-x-2" onClick={() => resetForm()}>
-              <Plus className="h-4 w-4" />
-              <span>Nova Regra</span>
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowRuleCreation(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Nova Regra
+          </Button>
+          
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="flex items-center space-x-2" onClick={() => resetForm()}>
+                <Plus className="h-4 w-4" />
+                <span>Nova Regra Geral</span>
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Criar Nova Regra de Automação</DialogTitle>
             </DialogHeader>
@@ -840,6 +864,7 @@ const RulesTab = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Filters Section */}
@@ -1041,6 +1066,17 @@ const RulesTab = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+
+
+      {/* Rule Creation Dialog */}
+      <RuleCreationDialog
+        isOpen={showRuleCreation}
+        onOpenChange={setShowRuleCreation}
+        selectedTargets={[]}
+        level="campaign"
+        onRuleCreated={handleRuleCreated}
+      />
     </div>
   );
 };

@@ -105,6 +105,7 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
             toggleColumnVisibility={(column) => toggleColumnVisibility('accounts', column)}
           />
         </div>
+
       </div>
 
       {/* FilterBar sempre visível */}
@@ -301,3 +302,4 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
 };
 
 export default AccountsTab;
+

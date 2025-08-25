@@ -46,8 +46,10 @@ export function useHomeMetrics(selectedAccount?: string | null) {
     // Use current local time directly since we're already in GMT-3
     const now = new Date();
     
-    // Create date using YYYY-MM-DD format to avoid timezone issues
-    const todayStr = now.toISOString().split('T')[0];
+    // Create date using local date methods to avoid timezone conversion issues
+    const todayStr = now.getFullYear() + '-' + 
+      String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(now.getDate()).padStart(2, '0');
     const today = new Date(todayStr + 'T00:00:00');
     const todayEnd = new Date(todayStr + 'T00:00:00');
     
@@ -76,13 +78,17 @@ export function useHomeMetrics(selectedAccount?: string | null) {
     // Use current local time directly since we're already in GMT-3
     const now = new Date();
     
-    // Create yesterday date using YYYY-MM-DD format to avoid timezone issues
-    const yesterdayStr = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toISOString().split('T')[0];
-    const yesterday = new Date(yesterdayStr + 'T00:00:00');
+    // Create yesterday date using local date methods to avoid timezone conversion issues
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const yesterdayStr = yesterday.getFullYear() + '-' + 
+      String(yesterday.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(yesterday.getDate()).padStart(2, '0');
+    const yesterdayDate = new Date(yesterdayStr + 'T00:00:00');
     const yesterdayEnd = new Date(yesterdayStr + 'T00:00:00');
     
     const filter = {
-      from: yesterday,
+      from: yesterdayDate,
       to: yesterdayEnd,
       label: 'Ontem'
     };
@@ -354,8 +360,11 @@ export function useHomeMetrics(selectedAccount?: string | null) {
     const now = new Date();
     
     return Array.from({ length: 7 }, (_, i) => {
-      const dayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (6 - i));
-      const dayStr = dayDate.toISOString().split('T')[0];
+      const dayDate = new Date(now);
+      dayDate.setDate(now.getDate() - (6 - i));
+      const dayStr = dayDate.getFullYear() + '-' + 
+        String(dayDate.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(dayDate.getDate()).padStart(2, '0');
       const dayStart = new Date(dayStr + 'T00:00:00');
       const dayEnd = new Date(dayStr + 'T00:00:00');
       
@@ -466,26 +475,41 @@ const fetchRealHourlyMetrics = async (accountName?: string | null): Promise<Hour
   console.log('Account name type:', typeof accountName);
   console.log('Account name value:', accountName);
   
-  // Use current local time directly since we're already in GMT-3
+  // Get current date in local timezone (Brazil GMT-3)
   const now = new Date();
   
-  // Create dates using YYYY-MM-DD format to avoid timezone issues
-  const todayStr = now.toISOString().split('T')[0];
-  const sevenDaysAgoStr = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6).toISOString().split('T')[0];
+  // Create dates using local date methods to avoid timezone conversion issues
+  const todayStr = now.getFullYear() + '-' + 
+    String(now.getMonth() + 1).padStart(2, '0') + '-' + 
+    String(now.getDate()).padStart(2, '0');
   
-  // For the end date, we need to include the entire day, so we use the next day as the upper limit
-  const nextDay = new Date(todayStr);
-  nextDay.setDate(nextDay.getDate() + 1);
-  const upperLimit = nextDay.toISOString().split('T')[0];
+  const sevenDaysAgo = new Date(now);
+  sevenDaysAgo.setDate(now.getDate() - 6);
+  const sevenDaysAgoStr = sevenDaysAgo.getFullYear() + '-' + 
+    String(sevenDaysAgo.getMonth() + 1).padStart(2, '0') + '-' + 
+    String(sevenDaysAgo.getDate()).padStart(2, '0');
+    
+  // Also try with UTC dates in case the database expects UTC
+  const utcNow = new Date();
+  const utcTodayStr = utcNow.toISOString().split('T')[0];
+  const utcSevenDaysAgo = new Date(utcNow);
+  utcSevenDaysAgo.setDate(utcNow.getDate() - 6);
+  const utcSevenDaysAgoStr = utcSevenDaysAgo.toISOString().split('T')[0];
+  
 
-  console.log('Hourly metrics date range:', { sevenDaysAgo: sevenDaysAgoStr, today: todayStr, upperLimit });
+
+  console.log('Hourly metrics date range (local):', { sevenDaysAgo: sevenDaysAgoStr, today: todayStr });
+  console.log('Hourly metrics date range (UTC):', { sevenDaysAgo: utcSevenDaysAgoStr, today: utcTodayStr });
+  console.log('Current time (local):', now.toString());
+  console.log('Current time (ISO):', now.toISOString());
+  console.log('Timezone offset:', now.getTimezoneOffset(), 'minutes');
 
   // Fetch from meta_ads_account_hourly_view
+  // Query for a wider range to see what data is actually available
   let query = supabase
     .from('meta_ads_account_hourly_view')
     .select('*')
     .gte('date_brt', sevenDaysAgoStr)
-    .lt('date_brt', upperLimit)
     .order('date_brt', { ascending: true })
     .order('hour_of_day', { ascending: true });
 
@@ -513,6 +537,18 @@ const fetchRealHourlyMetrics = async (accountName?: string | null): Promise<Hour
   console.log('Successfully fetched data from meta_ads_account_hourly_view:', hourlyData?.length, 'records');
   console.log('Sample account names in data:', hourlyData?.slice(0, 5).map(row => row.account_name));
   console.log('Unique account names in data:', [...new Set(hourlyData?.map(row => row.account_name) || [])]);
+  
+  // Debug: Check the date range of the returned data
+  if (hourlyData && hourlyData.length > 0) {
+    const dates = [...new Set(hourlyData.map(row => row.date_brt))].sort();
+    console.log('Date range in returned data:', {
+      earliest: dates[0],
+      latest: dates[dates.length - 1],
+      allDates: dates,
+      requestedRange: { from: sevenDaysAgoStr, to: 'unlimited' }
+    });
+  }
+  
   console.log('=== END FETCH REAL HOURLY METRICS DEBUG ===');
 
   if (!hourlyData || hourlyData.length === 0) {

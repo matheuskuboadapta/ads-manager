@@ -17,6 +17,7 @@ export interface CreatePayload {
   level: 'campaign' | 'adset';
   campaign_id?: string;
   daily_budget?: number;
+  account_name?: string;
 }
 
 const makeRequest = async (payload: UpdatePayload | CreatePayload): Promise<Response> => {

@@ -4,7 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Megaphone, ExternalLink, Play, ChevronDown, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Megaphone, ExternalLink, Play, ChevronDown, ChevronRight, TrendingUp, TrendingDown, Target, Plus } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage, getCPAColorClass } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
@@ -17,6 +18,7 @@ import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import DetailView from './DetailView';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/sortable-header';
+import RuleCreationDialog from './RuleCreationDialog';
 
 interface AdsTabProps {
   adsetId: string | null;
@@ -25,6 +27,12 @@ interface AdsTabProps {
 const AdsTab = ({ adsetId }: AdsTabProps) => {
   const [expandedAd, setExpandedAd] = useState<string | null>(null);
   const [detailMetrics, setDetailMetrics] = useState<{ [adId: string]: { threeDay: any; sevenDay: any } }>({});
+  
+  // Rule creation states
+  const [showRuleCreation, setShowRuleCreation] = useState(false);
+  const [selectedTargets, setSelectedTargets] = useState<Array<{ id: string; name: string; type: 'campaign' | 'adset' | 'ad' }>>([]);
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  
   const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
@@ -137,6 +145,45 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
     }
   };
 
+  // Rule creation handlers
+  const handleToggleSelectionMode = () => {
+    setIsSelectionMode(!isSelectionMode);
+    if (isSelectionMode) {
+      setSelectedTargets([]); // Clear selection when exiting selection mode
+    }
+  };
+
+  const handleTargetToggle = (ad: any, checked: boolean) => {
+    if (checked) {
+      setSelectedTargets(prev => [...prev, {
+        id: ad.id,
+        name: ad.name,
+        type: 'ad' as const
+      }]);
+    } else {
+      setSelectedTargets(prev => prev.filter(t => t.id !== ad.id));
+    }
+  };
+
+  const handleSelectAllTargets = (checked: boolean) => {
+    if (checked) {
+      setSelectedTargets(filteredAds.map(ad => ({
+        id: ad.id,
+        name: ad.name,
+        type: 'ad' as const
+      })));
+    } else {
+      setSelectedTargets([]);
+    }
+  };
+
+  const handleRuleCreated = () => {
+    setShowRuleCreation(false);
+    setSelectedTargets([]);
+    setIsSelectionMode(false);
+    // Optionally refresh data or show success message
+  };
+
   const handleMetricsReady = (adId: string, metrics: { threeDay: any; sevenDay: any }) => {
     setDetailMetrics(prev => ({
       ...prev,
@@ -189,6 +236,34 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
           <p className="text-muted-foreground">Visualize o desempenho individual dos anúncios</p>
         </div>
         <div className="flex items-center space-x-3">
+          <Button
+            variant={isSelectionMode ? "default" : "outline"}
+            size="sm"
+            onClick={handleToggleSelectionMode}
+            className="flex items-center gap-2"
+          >
+            <Target className="h-4 w-4" />
+            {isSelectionMode ? "Sair da Seleção" : "Selecionar Anúncios"}
+          </Button>
+          
+          {isSelectionMode && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowRuleCreation(true)}
+              className="flex items-center gap-2"
+              disabled={selectedTargets.length === 0}
+            >
+              <Plus className="h-4 w-4" />
+              Nova Regra
+              {selectedTargets.length > 0 && (
+                <Badge variant="secondary" className="ml-1">
+                  {selectedTargets.length}
+                </Badge>
+              )}
+            </Button>
+          )}
+          
           <Badge variant="secondary" className="px-3 py-1">
             {filteredAds.length} anúncios
           </Badge>
@@ -202,6 +277,7 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
             toggleColumnVisibility={(column) => toggleColumnVisibility('ads', column)}
           />
         </div>
+
       </div>
 
       <FilterBar
@@ -233,6 +309,15 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
           <Table>
             <TableHeader>
               <TableRow className="bg-slate-50 border-b-slate-200">
+                {isSelectionMode && (
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={selectedTargets.length === filteredAds.length && filteredAds.length > 0}
+                      onCheckedChange={handleSelectAllTargets}
+                      disabled={filteredAds.length === 0}
+                    />
+                  </TableHead>
+                )}
                 {getVisibleColumns('ads').map((column) => {
                   const isRightAligned = !['status', 'name', 'videoLink'].includes(column);
                   const isSortable = !['status', 'name', 'videoLink'].includes(column);
@@ -290,6 +375,14 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
               {filteredAds.map((ad) => (
                 <>
                   <TableRow key={ad.id} className="hover:bg-slate-50">
+                    {isSelectionMode && (
+                      <TableCell className="w-12">
+                        <Checkbox
+                          checked={selectedTargets.some(t => t.id === ad.id)}
+                          onCheckedChange={(checked) => handleTargetToggle(ad, checked as boolean)}
+                        />
+                      </TableCell>
+                    )}
                   {getVisibleColumns('ads').map((column) => {
                     const isRightAligned = !['status', 'name', 'videoLink'].includes(column);
                     
@@ -367,6 +460,7 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
                   {/* 3 Days Metrics Row */}
                   {expandedAd === ad.id && detailMetrics[ad.id]?.threeDay && (
                     <TableRow>
+                      {isSelectionMode && <TableCell className="w-12"></TableCell>}
                       {getVisibleColumns('ads').map((column) => {
                         const isRightAligned = !['status', 'name', 'videoLink'].includes(column);
                         const metrics = detailMetrics[ad.id].threeDay;
@@ -430,6 +524,7 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
                   {/* 7 Days Metrics Row */}
                   {expandedAd === ad.id && detailMetrics[ad.id]?.sevenDay && (
                     <TableRow>
+                      {isSelectionMode && <TableCell className="w-12"></TableCell>}
                       {getVisibleColumns('ads').map((column) => {
                         const isRightAligned = !['status', 'name', 'videoLink'].includes(column);
                         const metrics = detailMetrics[ad.id].sevenDay;
@@ -492,7 +587,7 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
                   
                   {expandedAd === ad.id && (
                     <TableRow>
-                      <TableCell colSpan={getVisibleColumns('ads').length} className="p-0">
+                      <TableCell colSpan={getVisibleColumns('ads').length + (isSelectionMode ? 1 : 0)} className="p-0">
                         <DetailView 
                           type="ad" 
                           name={ad.name} 
@@ -571,8 +666,20 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
           </p>
         </div>
       </div>
+
+
+
+      {/* Rule Creation Dialog */}
+      <RuleCreationDialog
+        isOpen={showRuleCreation}
+        onOpenChange={setShowRuleCreation}
+        selectedTargets={selectedTargets}
+        level="ad"
+        onRuleCreated={handleRuleCreated}
+      />
     </div>
   );
 };
 
 export default AdsTab;
+
