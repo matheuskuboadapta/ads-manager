@@ -3,12 +3,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Target, Edit2, Check, X, ChevronDown, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, Target, Edit2, Check, X, ChevronDown, ChevronRight, TrendingUp, TrendingDown, Power, PowerOff } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage, getCPAColorClass } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
@@ -44,6 +44,11 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   const [showRuleCreation, setShowRuleCreation] = useState(false);
   const [selectedTargets, setSelectedTargets] = useState<Array<{ id: string; name: string; type: 'campaign' | 'adset' | 'ad' }>>([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
+  
+  // Bulk actions states
+  const [showBulkStatusDialog, setShowBulkStatusDialog] = useState(false);
+  const [bulkStatusValue, setBulkStatusValue] = useState<'ATIVO' | 'DESATIVADA'>('ATIVO');
+  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   
   const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
@@ -161,6 +166,52 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
       });
       // Revert optimistic update
       clearOptimistic(campaign.firstAdId);
+    }
+  };
+
+  // Bulk status change handler
+  const handleBulkStatusChange = async () => {
+    if (selectedTargets.length === 0) return;
+    
+    setIsBulkUpdating(true);
+    
+    try {
+      // Get the actual campaign objects from the selected targets
+      const selectedCampaigns = filteredCampaigns.filter(campaign => 
+        selectedTargets.some(target => target.id === (campaign.realId || campaign.id))
+      );
+      
+      // Update all selected campaigns
+      const updatePromises = selectedCampaigns.map(campaign => 
+        updateCampaign(campaign.realId, 'status', bulkStatusValue)
+      );
+      
+      await Promise.all(updatePromises);
+      
+      // Update optimistic for all campaigns
+      selectedCampaigns.forEach(campaign => {
+        updateOptimistic(campaign.firstAdId, { statusFinal: bulkStatusValue });
+      });
+      
+      toast({
+        title: "Status atualizado em massa",
+        description: `${selectedCampaigns.length} campanha(s) ${bulkStatusValue === 'ATIVO' ? 'ativada(s)' : 'pausada(s)'} com sucesso.`,
+      });
+      
+      // Close dialog and reset selection
+      setShowBulkStatusDialog(false);
+      setSelectedTargets([]);
+      setIsSelectionMode(false);
+      
+    } catch (error) {
+      console.error('Error updating bulk campaign status:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar o status das campanhas selecionadas.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsBulkUpdating(false);
     }
   };
 
@@ -396,21 +447,39 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
           </Button>
           
           {isSelectionMode && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowRuleCreation(true)}
-              className="flex items-center gap-2"
-              disabled={selectedTargets.length === 0}
-            >
-              <Plus className="h-4 w-4" />
-              Nova Regra
-              {selectedTargets.length > 0 && (
-                <Badge variant="secondary" className="ml-1">
-                  {selectedTargets.length}
-                </Badge>
-              )}
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowBulkStatusDialog(true)}
+                className="flex items-center gap-2"
+                disabled={selectedTargets.length === 0}
+              >
+                <Power className="h-4 w-4" />
+                Mudar Status
+                {selectedTargets.length > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {selectedTargets.length}
+                  </Badge>
+                )}
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowRuleCreation(true)}
+                className="flex items-center gap-2"
+                disabled={selectedTargets.length === 0}
+              >
+                <Plus className="h-4 w-4" />
+                Nova Regra
+                {selectedTargets.length > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {selectedTargets.length}
+                  </Badge>
+                )}
+              </Button>
+            </>
           )}
           
           <Button
@@ -425,13 +494,12 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
           
           <ColumnOrderDialog
             tableType="campaigns"
-            columnOrders={columnOrders}
-            updateColumnOrder={updateColumnOrder}
-            resetColumnOrder={resetColumnOrder}
-            getVisibleColumns={getVisibleColumns}
-            getAllColumns={getAllColumns}
-            isColumnVisible={isColumnVisible}
-            toggleColumnVisibility={toggleColumnVisibility}
+            columnOrder={getVisibleColumns('campaigns')}
+            onColumnOrderChange={(newOrder) => updateColumnOrder('campaigns', newOrder)}
+            onReset={() => resetColumnOrder('campaigns')}
+            getAllColumns={() => getAllColumns('campaigns')}
+            isColumnVisible={(column) => isColumnVisible('campaigns', column)}
+            toggleColumnVisibility={(column) => toggleColumnVisibility('campaigns', column)}
           />
         </div>
 
@@ -831,6 +899,52 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
         </AlertDialogContent>
       </AlertDialog>
 
+             {/* Bulk Status Dialog */}
+       <Dialog open={showBulkStatusDialog} onOpenChange={setShowBulkStatusDialog}>
+         <DialogContent className="max-w-md">
+           <DialogHeader>
+             <DialogTitle>Mudar Status em Massa</DialogTitle>
+             <DialogDescription>
+               Selecione o status para todas as {selectedTargets.length} campanha(s) selecionada(s).
+             </DialogDescription>
+           </DialogHeader>
+           <div className="grid gap-4 py-4">
+             <div className="flex items-center justify-between p-4 border rounded-lg">
+               <div className="flex items-center space-x-3">
+                 {bulkStatusValue === 'ATIVO' ? (
+                   <Power className="h-5 w-5 text-green-600" />
+                 ) : (
+                   <PowerOff className="h-5 w-5 text-red-600" />
+                 )}
+                 <div>
+                   <div className="font-medium">
+                     {bulkStatusValue === 'ATIVO' ? 'Ativar Campanhas' : 'Desativar Campanhas'}
+                   </div>
+                   <div className="text-sm text-muted-foreground">
+                     {bulkStatusValue === 'ATIVO' 
+                       ? 'As campanhas ficarão ativas e começarão a receber orçamento'
+                       : 'As campanhas serão pausadas e não receberão mais orçamento'
+                     }
+                   </div>
+                 </div>
+               </div>
+               <Switch
+                 checked={bulkStatusValue === 'ATIVO'}
+                 onCheckedChange={(checked) => setBulkStatusValue(checked ? 'ATIVO' : 'DESATIVADA')}
+                 className="data-[state=checked]:bg-green-600"
+               />
+             </div>
+           </div>
+           <DialogFooter>
+             <Button variant="outline" onClick={() => setShowBulkStatusDialog(false)}>
+               Cancelar
+             </Button>
+             <Button onClick={handleBulkStatusChange} disabled={isBulkUpdating}>
+               {isBulkUpdating ? 'Atualizando...' : 'Atualizar Status'}
+             </Button>
+           </DialogFooter>
+         </DialogContent>
+       </Dialog>
 
 
       {/* Campaign Creation Dialog */}
