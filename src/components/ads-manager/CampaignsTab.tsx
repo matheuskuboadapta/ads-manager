@@ -823,7 +823,13 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                           )}
                           {column === 'name' && (
                             <div className="flex items-center gap-2">
-                              <span className="font-medium">{campaign.name}</span>
+                              <div 
+                                className="flex items-center space-x-2 cursor-pointer hover:text-blue-600 transition-colors flex-1"
+                                onClick={() => onCampaignSelect(campaign.name)}
+                              >
+                                <Target className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                                <span className="underline-offset-4 hover:underline truncate font-medium">{campaign.name}</span>
+                              </div>
                               <CopyButton text={campaign.name} />
                             </div>
                           )}

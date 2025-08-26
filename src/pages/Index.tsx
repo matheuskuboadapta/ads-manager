@@ -7,6 +7,7 @@ import { RefreshCw, Users, Target, BarChart3, Megaphone, Settings, LogOut, Home 
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
+import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import AccountsTab from '@/components/ads-manager/AccountsTab';
 import CampaignsTab from '@/components/ads-manager/CampaignsTab';
 import AdsetsTab from '@/components/ads-manager/AdsetsTab';
@@ -25,6 +26,7 @@ export default function Index() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, signOut } = useAuth();
+  const { updateNameFilter } = useGlobalSettings();
 
   // Function to refresh all data
   const refreshAllData = () => {
@@ -76,6 +78,10 @@ export default function Index() {
     setSelectedCampaign(campaignName);
     setSelectedAdset(null);
     setActiveTab('adsets');
+    
+    // Clear the name filter when navigating to adsets tab
+    // This prevents the campaign search filter from being applied to adset names
+    updateNameFilter('');
     
     console.log('State will be updated to:', {
       selectedAccount: selectedAccount,

@@ -120,7 +120,7 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
       />
 
       {/* Tabela sempre visível */}
-      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-lg">
         <div className="overflow-x-auto chat-table-container">
           <Table>
             <TableHeader>

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useChat } from '@/hooks/useChat';
+import { wrapText } from '@/utils/formatters';
 
 interface ChatSidebarProps {
   onToggle: (isOpen: boolean) => void;
@@ -154,7 +155,7 @@ export function ChatSidebar({ onToggle, onWidthChange }: ChatSidebarProps) {
                           : 'bg-muted text-foreground'
                       }`}
                     >
-                      {message.text}
+                      {message.isUser ? message.text : wrapText(message.text, 60)}
                     </div>
                   </div>
                 ))}

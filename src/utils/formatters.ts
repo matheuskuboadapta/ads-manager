@@ -55,3 +55,55 @@ export const getCPAColorClass = (cpa: number, allCPAs: number[]): string => {
     return 'bg-red-400';
   }
 };
+
+/**
+ * Quebra um texto longo em linhas menores, respeitando palavras completas
+ * @param text - O texto a ser formatado
+ * @param maxLength - O comprimento máximo de cada linha (padrão: 80 caracteres)
+ * @returns O texto formatado com quebras de linha
+ */
+export function wrapText(text: string, maxLength: number = 80): string {
+  if (!text || text.length <= maxLength) {
+    return text;
+  }
+
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    // Se a palavra sozinha é maior que o limite, quebra ela
+    if (word.length > maxLength) {
+      if (currentLine) {
+        lines.push(currentLine.trim());
+        currentLine = '';
+      }
+      
+      // Quebra a palavra longa
+      for (let i = 0; i < word.length; i += maxLength) {
+        lines.push(word.slice(i, i + maxLength));
+      }
+      continue;
+    }
+
+    // Verifica se adicionar a palavra excederia o limite
+    if ((currentLine + ' ' + word).length > maxLength) {
+      if (currentLine) {
+        lines.push(currentLine.trim());
+        currentLine = word;
+      } else {
+        // Se a linha está vazia, adiciona a palavra mesmo que seja longa
+        lines.push(word);
+      }
+    } else {
+      currentLine += (currentLine ? ' ' : '') + word;
+    }
+  }
+
+  // Adiciona a última linha se houver conteúdo
+  if (currentLine) {
+    lines.push(currentLine.trim());
+  }
+
+  return lines.join('\n');
+}

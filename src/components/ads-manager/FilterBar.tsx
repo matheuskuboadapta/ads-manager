@@ -177,9 +177,19 @@ const FilterBar = ({
     }
   };
 
-  const clearDateFilter = () => {
-    onDateFilter(null);
+  const clearAllFilters = () => {
+    // Limpar filtro de nome primeiro
+    onNameFilter('');
+    
+    // Limpar filtro de status
+    onStatusFilter('all');
+    
+    // Limpar range personalizado
     setCustomDateRange({ from: undefined, to: undefined });
+    
+    // Definir filtro de data para o período padrão (Hoje)
+    const today = getPresetDateRanges()[0]; // "Hoje"
+    onDateFilter(today);
   };
 
   // Set default date filter to "Today" if none is set
@@ -246,6 +256,11 @@ const FilterBar = ({
                     {preset.label}
                   </SelectItem>
                 ))}
+                {dateFilter?.label === 'Período personalizado' && (
+                  <SelectItem value="Período personalizado">
+                    Período personalizado
+                  </SelectItem>
+                )}
               </SelectContent>
             </Select>
             
@@ -274,12 +289,13 @@ const FilterBar = ({
               </PopoverContent>
             </Popover>
             
-            {dateFilter && (
+            {(dateFilter || nameFilter || statusFilter !== 'all') && (
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={clearDateFilter}
+                onClick={clearAllFilters}
                 className="h-10 w-10"
+                title="Limpar todos os filtros"
               >
                 <X className="h-4 w-4" />
               </Button>

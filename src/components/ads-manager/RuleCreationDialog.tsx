@@ -189,28 +189,7 @@ const RuleCreationDialog = ({
   const renderActionParams = () => {
     switch (action.action_type) {
       case 'pause':
-        return (
-          <>
-            <div>
-              <Label htmlFor="target">Alvo</Label>
-              <Input
-                id="target"
-                placeholder="Ex: adset"
-                value={action.params.target || ''}
-                onChange={(e) => handleActionParamChange('target', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="reason">Motivo</Label>
-              <Input
-                id="reason"
-                placeholder="Ex: CPC excedido"
-                value={action.params.reason || ''}
-                onChange={(e) => handleActionParamChange('reason', e.target.value)}
-              />
-            </div>
-          </>
-        );
+        return null;
       case 'notify':
         return (
           <>

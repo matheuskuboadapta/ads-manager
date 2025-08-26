@@ -514,17 +514,6 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
     );
   }
 
-  if (!ads || ads.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-center">
-          <p className="text-slate-600 mb-2">Nenhum anúncio encontrado</p>
-          <p className="text-slate-500 text-sm">Selecione um conjunto com anúncios ativos ou acesse todos os anúncios</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -616,20 +605,30 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
         dateFilter={settings.dateFilter}
       />
 
-      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto chat-table-container">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-slate-50 border-b-slate-200">
-                {isSelectionMode && (
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={selectedTargets.length === filteredAds.length && filteredAds.length > 0}
-                      onCheckedChange={handleSelectAllTargets}
-                      disabled={filteredAds.length === 0}
-                    />
-                  </TableHead>
-                )}
+      {!ads || ads.length === 0 ? (
+        <div className="bg-white border border-slate-200 rounded-lg">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <p className="text-slate-600 mb-2">Nenhum anúncio encontrado</p>
+              <p className="text-slate-500 text-sm">Selecione um conjunto com anúncios ativos ou acesse todos os anúncios</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white border border-slate-200 rounded-lg">
+          <div className="overflow-x-auto chat-table-container">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50 border-b-slate-200">
+                  {isSelectionMode && (
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={selectedTargets.length === filteredAds.length && filteredAds.length > 0}
+                        onCheckedChange={handleSelectAllTargets}
+                        disabled={filteredAds.length === 0}
+                      />
+                    </TableHead>
+                  )}
                 {getVisibleColumns('ads').map((column) => {
                   const isRightAligned = !['status', 'name', 'videoLink'].includes(column);
                   const isSortable = !['status', 'name', 'videoLink'].includes(column);
@@ -961,6 +960,7 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
           </Table>
         </div>
       </div>
+      )}
 
       <div className="flex items-center justify-center pt-8">
         <div className="text-center text-slate-500">

@@ -41,38 +41,64 @@ export const useGlobalSettings = () => {
     }
   }, []);
 
-  // Salvar configurações no localStorage sempre que mudarem
-  const saveSettings = useCallback((newSettings: GlobalSettings) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
-      setSettings(newSettings);
-      console.log('Saved new settings:', newSettings);
-    } catch (error) {
-      console.error('Erro ao salvar configurações:', error);
-    }
-  }, []);
+
 
   const updateDateFilter = useCallback((dateFilter: DateFilter | null) => {
     console.log('Updating date filter:', dateFilter);
-    saveSettings({ ...settings, dateFilter });
-  }, [settings, saveSettings]);
+    setSettings(prevSettings => {
+      try {
+        const newSettings = { ...prevSettings, dateFilter };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
+        console.log('Saved new settings:', newSettings);
+        return newSettings;
+      } catch (error) {
+        console.error('Erro ao salvar configurações:', error);
+        return prevSettings;
+      }
+    });
+  }, []);
 
   const updateNameFilter = useCallback((nameFilter: string) => {
-    saveSettings({ ...settings, nameFilter });
-  }, [settings, saveSettings]);
+    setSettings(prevSettings => {
+      try {
+        const newSettings = { ...prevSettings, nameFilter };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
+        return newSettings;
+      } catch (error) {
+        console.error('Erro ao salvar configurações:', error);
+        return prevSettings;
+      }
+    });
+  }, []);
 
   const updateStatusFilter = useCallback((statusFilter: string) => {
-    saveSettings({ ...settings, statusFilter });
-  }, [settings, saveSettings]);
+    setSettings(prevSettings => {
+      try {
+        const newSettings = { ...prevSettings, statusFilter };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
+        return newSettings;
+      } catch (error) {
+        console.error('Erro ao salvar configurações:', error);
+        return prevSettings;
+      }
+    });
+  }, []);
 
   const updateSelectedAccount = useCallback((selectedAccount: string | null) => {
     console.log('=== UPDATE SELECTED ACCOUNT DEBUG ===');
-    console.log('Previous selectedAccount:', settings.selectedAccount);
     console.log('New selectedAccount:', selectedAccount);
-    console.log('Will save settings:', { ...settings, selectedAccount });
     console.log('=====================================');
-    saveSettings({ ...settings, selectedAccount });
-  }, [settings, saveSettings]);
+    setSettings(prevSettings => {
+      try {
+        const newSettings = { ...prevSettings, selectedAccount };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings));
+        return newSettings;
+      } catch (error) {
+        console.error('Erro ao salvar configurações:', error);
+        return prevSettings;
+      }
+    });
+  }, []);
 
   const resetSettings = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);

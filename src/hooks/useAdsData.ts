@@ -386,7 +386,7 @@ export const useAdsetsData = (campaignName?: string | null, dateFilter?: DateFil
     const adsetsMap = new Map<string, any>();
 
     adsData
-      .filter(row => !campaignName || row.campaign_name === campaignName)
+      .filter(row => !campaignName || row.campaign_name?.toLowerCase().includes(campaignName.toLowerCase()))
       .forEach(row => {
         if (!row.adset_name) return;
 

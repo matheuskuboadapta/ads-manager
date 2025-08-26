@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { ChartContainer } from '@/components/ui/chart';
-import { formatCurrency, formatPercentage } from '@/utils/formatters';
+import { formatCurrency, formatPercentage, wrapText } from '@/utils/formatters';
 import { TrendingUp, DollarSign, Loader2, Brain, BarChart3, FileText } from 'lucide-react';
 import useDetailMetrics from '@/hooks/useDetailMetrics';
 import { useState, useEffect } from 'react';
@@ -237,6 +237,7 @@ const DetailView = ({ type, name, id, onMetricsReady }: DetailViewProps) => {
                           tickLine={false}
                           axisLine={false}
                           tickFormatter={(value) => `R$${value}`}
+                          domain={[0, 'dataMax']}
                         />
                         <Tooltip content={<CustomTooltip />} />
                         <Bar 
@@ -286,6 +287,7 @@ const DetailView = ({ type, name, id, onMetricsReady }: DetailViewProps) => {
                           tickLine={false}
                           axisLine={false}
                           tickFormatter={(value) => `R$${value}`}
+                          domain={[0, 'dataMax']}
                         />
                         <Tooltip content={<CustomTooltip />} />
                         <Bar 
@@ -338,7 +340,7 @@ const DetailView = ({ type, name, id, onMetricsReady }: DetailViewProps) => {
                       <div className="bg-muted border border-border rounded-lg p-4">
                         <div className="text-muted-foreground text-sm leading-relaxed space-y-3">
                           {aiInsights ? 
-                            aiInsights.split('\n').map((line, index) => (
+                            wrapText(aiInsights, 70).split('\n').map((line, index) => (
                               <p key={index} className={line.trim() ? '' : 'h-2'}>
                                 {line.trim() || '\u00A0'}
                               </p>

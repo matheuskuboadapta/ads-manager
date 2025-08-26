@@ -15,7 +15,18 @@ export function MiniChart({ data, format, className = "" }: MiniChartProps) {
 
   const maxValue = Math.max(...data);
   const minValue = Math.min(...data);
-  const range = maxValue - minValue;
+  
+  // Use zero as the baseline for positive values to improve visual proportion
+  // Only use the actual min value if there are negative values or if all values are very close to each other
+  const effectiveMinValue = minValue < 0 ? minValue : 0;
+  let range = maxValue - effectiveMinValue;
+  
+  // If all values are very close to each other (less than 5% difference), 
+  // add some padding to make the chart more visible
+  if (range > 0 && range < maxValue * 0.05) {
+    const padding = maxValue * 0.1; // Add 10% padding
+    range = maxValue + padding - effectiveMinValue;
+  }
 
   const width = 80;
   const height = 56;
@@ -29,7 +40,7 @@ export function MiniChart({ data, format, className = "" }: MiniChartProps) {
 
   const getY = (value: number): number => {
     if (range === 0) return padding + chartHeight / 2;
-    const normalizedValue = (value - minValue) / range;
+    const normalizedValue = (value - effectiveMinValue) / range;
     return padding + chartHeight - (normalizedValue * chartHeight);
   };
 
