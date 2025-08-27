@@ -104,6 +104,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   const [showBulkStatusDialog, setShowBulkStatusDialog] = useState(false);
   const [bulkStatusValue, setBulkStatusValue] = useState<'ATIVO' | 'DESATIVADA'>('ATIVO');
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [localStatusUpdates, setLocalStatusUpdates] = useState<{ [campaignId: string]: string }>({});
   
   const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
@@ -128,6 +129,13 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
 
   const { data: campaigns, isLoading, error, updateOptimistic, clearOptimistic } = useCampaignsData(accountId, settings.dateFilter);
   const { data: availableAccounts, isLoading: accountsLoading } = useAvailableAccounts();
+
+  // Clear local status updates when campaigns data is refreshed
+  useEffect(() => {
+    if (campaigns && campaigns.length > 0) {
+      setLocalStatusUpdates({});
+    }
+  }, [campaigns]);
 
   // Sorting functionality with default sort by CPA descending
   const { sortedData: sortedCampaigns, handleSort, getSortDirection } = useTableSort(campaigns || [], { column: 'cpa', direction: 'desc' });
@@ -219,12 +227,24 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   const handleStatusChange = async (campaign: any, newStatus: boolean) => {
     const status = newStatus ? 'ATIVO' : 'DESATIVADA';
     
+    console.log('handleStatusChange called:', { campaignId: campaign.id, newStatus, status });
+    
     try {
+      // Immediately update local state for instant UI feedback
+      setLocalStatusUpdates(prev => {
+        const newState = { ...prev, [campaign.id]: status };
+        console.log('Updated local status updates:', newState);
+        return newState;
+      });
+      
+      console.log('Calling updateCampaign with:', { campaignId: campaign.realId, status, userEmail: user?.email });
       await updateCampaign(campaign.realId, 'status', status, user?.email || '');
+      console.log('updateCampaign completed successfully');
       
       // Invalidate the specific query to force a refresh from the server
+      console.log('Invalidating query with key:', ['ads-data', settings.dateFilter]);
       queryClient.invalidateQueries({
-        queryKey: ['campaigns-data', accountId, settings.dateFilter]
+        queryKey: ['ads-data', settings.dateFilter]
       });
       
       toast({
@@ -233,6 +253,15 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
       });
     } catch (error) {
       console.error('Error updating campaign status:', error);
+      
+      // Revert local state on error
+      setLocalStatusUpdates(prev => {
+        const newState = { ...prev };
+        delete newState[campaign.id];
+        console.log('Reverted local status updates:', newState);
+        return newState;
+      });
+      
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o status da campanha.",
@@ -262,7 +291,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
       
       // Invalidate the specific query to force a refresh from the server
       queryClient.invalidateQueries({
-        queryKey: ['campaigns-data', accountId, settings.dateFilter]
+        queryKey: ['ads-data', settings.dateFilter]
       });
       
       toast({
@@ -293,7 +322,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
       
       // Invalidate the specific query to force a refresh from the server
       queryClient.invalidateQueries({
-        queryKey: ['campaigns-data', accountId, settings.dateFilter]
+        queryKey: ['ads-data', settings.dateFilter]
       });
       
       toast({
@@ -820,7 +849,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
                         >
                           {column === 'status' && (
                             <Switch
-                              checked={campaign.statusFinal === 'ATIVO'}
+                              checked={localStatusUpdates[campaign.id] ? localStatusUpdates[campaign.id] === 'ATIVO' : campaign.statusFinal === 'ATIVO'}
                               onCheckedChange={(checked) => handleStatusChange(campaign, checked)}
                               className="data-[state=checked]:bg-green-600"
                             />
