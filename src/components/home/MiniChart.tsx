@@ -1,5 +1,5 @@
 import { formatCurrency, formatNumber } from '@/utils/formatters';
-import { subDays, format as formatDate } from 'date-fns';
+import { format as formatDate } from 'date-fns';
 import { useState } from 'react';
 
 interface MiniChartProps {
@@ -28,8 +28,8 @@ export function MiniChart({ data, format, className = "" }: MiniChartProps) {
     range = maxValue + padding - effectiveMinValue;
   }
 
-  const width = 80;
-  const height = 56;
+  const width = 64;
+  const height = 48;
   const padding = 4;
   const chartWidth = width - (padding * 2);
   const chartHeight = height - (padding * 2);
@@ -57,7 +57,8 @@ export function MiniChart({ data, format, className = "" }: MiniChartProps) {
 
   const getDayLabel = (index: number): string => {
     const today = new Date();
-    const dayDate = subDays(today, 6 - index);
+    const dayDate = new Date(today);
+    dayDate.setDate(today.getDate() - (6 - index));
     return formatDate(dayDate, 'dd/MM');
   };
 

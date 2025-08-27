@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { subDays, format } from 'date-fns';
+import { format } from 'date-fns';
 
 interface OptimizationMetrics {
   name: string;
@@ -29,10 +29,23 @@ const fetchOptimizationData = async (type: 'campaigns' | 'adsets' | 'ads', dateR
   // Use current local time directly since we're already in GMT-3
   const now = new Date();
   
-  // Create dates using YYYY-MM-DD format to avoid timezone issues
-  const todayStr = now.toISOString().split('T')[0];
-  const threeDaysAgoStr = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2).toISOString().split('T')[0];
-  const dateRangeStartStr = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (dateRange - 1)).toISOString().split('T')[0];
+  // Helper function to get local date string without timezone conversion
+  const getLocalDateString = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  
+  // Create dates using local date methods to avoid timezone conversion issues
+  const todayStr = getLocalDateString(now);
+  const threeDaysAgo = new Date(now);
+  threeDaysAgo.setDate(now.getDate() - 2);
+  const threeDaysAgoStr = getLocalDateString(threeDaysAgo);
+  
+  const dateRangeStart = new Date(now);
+  dateRangeStart.setDate(now.getDate() - (dateRange - 1));
+  const dateRangeStartStr = getLocalDateString(dateRangeStart);
 
   console.log('Date filters:', {
     today: todayStr,
@@ -44,7 +57,7 @@ const fetchOptimizationData = async (type: 'campaigns' | 'adsets' | 'ads', dateR
   // For the end date, we need to include the entire day, so we use the next day as the upper limit
   const nextDay = new Date(todayStr);
   nextDay.setDate(nextDay.getDate() + 1);
-  const upperLimit = nextDay.toISOString().split('T')[0];
+  const upperLimit = getLocalDateString(nextDay);
   
   console.log('Query parameters:', { dateRangeStartStr, todayStr, upperLimit });
   

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { format, subDays } from 'date-fns';
+import { format } from 'date-fns';
 
 interface DetailMetricsData {
   date: string;
@@ -37,15 +37,24 @@ const useDetailMetrics = (type: 'campaign' | 'adset' | 'ad', name: string) => {
       // Use current local time directly since we're already in GMT-3
       const now = new Date();
       
-      // Create dates using YYYY-MM-DD format to avoid timezone issues
-      const todayStr = now.toISOString().split('T')[0];
-      const sevenDaysAgo = subDays(now, 6); // 7 dias atrás (incluindo hoje)
-      const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+      // Helper function to get local date string without timezone conversion
+      const getLocalDateString = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      
+      // Create dates using local date methods to avoid timezone conversion issues
+      const todayStr = getLocalDateString(now);
+      const sevenDaysAgo = new Date(now);
+      sevenDaysAgo.setDate(now.getDate() - 6); // 7 dias atrás (incluindo hoje)
+      const sevenDaysAgoStr = getLocalDateString(sevenDaysAgo);
       
       // For the end date, we need to include the entire day, so we use the next day as the upper limit
       const nextDay = new Date(todayStr);
       nextDay.setDate(nextDay.getDate() + 1);
-      const upperLimit = nextDay.toISOString().split('T')[0];
+      const upperLimit = getLocalDateString(nextDay);
 
       let query = supabase
         .from('meta_ads_view')
@@ -100,8 +109,10 @@ const useDetailMetrics = (type: 'campaign' | 'adset' | 'ad', name: string) => {
       // Criar array dos últimos 7 dias com os dados
       const dailyData: DetailMetricsData[] = [];
       for (let i = 6; i >= 0; i--) {
-        const date = format(subDays(now, i), 'yyyy-MM-dd');
-        const metrics = dailyMetrics.get(date) || { spend: 0, sales: 0, revenue: 0, profit: 0, clicks: 0, impressions: 0 };
+        const date = new Date(now);
+        date.setDate(now.getDate() - i);
+        const dateStr = getLocalDateString(date);
+        const metrics = dailyMetrics.get(dateStr) || { spend: 0, sales: 0, revenue: 0, profit: 0, clicks: 0, impressions: 0 };
         
         // Para CPA, só mostrar quando há vendas
         let cpa = 0;
@@ -110,16 +121,17 @@ const useDetailMetrics = (type: 'campaign' | 'adset' | 'ad', name: string) => {
         }
         
         dailyData.push({
-          date: format(subDays(now, i), 'dd/MM'),
+          date: format(date, 'dd/MM'),
           spend: Number(metrics.spend.toFixed(2)),
           cpa: cpa
         });
       }
 
       // Calcular métricas agregadas para 3 dias (últimos 3 dias incluindo hoje)
-      // Usar a mesma lógica do date-fns para garantir consistência
-      const threeDaysAgo = subDays(now, 2); // Se hoje é 30, vai para 28 (30-2)
-      const threeDaysAgoStr = threeDaysAgo.toISOString().split('T')[0];
+      // Usar métodos locais de data para garantir consistência
+      const threeDaysAgo = new Date(now);
+      threeDaysAgo.setDate(now.getDate() - 2); // Se hoje é 30, vai para 28 (30-2)
+      const threeDaysAgoStr = getLocalDateString(threeDaysAgo);
       
       const threeDayData = Array.from(dailyMetrics.entries())
         .filter(([date]) => {
@@ -128,7 +140,7 @@ const useDetailMetrics = (type: 'campaign' | 'adset' | 'ad', name: string) => {
         .map(([, metrics]) => metrics);
 
       console.log('3-day calculation:', {
-        today: now.toISOString().split('T')[0],
+        today: getLocalDateString(now),
         threeDaysAgo: threeDaysAgoStr,
         threeDayDates: Array.from(dailyMetrics.keys()).filter(date => date >= threeDaysAgoStr),
         allAvailableDates: Array.from(dailyMetrics.keys()).sort()

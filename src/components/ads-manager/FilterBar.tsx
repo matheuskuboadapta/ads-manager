@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { CalendarIcon, X } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { format, startOfDay, subDays, endOfDay } from 'date-fns';
+import { format, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export interface DateFilter {
@@ -67,19 +67,29 @@ const FilterBar = ({
     console.log('Current time (local):', now.toString());
     console.log('Current date (YYYY-MM-DD):', now.toISOString().split('T')[0]);
     
-    // Create dates using YYYY-MM-DD format to avoid timezone issues
-    const todayStr = now.toISOString().split('T')[0];
-    const yesterdayStr = subDays(now, 1).toISOString().split('T')[0];
+    // Helper function to get local date string without timezone conversion
+    const getLocalDateString = (date: Date): string => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    
+    // Create dates using local date methods to avoid timezone conversion issues
+    const todayStr = getLocalDateString(now);
+    const yesterday = new Date(now);
+    yesterday.setDate(now.getDate() - 1);
+    const yesterdayStr = getLocalDateString(yesterday);
     
     const today = new Date(todayStr + 'T00:00:00');
-    const yesterday = new Date(yesterdayStr + 'T00:00:00');
+    const yesterdayDate = new Date(yesterdayStr + 'T00:00:00');
     
     console.log('Today (start):', today.toISOString());
     console.log('Today (start):', today.toString());
     console.log('Today date (YYYY-MM-DD):', today.toISOString().split('T')[0]);
-    console.log('Yesterday (start):', yesterday.toISOString());
-    console.log('Yesterday (start):', yesterday.toString());
-    console.log('Yesterday date (YYYY-MM-DD):', yesterday.toISOString().split('T')[0]);
+    console.log('Yesterday (start):', yesterdayDate.toISOString());
+    console.log('Yesterday (start):', yesterdayDate.toString());
+    console.log('Yesterday date (YYYY-MM-DD):', yesterdayDate.toISOString().split('T')[0]);
     
     // Create end dates using the same day to avoid timezone issues
     const todayEnd = new Date(todayStr + 'T00:00:00');
@@ -94,11 +104,22 @@ const FilterBar = ({
     
     console.log('=== END FILTERBAR DATE RANGES DEBUG ===');
     
-    // Create dates for other ranges using YYYY-MM-DD format
-    const last3DaysStartStr = subDays(now, 2).toISOString().split('T')[0];
-    const last7DaysStartStr = subDays(now, 6).toISOString().split('T')[0];
-    const last14DaysStartStr = subDays(now, 13).toISOString().split('T')[0];
-    const last30DaysStartStr = subDays(now, 29).toISOString().split('T')[0];
+    // Create dates for other ranges using local date methods
+    const last3Days = new Date(now);
+    last3Days.setDate(now.getDate() - 2);
+    const last3DaysStartStr = getLocalDateString(last3Days);
+    
+    const last7Days = new Date(now);
+    last7Days.setDate(now.getDate() - 6);
+    const last7DaysStartStr = getLocalDateString(last7Days);
+    
+    const last14Days = new Date(now);
+    last14Days.setDate(now.getDate() - 13);
+    const last14DaysStartStr = getLocalDateString(last14Days);
+    
+    const last30Days = new Date(now);
+    last30Days.setDate(now.getDate() - 29);
+    const last30DaysStartStr = getLocalDateString(last30Days);
     
     const last3DaysStart = new Date(last3DaysStartStr + 'T00:00:00');
     const last7DaysStart = new Date(last7DaysStartStr + 'T00:00:00');
@@ -112,7 +133,7 @@ const FilterBar = ({
         label: 'Hoje'
       },
       {
-        from: yesterday,
+        from: yesterdayDate,
         to: yesterdayEnd,
         label: 'Ontem'
       },
@@ -305,8 +326,16 @@ const FilterBar = ({
           {dateFilter && (
             <p className="text-xs text-slate-500">
               {(() => {
-                const fromDate = dateFilter.from.toISOString().split('T')[0];
-                const toDate = dateFilter.to.toISOString().split('T')[0];
+                // Helper function to get local date string without timezone conversion
+                const getLocalDateString = (date: Date): string => {
+                  const year = date.getFullYear();
+                  const month = String(date.getMonth() + 1).padStart(2, '0');
+                  const day = String(date.getDate()).padStart(2, '0');
+                  return `${year}-${month}-${day}`;
+                };
+                
+                const fromDate = getLocalDateString(dateFilter.from);
+                const toDate = getLocalDateString(dateFilter.to);
                 
                 if (fromDate === toDate) {
                   // Same day - show only one date
