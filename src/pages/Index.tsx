@@ -223,7 +223,7 @@ export default function Index() {
           </TabsContent>
 
           <TabsContent value="ads" className="space-y-4">
-            <AdsTab adsetId={selectedAdset} />
+            <AdsTab adsetId={selectedAdset} campaignId={selectedCampaign} />
           </TabsContent>
 
           <TabsContent value="rules" className="space-y-4">

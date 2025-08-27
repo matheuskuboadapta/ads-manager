@@ -51,25 +51,13 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       String(now.getMonth() + 1).padStart(2, '0') + '-' + 
       String(now.getDate()).padStart(2, '0');
     const today = new Date(todayStr + 'T00:00:00');
-    const todayEnd = new Date(todayStr + 'T00:00:00');
+    const todayEnd = new Date(todayStr + 'T23:59:59');
     
     const filter = {
       from: today,
       to: todayEnd,
       label: 'Hoje'
     };
-    
-    console.log('=== TODAY FILTER DEBUG ===');
-    console.log('Current time (local):', now.toISOString());
-    console.log('Current time (local):', now.toString());
-    console.log('Today filter created:', {
-      from: filter.from.toISOString(),
-      to: filter.to.toISOString(),
-      fromDate: filter.from.toISOString().split('T')[0],
-      toDate: filter.to.toISOString().split('T')[0],
-      label: filter.label
-    });
-    console.log('=== END TODAY FILTER DEBUG ===');
     
     return filter;
   }, []);
@@ -85,23 +73,13 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       String(yesterday.getMonth() + 1).padStart(2, '0') + '-' + 
       String(yesterday.getDate()).padStart(2, '0');
     const yesterdayDate = new Date(yesterdayStr + 'T00:00:00');
-    const yesterdayEnd = new Date(yesterdayStr + 'T00:00:00');
+    const yesterdayEnd = new Date(yesterdayStr + 'T23:59:59');
     
     const filter = {
       from: yesterdayDate,
       to: yesterdayEnd,
       label: 'Ontem'
     };
-    
-    console.log('=== YESTERDAY FILTER DEBUG ===');
-    console.log('Yesterday filter created:', {
-      from: filter.from.toISOString(),
-      to: filter.to.toISOString(),
-      fromDate: filter.from.toISOString().split('T')[0],
-      toDate: filter.to.toISOString().split('T')[0],
-      label: filter.label
-    });
-    console.log('=== END YESTERDAY FILTER DEBUG ===');
     
     return filter;
   }, []);
@@ -122,112 +100,13 @@ export function useHomeMetrics(selectedAccount?: string | null) {
   }, [yesterdayAccounts, selectedAccount]);
 
 
-  // Debug: Log the raw data being processed
-  console.log('Raw data comparison:', {
-    todayAccountsCount: filteredTodayAccounts?.length || 0,
-    yesterdayAccountsCount: filteredYesterdayAccounts?.length || 0,
-    todayAccounts: filteredTodayAccounts?.map(acc => ({ name: acc.name, spend: acc.spend, sales: acc.sales })),
-    yesterdayAccounts: filteredYesterdayAccounts?.map(acc => ({ name: acc.name, spend: acc.spend, sales: acc.sales })),
-    selectedAccount
-  });
 
-  // Debug: Verify that we're not double-counting accounts
-  if (filteredYesterdayAccounts) {
-    const accountNames = filteredYesterdayAccounts.map(acc => acc.name);
-    const uniqueAccountNames = new Set(accountNames);
-    
-    if (accountNames.length !== uniqueAccountNames.size) {
-      console.error('ERROR: Duplicate accounts found in yesterday data!', {
-        totalAccounts: accountNames.length,
-        uniqueAccounts: uniqueAccountNames.size,
-        duplicates: accountNames.filter((name, index) => accountNames.indexOf(name) !== index)
-      });
-    }
-  }
 
-  // Enhanced debug: Compare today vs yesterday data
-  console.log('=== TODAY vs YESTERDAY COMPARISON ===');
-  if (filteredTodayAccounts && filteredYesterdayAccounts) {
-    const todayTotalSpend = filteredTodayAccounts.reduce((sum, acc) => sum + acc.spend, 0);
-    const yesterdayTotalSpend = filteredYesterdayAccounts.reduce((sum, acc) => sum + acc.spend, 0);
-    
-    console.log('Total spend comparison:', {
-      today: todayTotalSpend,
-      yesterday: yesterdayTotalSpend,
-      difference: yesterdayTotalSpend - todayTotalSpend,
-      percentageDiff: todayTotalSpend > 0 ? ((yesterdayTotalSpend - todayTotalSpend) / todayTotalSpend) * 100 : 0
-    });
-    
-    // Check if yesterday values are reasonable (should not be more than 3x today's values)
-    if (yesterdayTotalSpend > todayTotalSpend * 3) {
-      console.error('ERROR: Yesterday spend is unreasonably high compared to today!', {
-        today: todayTotalSpend,
-        yesterday: yesterdayTotalSpend,
-        ratio: yesterdayTotalSpend / todayTotalSpend
-      });
-      
-      // Log individual account details for debugging
-      console.log('Individual account spend details:');
-      yesterdayAccounts.forEach(acc => {
-        console.log(`${acc.name}: ${acc.spend}`);
-      });
-    }
-    
-    // Compare individual accounts
-    const todayAccountMap = new Map(filteredTodayAccounts.map(acc => [acc.name, acc]));
-    const yesterdayAccountMap = new Map(filteredYesterdayAccounts.map(acc => [acc.name, acc]));
-    
-    const allAccountNames = new Set([
-      ...filteredTodayAccounts.map(acc => acc.name),
-      ...filteredYesterdayAccounts.map(acc => acc.name)
-    ]);
-    
-    console.log('Individual account comparison:');
-    allAccountNames.forEach(accountName => {
-      const todayAccount = todayAccountMap.get(accountName);
-      const yesterdayAccount = yesterdayAccountMap.get(accountName);
-      
-      if (todayAccount && yesterdayAccount) {
-        const spendDiff = yesterdayAccount.spend - todayAccount.spend;
-        console.log(`${accountName}:`, {
-          today: todayAccount.spend,
-          yesterday: yesterdayAccount.spend,
-          difference: spendDiff,
-          percentageDiff: todayAccount.spend > 0 ? (spendDiff / todayAccount.spend) * 100 : 0
-        });
-      } else if (todayAccount && !yesterdayAccount) {
-        console.log(`${accountName}: Only present today (spend: ${todayAccount.spend})`);
-      } else if (!todayAccount && yesterdayAccount) {
-        console.log(`${accountName}: Only present yesterday (spend: ${yesterdayAccount.spend})`);
-      }
-    });
-    
-    // Check if the values make sense
-    if (yesterdayTotalSpend > todayTotalSpend * 1.5) {
-      console.warn('WARNING: Yesterday spend is significantly higher than today!', {
-        today: todayTotalSpend,
-        yesterday: yesterdayTotalSpend,
-        ratio: yesterdayTotalSpend / todayTotalSpend
-      });
-    }
-  }
-  console.log('=== END TODAY vs YESTERDAY COMPARISON ===');
 
-  // Debug: Check if there are any accounts with unusually high spend
-  if (filteredYesterdayAccounts && filteredYesterdayAccounts.length > 0) {
-    const highSpendAccounts = filteredYesterdayAccounts.filter(acc => acc.spend > 10000);
-    if (highSpendAccounts.length > 0) {
-      console.warn('Found accounts with unusually high spend yesterday:', highSpendAccounts.map(acc => ({ name: acc.name, spend: acc.spend })));
-    }
-  }
 
-  // Debug: Check if there are any accounts with unusually high spend today
-  if (filteredTodayAccounts && filteredTodayAccounts.length > 0) {
-    const highSpendAccounts = filteredTodayAccounts.filter(acc => acc.spend > 10000);
-    if (highSpendAccounts.length > 0) {
-      console.warn('Found accounts with unusually high spend today:', highSpendAccounts.map(acc => ({ name: acc.name, spend: acc.spend })));
-    }
-  }
+
+
+
 
   // Calculate metrics using the same logic as AccountsTab summaryMetrics
   const todayMetrics = useMemo(() => {
@@ -243,21 +122,15 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       };
     }
 
-    console.log('Calculating today metrics with', filteredTodayAccounts.length, 'accounts');
-    console.log('Today accounts data:', filteredTodayAccounts.map(acc => ({ name: acc.name, spend: acc.spend, sales: acc.sales })));
-
     // Ensure we're not double-counting by using unique account data
     const uniqueAccounts = new Map<string, any>();
     filteredTodayAccounts.forEach(acc => {
       if (!uniqueAccounts.has(acc.name)) {
         uniqueAccounts.set(acc.name, acc);
-      } else {
-        console.warn('Duplicate account found in today data:', acc.name);
       }
     });
 
     const uniqueAccountsArray = Array.from(uniqueAccounts.values());
-    console.log('Unique today accounts:', uniqueAccountsArray.length);
 
     const totalSpend = uniqueAccountsArray.reduce((sum, acc) => sum + acc.spend, 0);
     const totalProfit = uniqueAccountsArray.reduce((sum, acc) => sum + acc.profit, 0);
@@ -278,17 +151,6 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       cpa: totalSales > 0 ? totalSpend / totalSales : 0,
     };
 
-    console.log('Today metrics calculated:', result);
-    console.log('Today metrics breakdown:', {
-      totalSpend,
-      totalSales,
-      totalProfit,
-      totalClicks,
-      totalImpressions,
-      totalCTR,
-      totalCPM,
-      cpa: totalSales > 0 ? totalSpend / totalSales : 0
-    });
     return result;
   }, [filteredTodayAccounts]);
 
@@ -305,21 +167,15 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       };
     }
 
-    console.log('Calculating yesterday metrics with', filteredYesterdayAccounts.length, 'accounts');
-    console.log('Yesterday accounts data:', filteredYesterdayAccounts.map(acc => ({ name: acc.name, spend: acc.spend, sales: acc.sales })));
-
     // Ensure we're not double-counting by using unique account data
     const uniqueAccounts = new Map<string, any>();
     filteredYesterdayAccounts.forEach(acc => {
       if (!uniqueAccounts.has(acc.name)) {
         uniqueAccounts.set(acc.name, acc);
-      } else {
-        console.warn('Duplicate account found in yesterday data:', acc.name);
       }
     });
 
     const uniqueAccountsArray = Array.from(uniqueAccounts.values());
-    console.log('Unique yesterday accounts:', uniqueAccountsArray.length);
 
     const totalSpend = uniqueAccountsArray.reduce((sum, acc) => sum + acc.spend, 0);
     const totalProfit = uniqueAccountsArray.reduce((sum, acc) => sum + acc.profit, 0);
@@ -359,14 +215,14 @@ export function useHomeMetrics(selectedAccount?: string | null) {
     // Use current local time directly since we're already in GMT-3
     const now = new Date();
     
-    return Array.from({ length: 7 }, (_, i) => {
+    const filters = Array.from({ length: 7 }, (_, i) => {
       const dayDate = new Date(now);
       dayDate.setDate(now.getDate() - (6 - i));
       const dayStr = dayDate.getFullYear() + '-' + 
         String(dayDate.getMonth() + 1).padStart(2, '0') + '-' + 
         String(dayDate.getDate()).padStart(2, '0');
       const dayStart = new Date(dayStr + 'T00:00:00');
-      const dayEnd = new Date(dayStr + 'T00:00:00');
+      const dayEnd = new Date(dayStr + 'T23:59:59');
       
       return {
         from: dayStart,
@@ -374,6 +230,8 @@ export function useHomeMetrics(selectedAccount?: string | null) {
         label: format(dayDate, 'dd/MM')
       };
     });
+
+    return filters;
   }, []);
 
   // Use useAccountsData for each day (same logic as Scorecard)

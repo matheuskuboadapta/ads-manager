@@ -5,6 +5,7 @@ const WEBHOOK_URL = 'https://mkthooks.adaptahub.org/webhook/ads-manager';
 const REQUEST_TIMEOUT = 3000; // 3 seconds
 
 export interface UpdatePayload {
+  user: string;
   type: 'campaign' | 'adset' | 'ad';
   object: string;
   field: 'status' | 'budget' | 'objective';
@@ -47,11 +48,13 @@ const makeRequest = async (payload: UpdatePayload | CreatePayload): Promise<Resp
 export const updateCampaign = async (
   campaignId: string, 
   field: 'status' | 'objective' | 'budget', 
-  value: string | number
+  value: string | number,
+  userEmail: string
 ): Promise<void> => {
-  console.log('Updating campaign:', { campaignId, field, value });
+  console.log('Updating campaign:', { campaignId, field, value, userEmail });
   
   const payload: UpdatePayload = {
+    user: userEmail,
     type: 'campaign',
     object: campaignId,
     field,
@@ -72,11 +75,13 @@ export const updateCampaign = async (
 export const updateAdset = async (
   adsetId: string, 
   field: 'status' | 'budget', 
-  value: string | number
+  value: string | number,
+  userEmail: string
 ): Promise<void> => {
-  console.log('Updating adset:', { adsetId, field, value });
+  console.log('Updating adset:', { adsetId, field, value, userEmail });
   
   const payload: UpdatePayload = {
+    user: userEmail,
     type: 'adset',
     object: adsetId,
     field,
@@ -97,11 +102,13 @@ export const updateAdset = async (
 export const updateAd = async (
   adId: string, 
   field: 'status', 
-  value: string
+  value: string,
+  userEmail: string
 ): Promise<void> => {
-  console.log('Updating ad:', { adId, field, value });
+  console.log('Updating ad:', { adId, field, value, userEmail });
   
   const payload: UpdatePayload = {
+    user: userEmail,
     type: 'ad',
     object: adId,
     field,

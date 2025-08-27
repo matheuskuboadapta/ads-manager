@@ -13,6 +13,7 @@ import { Plus, BarChart3, Edit2, Check, X, ChevronDown, ChevronRight, TrendingUp
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage, getCPAColorClass } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { updateAdset, createAdset, createCampaign } from '@/utils/api';
 import { useAdsetsData } from '@/hooks/useAdsData';
 import FilterBar from './FilterBar';
@@ -31,6 +32,7 @@ interface AdsetsTabProps {
 }
 
 const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
+  const { user } = useAuth();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
   const [tempBudget, setTempBudget] = useState<string>('');
@@ -208,21 +210,21 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
   }, [filteredAdsets]);
 
   const handleStatusChange = async (adset: any, newStatus: boolean) => {
-    // Atualização otimística - mostrar mudança imediatamente
-    updateOptimistic(adset.firstAdId, { status: newStatus ? 'ACTIVE' : 'PAUSED' });
+    const status = newStatus ? 'ATIVO' : 'DESATIVADA';
     
     try {
       // Use realId to send the correct adset_id
-      await updateAdset(adset.realId, 'status', newStatus ? 'ACTIVE' : 'PAUSED');
+      await updateAdset(adset.realId, 'status', newStatus ? 'ACTIVE' : 'PAUSED', user?.email || '');
+      
+      // Update optimistic only after successful response
+      updateOptimistic(adset.firstAdId, { statusFinal: status });
       
       toast({
         title: "Status atualizado",
         description: `Conjunto ${newStatus ? 'ativado' : 'pausado'} com sucesso.`,
       });
     } catch (error) {
-      // Reverter a mudança otimística em caso de erro
-      clearOptimistic(adset.firstAdId);
-      
+      console.error('Error updating adset status:', error);
       toast({
         title: "Erro",
         description: "Falha ao atualizar status do conjunto.",
@@ -245,12 +247,12 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
       
       // Update all selected adsets
       const updatePromises = selectedAdsets.map(adset => 
-        updateAdset(adset.realId, 'status', bulkStatusValue === 'ATIVO' ? 'ACTIVE' : 'PAUSED')
+        updateAdset(adset.realId, 'status', bulkStatusValue === 'ATIVO' ? 'ACTIVE' : 'PAUSED', user?.email || '')
       );
       
       await Promise.all(updatePromises);
       
-      // Update optimistic for all adsets
+      // Update optimistic for all adsets only after successful response
       selectedAdsets.forEach(adset => {
         updateOptimistic(adset.firstAdId, { statusFinal: bulkStatusValue });
       });
@@ -309,12 +311,12 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
   };
 
   const performBudgetUpdate = async (adset: any, newBudget: number) => {
-    // Atualização otimística - mostrar mudança imediatamente
-    updateOptimistic(adset.firstAdId, { dailyBudget: newBudget });
-
     try {
       // Use realId to send the correct adset_id
-      await updateAdset(adset.realId, 'budget', newBudget);
+      await updateAdset(adset.realId, 'budget', newBudget, user?.email || '');
+      
+      // Update optimistic only after successful response
+      updateOptimistic(adset.firstAdId, { dailyBudget: newBudget });
       
       setEditingBudget(null);
       toast({
@@ -322,8 +324,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
         description: "Orçamento diário alterado com sucesso.",
       });
     } catch (error) {
-      // Reverter a mudança otimística em caso de erro
-      clearOptimistic(adset.firstAdId);
+      console.error('Error updating adset budget:', error);
       setEditingBudget(null);
       
       toast({
@@ -1349,6 +1350,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
                           type="adset" 
                           name={adset.name} 
                           id={adset.realId}
+                          campaignName={campaignId}
                           onMetricsReady={(metrics) => handleMetricsReady(adset.id, metrics)}
                         />
                       </TableCell>

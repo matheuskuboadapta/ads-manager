@@ -30,12 +30,14 @@ interface DetailMetricsResult {
   sevenDayMetrics: AggregatedMetrics;
 }
 
-const useDetailMetrics = (type: 'campaign' | 'adset' | 'ad', name: string) => {
+const useDetailMetrics = (type: 'campaign' | 'adset' | 'ad', name: string, campaignName?: string | null, adsetName?: string | null) => {
   return useQuery({
-    queryKey: ['detailMetrics', type, name],
+    queryKey: ['detailMetrics', type, name, campaignName, adsetName],
     queryFn: async (): Promise<DetailMetricsResult> => {
       // Use current local time directly since we're already in GMT-3
       const now = new Date();
+      
+
       
       // Helper function to get local date string without timezone conversion
       const getLocalDateString = (date: Date): string => {
@@ -52,9 +54,11 @@ const useDetailMetrics = (type: 'campaign' | 'adset' | 'ad', name: string) => {
       const sevenDaysAgoStr = getLocalDateString(sevenDaysAgo);
       
       // For the end date, we need to include the entire day, so we use the next day as the upper limit
-      const nextDay = new Date(todayStr);
-      nextDay.setDate(nextDay.getDate() + 1);
+      const nextDay = new Date(now);
+      nextDay.setDate(now.getDate() + 1);
       const upperLimit = getLocalDateString(nextDay);
+
+
 
       let query = supabase
         .from('meta_ads_view')
@@ -68,8 +72,20 @@ const useDetailMetrics = (type: 'campaign' | 'adset' | 'ad', name: string) => {
         query = query.eq('campaign_name', name);
       } else if (type === 'adset') {
         query = query.eq('adset_name', name);
+        // Se estamos no drill down de uma campanha, filtrar também pela campanha
+        if (campaignName) {
+          query = query.eq('campaign_name', campaignName);
+        }
       } else if (type === 'ad') {
         query = query.eq('ad_name', name);
+        // Se estamos no drill down de uma campanha, filtrar também pela campanha
+        if (campaignName) {
+          query = query.eq('campaign_name', campaignName);
+        }
+        // Se estamos no drill down de um conjunto, filtrar também pelo conjunto
+        if (adsetName) {
+          query = query.eq('adset_name', adsetName);
+        }
       }
 
       const { data, error } = await query;
@@ -78,6 +94,8 @@ const useDetailMetrics = (type: 'campaign' | 'adset' | 'ad', name: string) => {
         console.error('Error fetching detail metrics:', error);
         throw error;
       }
+
+
 
       // Agrupar por data e calcular métricas
       const dailyMetrics = new Map<string, { spend: number; sales: number; revenue: number; profit: number; clicks: number; impressions: number }>();
@@ -106,6 +124,8 @@ const useDetailMetrics = (type: 'campaign' | 'adset' | 'ad', name: string) => {
         }
       });
 
+
+
       // Criar array dos últimos 7 dias com os dados
       const dailyData: DetailMetricsData[] = [];
       for (let i = 6; i >= 0; i--) {
@@ -119,6 +139,8 @@ const useDetailMetrics = (type: 'campaign' | 'adset' | 'ad', name: string) => {
         if (metrics.spend > 0 && metrics.sales > 0) {
           cpa = Number((metrics.spend / metrics.sales).toFixed(2));
         }
+        
+
         
         dailyData.push({
           date: format(date, 'dd/MM'),

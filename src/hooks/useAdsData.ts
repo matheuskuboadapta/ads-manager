@@ -460,13 +460,13 @@ export const useAdsetsData = (campaignName?: string | null, dateFilter?: DateFil
   return { data: adsetsData, isLoading, error, updateOptimistic, clearOptimistic };
 };
 
-export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilter | null) => {
+export const useAdsListData = (adsetName?: string | null, campaignName?: string | null, dateFilter?: DateFilter | null) => {
   const [optimisticUpdates, setOptimisticUpdates] = React.useState<Record<string, any>>({});
 
   const query = useQuery({
-    queryKey: ['ads-list-data', adsetName, dateFilter],
+    queryKey: ['ads-list-data', adsetName, campaignName, dateFilter],
     queryFn: async () => {
-      console.log('Fetching ads list data with video links for adset:', adsetName);
+      console.log('Fetching ads list data with video links for adset:', adsetName, 'and campaign:', campaignName);
       
       // Build query for meta_ads_view with date filter
       let query = supabase.from('meta_ads_view').select('*');
@@ -488,6 +488,10 @@ export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilte
       
       if (adsetName) {
         query = query.eq('adset_name', adsetName);
+      }
+
+      if (campaignName) {
+        query = query.eq('campaign_name', campaignName);
       }
 
       const { data: adsData, error } = await query;
@@ -558,7 +562,7 @@ export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilte
 
       const ads = Array.from(adsMap.values()).map(ad => {
         const updates = optimisticUpdates[ad.id] || {};
-        return {
+        const finalAd = {
           ...ad,
           ...updates,
           cpa: ad.sales > 0 ? ad.spend / ad.sales : 0,
@@ -569,6 +573,8 @@ export const useAdsListData = (adsetName?: string | null, dateFilter?: DateFilte
           epc: ad.clicks > 0 ? ad.revenue / ad.clicks : 0,
           roas: ad.spend > 0 ? ad.revenue / ad.spend : 0,
         };
+        
+        return finalAd;
       });
 
       console.log('Processed ads with video links:', ads.length);

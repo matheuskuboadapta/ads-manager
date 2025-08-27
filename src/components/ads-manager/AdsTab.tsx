@@ -13,6 +13,7 @@ import { Megaphone, ExternalLink, Play, ChevronDown, ChevronRight, TrendingUp, T
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage, getCPAColorClass } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { updateAd, createCampaign, createAdset } from '@/utils/api';
 import { useAdsListData } from '@/hooks/useAdsData';
 import FilterBar from './FilterBar';
@@ -27,9 +28,11 @@ import { useAvailableAccounts } from '@/hooks/useHomeMetrics';
 
 interface AdsTabProps {
   adsetId: string | null;
+  campaignId: string | null;
 }
 
-const AdsTab = ({ adsetId }: AdsTabProps) => {
+const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
+  const { user } = useAuth();
   const [expandedAd, setExpandedAd] = useState<string | null>(null);
   const [detailMetrics, setDetailMetrics] = useState<{ [adId: string]: { threeDay: any; sevenDay: any } }>({});
   
@@ -117,7 +120,7 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
     };
   }, []);
 
-  const { data: ads, isLoading, error, updateOptimistic, clearOptimistic } = useAdsListData(adsetId, settings.dateFilter);
+  const { data: ads, isLoading, error, updateOptimistic, clearOptimistic } = useAdsListData(adsetId, campaignId, settings.dateFilter);
   const { data: availableAccounts, isLoading: accountsLoading } = useAvailableAccounts();
 
   // Sorting functionality with default sort by CPA descending
@@ -201,23 +204,23 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
   }, [filteredAds]);
 
   const handleStatusChange = async (ad: any, newStatus: boolean) => {
-    // Atualização otimística - mostrar mudança imediatamente
-    updateOptimistic(ad.id, { 
-      status: newStatus ? 'ACTIVE' : 'PAUSED',
-      statusFinal: newStatus ? 'ATIVO' : 'DESATIVADO'
-    });
+    const status = newStatus ? 'ATIVO' : 'DESATIVADO';
     
     try {
-      await updateAd(ad.id, 'status', newStatus ? 'ATIVO' : 'DESATIVADO');
+      await updateAd(ad.id, 'status', status, user?.email || '');
+      
+      // Update optimistic only after successful response
+      updateOptimistic(ad.id, { 
+        status: newStatus ? 'ACTIVE' : 'PAUSED',
+        statusFinal: status
+      });
       
       toast({
         title: "Status atualizado",
         description: `Anúncio ${newStatus ? 'ativado' : 'pausado'} com sucesso.`,
       });
     } catch (error) {
-      // Reverter a mudança otimística em caso de erro
-      clearOptimistic(ad.id);
-      
+      console.error('Error updating ad status:', error);
       toast({
         title: "Erro",
         description: "Falha ao atualizar status do anúncio.",
@@ -240,12 +243,12 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
       
       // Update all selected ads
       const updatePromises = selectedAds.map(ad => 
-        updateAd(ad.id, 'status', bulkStatusValue)
+        updateAd(ad.id, 'status', bulkStatusValue, user?.email || '')
       );
       
       await Promise.all(updatePromises);
       
-      // Update optimistic for all ads
+      // Update optimistic for all ads only after successful response
       selectedAds.forEach(ad => {
         updateOptimistic(ad.id, { 
           status: bulkStatusValue === 'ATIVO' ? 'ACTIVE' : 'PAUSED',
@@ -903,6 +906,8 @@ const AdsTab = ({ adsetId }: AdsTabProps) => {
                           type="ad" 
                           name={ad.name} 
                           id={ad.id}
+                          campaignName={campaignId}
+                          adsetName={adsetId}
                           onMetricsReady={(metrics) => handleMetricsReady(ad.id, metrics)}
                         />
                       </TableCell>

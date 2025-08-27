@@ -13,11 +13,13 @@ interface DetailViewProps {
   type: 'campaign' | 'adset' | 'ad';
   name: string;
   id: string;
+  campaignName?: string | null;
+  adsetName?: string | null;
   onMetricsReady?: (metrics: { threeDay: any; sevenDay: any }) => void;
 }
 
-const DetailView = ({ type, name, id, onMetricsReady }: DetailViewProps) => {
-  const { data: metricsData, isLoading, error } = useDetailMetrics(type, name);
+const DetailView = ({ type, name, id, campaignName, adsetName, onMetricsReady }: DetailViewProps) => {
+  const { data: metricsData, isLoading, error } = useDetailMetrics(type, name, campaignName, adsetName);
   const [aiInsights, setAiInsights] = useState<string>('');
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [aiError, setAiError] = useState<boolean>(false);

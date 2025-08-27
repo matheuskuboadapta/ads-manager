@@ -12,6 +12,7 @@ import { Plus, Target, Edit2, Check, X, ChevronDown, ChevronRight, TrendingUp, T
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage, getCPAColorClass } from '@/utils/formatters';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 import { updateCampaign, createCampaign, createAdset } from '@/utils/api';
 import { useCampaignsData } from '@/hooks/useAdsData';
 import FilterBar from './FilterBar';
@@ -33,6 +34,7 @@ interface CampaignsTabProps {
 }
 
 const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
+  const { user } = useAuth();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
   const [tempBudget, setTempBudget] = useState<string>('');
@@ -216,7 +218,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
     const status = newStatus ? 'ATIVO' : 'DESATIVADA';
     
     try {
-      await updateCampaign(campaign.realId, 'status', status);
+      await updateCampaign(campaign.realId, 'status', status, user?.email || '');
       
       // Update optimistic
       updateOptimistic(campaign.firstAdId, { statusFinal: status });
@@ -251,7 +253,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
       
       // Update all selected campaigns
       const updatePromises = selectedCampaigns.map(campaign => 
-        updateCampaign(campaign.realId, 'status', bulkStatusValue)
+        updateCampaign(campaign.realId, 'status', bulkStatusValue, user?.email || '')
       );
       
       await Promise.all(updatePromises);
@@ -285,7 +287,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
 
   const handleObjectiveChange = async (campaign: any, newObjective: string) => {
     try {
-      await updateCampaign(campaign.realId, 'objective', newObjective);
+      await updateCampaign(campaign.realId, 'objective', newObjective, user?.email || '');
       
       // Update optimistic
       updateOptimistic(campaign.firstAdId, { objective: newObjective });
@@ -340,7 +342,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
 
   const performBudgetUpdate = async (campaign: any, budget: number) => {
     try {
-      await updateCampaign(campaign.realId, 'budget', budget);
+      await updateCampaign(campaign.realId, 'budget', budget, user?.email || '');
       
       // Update optimistic
       updateOptimistic(campaign.firstAdId, { dailyBudget: budget });
