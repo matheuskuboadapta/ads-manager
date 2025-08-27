@@ -27,6 +27,7 @@ import RuleCreationDialog from './RuleCreationDialog';
 import { useAvailableAccounts } from '@/hooks/useHomeMetrics';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface CampaignsTabProps {
   accountId: string | null;
@@ -35,6 +36,7 @@ interface CampaignsTabProps {
 
 const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
   const [tempBudget, setTempBudget] = useState<string>('');
@@ -220,8 +222,10 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
     try {
       await updateCampaign(campaign.realId, 'status', status, user?.email || '');
       
-      // Update optimistic
-      updateOptimistic(campaign.firstAdId, { statusFinal: status });
+      // Invalidate the specific query to force a refresh from the server
+      queryClient.invalidateQueries({
+        queryKey: ['campaigns-data', accountId, settings.dateFilter]
+      });
       
       toast({
         title: "Status atualizado",
@@ -234,8 +238,6 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
         description: "Não foi possível atualizar o status da campanha.",
         variant: "destructive",
       });
-      // Revert optimistic update
-      clearOptimistic(campaign.firstAdId);
     }
   };
 
@@ -258,9 +260,9 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
       
       await Promise.all(updatePromises);
       
-      // Update optimistic for all campaigns
-      selectedCampaigns.forEach(campaign => {
-        updateOptimistic(campaign.firstAdId, { statusFinal: bulkStatusValue });
+      // Invalidate the specific query to force a refresh from the server
+      queryClient.invalidateQueries({
+        queryKey: ['campaigns-data', accountId, settings.dateFilter]
       });
       
       toast({
@@ -289,8 +291,10 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
     try {
       await updateCampaign(campaign.realId, 'objective', newObjective, user?.email || '');
       
-      // Update optimistic
-      updateOptimistic(campaign.firstAdId, { objective: newObjective });
+      // Invalidate the specific query to force a refresh from the server
+      queryClient.invalidateQueries({
+        queryKey: ['campaigns-data', accountId, settings.dateFilter]
+      });
       
       toast({
         title: "Objetivo atualizado",
@@ -303,8 +307,6 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
         description: "Não foi possível atualizar o objetivo da campanha.",
         variant: "destructive",
       });
-      // Revert optimistic update
-      clearOptimistic(campaign.firstAdId);
     }
   };
 

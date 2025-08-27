@@ -25,6 +25,7 @@ import { useTableSort } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/sortable-header';
 import RuleCreationDialog from './RuleCreationDialog';
 import { useAvailableAccounts } from '@/hooks/useHomeMetrics';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface AdsTabProps {
   adsetId: string | null;
@@ -33,8 +34,12 @@ interface AdsTabProps {
 
 const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [expandedAd, setExpandedAd] = useState<string | null>(null);
   const [detailMetrics, setDetailMetrics] = useState<{ [adId: string]: { threeDay: any; sevenDay: any } }>({});
+  
+  // Local state for immediate toggle updates
+  const [localStatusUpdates, setLocalStatusUpdates] = useState<Record<string, string>>({});
   
   // Campaign creation states
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -120,7 +125,14 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
     };
   }, []);
 
-  const { data: ads, isLoading, error, updateOptimistic, clearOptimistic } = useAdsListData(adsetId, campaignId, settings.dateFilter);
+  const { data: ads, isLoading, error } = useAdsListData(adsetId, campaignId, settings.dateFilter);
+  
+  // Clear local status updates when data is refreshed from server
+  useEffect(() => {
+    if (ads && ads.length > 0) {
+      setLocalStatusUpdates({});
+    }
+  }, [ads]);
   const { data: availableAccounts, isLoading: accountsLoading } = useAvailableAccounts();
 
   // Sorting functionality with default sort by CPA descending
@@ -206,13 +218,24 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
   const handleStatusChange = async (ad: any, newStatus: boolean) => {
     const status = newStatus ? 'ATIVO' : 'DESATIVADO';
     
+    console.log('handleStatusChange called:', { adId: ad.id, newStatus, status });
+    
     try {
-      await updateAd(ad.id, 'status', status, user?.email || '');
+      // Immediately update local state for instant UI feedback
+      setLocalStatusUpdates(prev => {
+        const newState = { ...prev, [ad.id]: status };
+        console.log('Updated local status updates:', newState);
+        return newState;
+      });
       
-      // Update optimistic only after successful response
-      updateOptimistic(ad.id, { 
-        status: newStatus ? 'ACTIVE' : 'PAUSED',
-        statusFinal: status
+      console.log('Calling updateAd with:', { adId: ad.id, status, userEmail: user?.email });
+      await updateAd(ad.id, 'status', status, user?.email || '');
+      console.log('updateAd completed successfully');
+      
+      // Invalidate the specific query to force a refresh from the server
+      console.log('Invalidating query with key:', ['ads-list-data', adsetId, campaignId, settings.dateFilter]);
+      queryClient.invalidateQueries({
+        queryKey: ['ads-list-data', adsetId, campaignId, settings.dateFilter]
       });
       
       toast({
@@ -221,6 +244,15 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
       });
     } catch (error) {
       console.error('Error updating ad status:', error);
+      
+      // Revert local state on error
+      setLocalStatusUpdates(prev => {
+        const newState = { ...prev };
+        delete newState[ad.id];
+        console.log('Reverted local status updates:', newState);
+        return newState;
+      });
+      
       toast({
         title: "Erro",
         description: "Falha ao atualizar status do anúncio.",
@@ -241,6 +273,16 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
         selectedTargets.some(target => target.id === ad.id)
       );
       
+      // Immediately update local state for instant UI feedback
+      const newLocalUpdates: Record<string, string> = {};
+      selectedAds.forEach(ad => {
+        newLocalUpdates[ad.id] = bulkStatusValue;
+      });
+      setLocalStatusUpdates(prev => ({
+        ...prev,
+        ...newLocalUpdates
+      }));
+      
       // Update all selected ads
       const updatePromises = selectedAds.map(ad => 
         updateAd(ad.id, 'status', bulkStatusValue, user?.email || '')
@@ -248,12 +290,10 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
       
       await Promise.all(updatePromises);
       
-      // Update optimistic for all ads only after successful response
-      selectedAds.forEach(ad => {
-        updateOptimistic(ad.id, { 
-          status: bulkStatusValue === 'ATIVO' ? 'ACTIVE' : 'PAUSED',
-          statusFinal: bulkStatusValue 
-        });
+      // Invalidate the specific query to force a refresh from the server
+      console.log('Invalidating bulk query with key:', ['ads-list-data', adsetId, campaignId, settings.dateFilter]);
+      queryClient.invalidateQueries({
+        queryKey: ['ads-list-data', adsetId, campaignId, settings.dateFilter]
       });
       
       toast({
@@ -268,6 +308,19 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
       
     } catch (error) {
       console.error('Error updating bulk ad status:', error);
+      
+      // Revert local state on error
+      const selectedAds = filteredAds.filter(ad => 
+        selectedTargets.some(target => target.id === ad.id)
+      );
+      setLocalStatusUpdates(prev => {
+        const newState = { ...prev };
+        selectedAds.forEach(ad => {
+          delete newState[ad.id];
+        });
+        return newState;
+      });
+      
       toast({
         title: "Erro",
         description: "Não foi possível atualizar o status dos anúncios selecionados.",
@@ -705,12 +758,18 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
                         key={column}
                         className={`${isRightAligned ? 'text-right font-mono text-sm' : ''} ${column === 'name' ? 'font-medium' : ''} ${column === 'videoLink' ? 'text-center' : ''} ${column === 'cpa' ? getCPAColorClass(ad.cpa, allCPAs) : ''}`}
                       >
-                        {column === 'status' && (
-                          <Switch
-                            checked={ad.statusFinal === 'ATIVO'}
-                            onCheckedChange={(checked) => handleStatusChange(ad, checked)}
-                          />
-                        )}
+                        {column === 'status' && (() => {
+                          const localStatus = localStatusUpdates[ad.id];
+                          const serverStatus = ad.statusFinal;
+                          const isChecked = localStatus ? localStatus === 'ATIVO' : serverStatus === 'ATIVO';
+                          console.log('Switch render for ad:', ad.id, { localStatus, serverStatus, isChecked });
+                          return (
+                            <Switch
+                              checked={isChecked}
+                              onCheckedChange={(checked) => handleStatusChange(ad, checked)}
+                            />
+                          );
+                        })()}
                         {column === 'name' && (
                           <div className="flex items-center space-x-2">
                             <button
