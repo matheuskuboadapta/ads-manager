@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Loader2, MessageCircle, X, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/ui/loading-button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useChat } from '@/hooks/useChat';
@@ -173,15 +174,27 @@ export function ChatSidebar({ onToggle, onWidthChange }: ChatSidebarProps) {
 
             {/* Input Area */}
             <div className="border-t p-6 flex-shrink-0 bg-muted/30">
-              <Textarea
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)"
-                disabled={isLoading}
-                className="min-h-[60px] max-h-[120px] resize-none"
-                rows={2}
-              />
+              <div className="flex gap-2">
+                <Textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)"
+                  disabled={isLoading}
+                  className="min-h-[60px] max-h-[120px] resize-none flex-1"
+                  rows={2}
+                />
+                <LoadingButton
+                  onClick={handleSendMessage}
+                  disabled={!inputMessage.trim() || isLoading}
+                  loading={isLoading}
+                  loadingText="Enviando..."
+                  size="sm"
+                  className="self-end"
+                >
+                  Enviar
+                </LoadingButton>
+              </div>
             </div>
           </div>
         </div>

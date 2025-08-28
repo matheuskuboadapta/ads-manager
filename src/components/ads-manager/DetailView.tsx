@@ -1,8 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList } from 'recharts';
 import { ChartContainer } from '@/components/ui/chart';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { formatCurrency, formatPercentage, wrapText } from '@/utils/formatters';
-import { TrendingUp, DollarSign, Loader2, Brain, BarChart3, FileText } from 'lucide-react';
+import { TrendingUp, DollarSign, Brain, BarChart3, FileText } from 'lucide-react';
 import useDetailMetrics from '@/hooks/useDetailMetrics';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -144,7 +145,7 @@ const DetailView = ({ type, name, id, campaignName, adsetName, onMetricsReady }:
     return (
       <div className="bg-muted border-t border-border p-6">
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+                          <LoadingSpinner size="md" className="mr-2" />
           <span className="text-muted-foreground">Carregando métricas...</span>
         </div>
       </div>
@@ -325,7 +326,7 @@ const DetailView = ({ type, name, id, campaignName, adsetName, onMetricsReady }:
                   <div className="space-y-4 text-sm">
                     {aiLoading ? (
                       <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+                        <LoadingSpinner size="md" className="mr-2" />
                         <span className="text-muted-foreground">Gerando insights com IA...</span>
                       </div>
                     ) : aiError ? (

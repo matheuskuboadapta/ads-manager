@@ -4,6 +4,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/ui/loading-button';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -20,12 +22,15 @@ import FilterBar from './FilterBar';
 import ColumnOrderDialog from './ColumnOrderDialog';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
+import { useLoading } from '@/hooks/useLoading';
 import DetailView from './DetailView';
 import { useTableSort } from '@/hooks/useTableSort';
 import { SortableHeader } from '@/components/ui/sortable-header';
 import RuleCreationDialog from './RuleCreationDialog';
 import { useAvailableAccounts } from '@/hooks/useHomeMetrics';
 import { useQueryClient } from '@tanstack/react-query';
+import { useEditMode } from '@/contexts/EditModeContext';
+import { EditModeToggle } from '@/components/ui/edit-mode-toggle';
 
 interface AdsTabProps {
   adsetId: string | null;
@@ -41,14 +46,11 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
   // Local state for immediate toggle updates
   const [localStatusUpdates, setLocalStatusUpdates] = useState<Record<string, string>>({});
   
-  // Campaign creation states
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newCampaign, setNewCampaign] = useState({ 
-    name: '', 
-    account_name: '', 
-    budgetEnabled: false, 
-    budget: '' 
-  });
+  // Loading states
+  const { loading: statusUpdateLoading, withLoading: withStatusUpdateLoading } = useLoading();
+  const { loading: bulkUpdateLoading, withLoading: withBulkUpdateLoading } = useLoading();
+  
+
   
   // Adset creation states
   const [adsets, setAdsets] = useState<Array<{
@@ -102,11 +104,11 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
   // Bulk actions states
   const [showBulkStatusDialog, setShowBulkStatusDialog] = useState(false);
   const [bulkStatusValue, setBulkStatusValue] = useState<'ATIVO' | 'DESATIVADO'>('ATIVO');
-  const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   
   const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
+  const { isEditMode } = useEditMode();
 
   // Fechar dropdowns quando clicar fora
   useEffect(() => {
@@ -134,6 +136,8 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
     }
   }, [ads]);
   const { data: availableAccounts, isLoading: accountsLoading } = useAvailableAccounts();
+
+
 
   // Sorting functionality with default sort by CPA descending
   const { sortedData: sortedAds, handleSort, getSortDirection } = useTableSort(ads || [], { column: 'cpa', direction: 'desc' });
@@ -215,121 +219,76 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
     };
   }, [filteredAds]);
 
-  const handleStatusChange = async (ad: any, newStatus: boolean) => {
+  const handleStatusChange = withStatusUpdateLoading(async (ad: any, newStatus: boolean) => {
     const status = newStatus ? 'ATIVO' : 'DESATIVADO';
     
     console.log('handleStatusChange called:', { adId: ad.id, newStatus, status });
     
-    try {
-      // Immediately update local state for instant UI feedback
-      setLocalStatusUpdates(prev => {
-        const newState = { ...prev, [ad.id]: status };
-        console.log('Updated local status updates:', newState);
-        return newState;
-      });
-      
-      console.log('Calling updateAd with:', { adId: ad.id, status, userEmail: user?.email });
-      await updateAd(ad.id, 'status', status, user?.email || '');
-      console.log('updateAd completed successfully');
-      
-      // Invalidate the specific query to force a refresh from the server
-      console.log('Invalidating query with key:', ['ads-list-data', adsetId, campaignId, settings.dateFilter]);
-      queryClient.invalidateQueries({
-        queryKey: ['ads-list-data', adsetId, campaignId, settings.dateFilter]
-      });
-      
-      toast({
-        title: "Status atualizado",
-        description: `Anúncio ${newStatus ? 'ativado' : 'pausado'} com sucesso.`,
-      });
-    } catch (error) {
-      console.error('Error updating ad status:', error);
-      
-      // Revert local state on error
-      setLocalStatusUpdates(prev => {
-        const newState = { ...prev };
-        delete newState[ad.id];
-        console.log('Reverted local status updates:', newState);
-        return newState;
-      });
-      
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar status do anúncio.",
-        variant: "destructive",
-      });
-    }
-  };
+    // Immediately update local state for instant UI feedback
+    setLocalStatusUpdates(prev => {
+      const newState = { ...prev, [ad.id]: status };
+      console.log('Updated local status updates:', newState);
+      return newState;
+    });
+    
+    console.log('Calling updateAd with:', { adId: ad.id, status, userEmail: user?.email });
+    await updateAd(ad.id, 'status', status, user?.email || '');
+    console.log('updateAd completed successfully');
+    
+    // Invalidate the specific query to force a refresh from the server
+    console.log('Invalidating query with key:', ['ads-list-data', adsetId, campaignId, settings.dateFilter]);
+    queryClient.invalidateQueries({
+      queryKey: ['ads-list-data', adsetId, campaignId, settings.dateFilter]
+    });
+    
+    toast({
+      title: "Status atualizado",
+      description: `Anúncio ${newStatus ? 'ativado' : 'pausado'} com sucesso.`,
+    });
+  });
 
   // Bulk status change handler
-  const handleBulkStatusChange = async () => {
+  const handleBulkStatusChange = withBulkUpdateLoading(async () => {
     if (selectedTargets.length === 0) return;
     
-    setIsBulkUpdating(true);
+    // Get the actual ad objects from the selected targets
+    const selectedAds = filteredAds.filter(ad => 
+      selectedTargets.some(target => target.id === ad.id)
+    );
     
-    try {
-      // Get the actual ad objects from the selected targets
-      const selectedAds = filteredAds.filter(ad => 
-        selectedTargets.some(target => target.id === ad.id)
-      );
-      
-      // Immediately update local state for instant UI feedback
-      const newLocalUpdates: Record<string, string> = {};
-      selectedAds.forEach(ad => {
-        newLocalUpdates[ad.id] = bulkStatusValue;
-      });
-      setLocalStatusUpdates(prev => ({
-        ...prev,
-        ...newLocalUpdates
-      }));
-      
-      // Update all selected ads
-      const updatePromises = selectedAds.map(ad => 
-        updateAd(ad.id, 'status', bulkStatusValue, user?.email || '')
-      );
-      
-      await Promise.all(updatePromises);
-      
-      // Invalidate the specific query to force a refresh from the server
-      console.log('Invalidating bulk query with key:', ['ads-list-data', adsetId, campaignId, settings.dateFilter]);
-      queryClient.invalidateQueries({
-        queryKey: ['ads-list-data', adsetId, campaignId, settings.dateFilter]
-      });
-      
-      toast({
-        title: "Status atualizado em massa",
-        description: `${selectedAds.length} anúncio(s) ${bulkStatusValue === 'ATIVO' ? 'ativado(s)' : 'pausado(s)'} com sucesso.`,
-      });
-      
-      // Close dialog and reset selection
-      setShowBulkStatusDialog(false);
-      setSelectedTargets([]);
-      setIsSelectionMode(false);
-      
-    } catch (error) {
-      console.error('Error updating bulk ad status:', error);
-      
-      // Revert local state on error
-      const selectedAds = filteredAds.filter(ad => 
-        selectedTargets.some(target => target.id === ad.id)
-      );
-      setLocalStatusUpdates(prev => {
-        const newState = { ...prev };
-        selectedAds.forEach(ad => {
-          delete newState[ad.id];
-        });
-        return newState;
-      });
-      
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o status dos anúncios selecionados.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsBulkUpdating(false);
-    }
-  };
+    // Immediately update local state for instant UI feedback
+    const newLocalUpdates: Record<string, string> = {};
+    selectedAds.forEach(ad => {
+      newLocalUpdates[ad.id] = bulkStatusValue;
+    });
+    setLocalStatusUpdates(prev => ({
+      ...prev,
+      ...newLocalUpdates
+    }));
+    
+    // Update all selected ads
+    const updatePromises = selectedAds.map(ad => 
+      updateAd(ad.id, 'status', bulkStatusValue, user?.email || '')
+    );
+    
+    await Promise.all(updatePromises);
+    
+    // Invalidate the specific query to force a refresh from the server
+    console.log('Invalidating bulk query with key:', ['ads-list-data', adsetId, campaignId, settings.dateFilter]);
+    queryClient.invalidateQueries({
+      queryKey: ['ads-list-data', adsetId, campaignId, settings.dateFilter]
+    });
+    
+    toast({
+      title: "Status atualizado em massa",
+      description: `${selectedAds.length} anúncio(s) ${bulkStatusValue === 'ATIVO' ? 'ativado(s)' : 'pausado(s)'} com sucesso.`,
+    });
+    
+    // Close dialog and reset selection
+    setShowBulkStatusDialog(false);
+    setSelectedTargets([]);
+    setIsSelectionMode(false);
+  });
 
   // Rule creation handlers
   const handleToggleSelectionMode = () => {
@@ -363,90 +322,7 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
     }
   };
 
-  const handleCreateCampaign = async () => {
-    if (!newCampaign.name.trim()) {
-      toast({
-        title: "Nome obrigatório",
-        description: "Por favor, insira um nome para a campanha.",
-        variant: "destructive",
-      });
-      return;
-    }
 
-    if (!newCampaign.account_name) {
-      toast({
-        title: "Conta obrigatória",
-        description: "Por favor, selecione uma conta para criar a campanha.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (newCampaign.budgetEnabled && (!newCampaign.budget || parseFloat(newCampaign.budget) <= 0)) {
-      toast({
-        title: "Orçamento obrigatório",
-        description: "Por favor, insira um valor válido para o orçamento.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (adsets.length === 0) {
-      toast({
-        title: "Conjuntos obrigatórios",
-        description: "Por favor, adicione pelo menos um conjunto à campanha.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      // Criar a campanha primeiro
-      await createCampaign({
-        name: newCampaign.name,
-        level: 'campaign',
-        account_name: newCampaign.account_name,
-        daily_budget: newCampaign.budgetEnabled ? parseFloat(newCampaign.budget) : undefined,
-      });
-      
-      // Criar os conjuntos
-      for (const adset of adsets) {
-        await createAdset({
-          name: adset.name,
-          level: 'adset',
-          daily_budget: parseFloat(adset.dailyBudget),
-          // Aqui você pode adicionar os campos específicos do conjunto
-          // como gender, age, platforms, placements, etc.
-        });
-      }
-      
-      // Resetar todos os estados
-      setNewCampaign({ name: '', account_name: '', budgetEnabled: false, budget: '' });
-      setAdsets([]);
-      setCurrentAdset({
-        name: '',
-        dailyBudget: '',
-        gender: 'all',
-        ageMin: '18',
-        ageMax: '65',
-        platforms: [],
-        placements: []
-      });
-      setShowCreateDialog(false);
-      
-      toast({
-        title: "Campanha e Conjuntos criados",
-        description: `Campanha "${newCampaign.name}" criada com ${adsets.length} conjunto(s) na conta ${newCampaign.account_name}.`,
-      });
-    } catch (error) {
-      console.error('Error creating campaign and adsets:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível criar a campanha e os conjuntos.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleRuleCreated = () => {
     setShowRuleCreation(false);
@@ -578,10 +454,15 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
           <p className="text-muted-foreground">Visualize o desempenho individual dos anúncios</p>
         </div>
         <div className="flex items-center space-x-3">
+          <Badge variant="secondary" className="px-3 py-1">
+            {filteredAds.length} anúncios
+          </Badge>
+          
           <Button
             variant={isSelectionMode ? "default" : "outline"}
             size="sm"
             onClick={handleToggleSelectionMode}
+            disabled={!isEditMode}
             className="flex items-center gap-2"
           >
             <Target className="h-4 w-4" />
@@ -595,7 +476,7 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
                 size="sm"
                 onClick={() => setShowBulkStatusDialog(true)}
                 className="flex items-center gap-2"
-                disabled={selectedTargets.length === 0}
+                disabled={selectedTargets.length === 0 || !isEditMode}
               >
                 <Power className="h-4 w-4" />
                 Mudar Status
@@ -611,7 +492,7 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
                 size="sm"
                 onClick={() => setShowRuleCreation(true)}
                 className="flex items-center gap-2"
-                disabled={selectedTargets.length === 0}
+                disabled={selectedTargets.length === 0 || !isEditMode}
               >
                 <Plus className="h-4 w-4" />
                 Nova Regra
@@ -624,20 +505,6 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
             </>
           )}
           
-          <Badge variant="secondary" className="px-3 py-1">
-            {filteredAds.length} anúncios
-          </Badge>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowCreateDialog(true)}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Nova Campanha
-          </Button>
-          
           <ColumnOrderDialog
             tableType="ads"
             columnOrder={getVisibleColumns('ads')}
@@ -647,6 +514,8 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
             isColumnVisible={(column) => isColumnVisible('ads', column)}
             toggleColumnVisibility={(column) => toggleColumnVisibility('ads', column)}
           />
+          
+          <EditModeToggle />
         </div>
 
       </div>
@@ -762,12 +631,19 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
                           const localStatus = localStatusUpdates[ad.id];
                           const serverStatus = ad.statusFinal;
                           const isChecked = localStatus ? localStatus === 'ATIVO' : serverStatus === 'ATIVO';
-                          console.log('Switch render for ad:', ad.id, { localStatus, serverStatus, isChecked });
+                          const isUpdating = statusUpdateLoading && localStatus !== undefined;
+                          console.log('Switch render for ad:', ad.id, { localStatus, serverStatus, isChecked, isUpdating });
                           return (
-                            <Switch
-                              checked={isChecked}
-                              onCheckedChange={(checked) => handleStatusChange(ad, checked)}
-                            />
+                            <div className="flex items-center space-x-2">
+                              <Switch
+                                checked={isChecked}
+                                onCheckedChange={(checked) => handleStatusChange(ad, checked)}
+                                disabled={statusUpdateLoading || !isEditMode}
+                              />
+                              {isUpdating && (
+                                <LoadingSpinner size="sm" />
+                              )}
+                            </div>
                           );
                         })()}
                         {column === 'name' && (
@@ -1045,142 +921,7 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
 
 
 
-      {/* Campaign Creation Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Criar Nova Campanha</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6">
-            {/* Campaign Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Informações da Campanha</h3>
-              <div>
-                <Label htmlFor="campaign-name">Nome da Campanha</Label>
-                <Input
-                  id="campaign-name"
-                  placeholder="Digite o nome da campanha"
-                  value={newCampaign.name}
-                  onChange={(e) => setNewCampaign(prev => ({ ...prev, name: e.target.value }))}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="campaign-account">Conta</Label>
-                <Select
-                  value={newCampaign.account_name}
-                  onValueChange={(value) => setNewCampaign(prev => ({ ...prev, account_name: value }))}
-                  disabled={accountsLoading}
-                >
-                  <SelectTrigger id="campaign-account">
-                    <SelectValue placeholder={accountsLoading ? "Carregando contas..." : "Selecione uma conta"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableAccounts?.map((account) => (
-                      <SelectItem key={account} value={account}>
-                        {account}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="campaign-budget-toggle">Orçamento a nível de campanha?</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Ative para definir um orçamento específico para esta campanha
-                  </p>
-                </div>
-                <Switch
-                  id="campaign-budget-toggle"
-                  checked={newCampaign.budgetEnabled}
-                  onCheckedChange={(checked) => setNewCampaign(prev => ({ ...prev, budgetEnabled: checked }))}
-                />
-              </div>
-              
-              {newCampaign.budgetEnabled && (
-                <div>
-                  <Label htmlFor="campaign-budget">Orçamento Diário (R$)</Label>
-                  <Input
-                    id="campaign-budget"
-                    type="number"
-                    placeholder="150.00"
-                    value={newCampaign.budget}
-                    onChange={(e) => setNewCampaign(prev => ({ ...prev, budget: e.target.value }))}
-                    min="1"
-                    step="0.01"
-                  />
-                </div>
-              )}
-            </div>
 
-            {/* Adsets Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Conjuntos de Anúncios</h3>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAdsetForm(true)}
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Adicionar Conjunto
-                </Button>
-              </div>
-
-              {/* Existing Adsets */}
-              {adsets.length > 0 && (
-                <div className="space-y-2">
-                  {adsets.map((adset) => (
-                    <div key={adset.id} className="flex items-center justify-between p-3 border rounded-lg bg-slate-50">
-                      <div className="flex-1">
-                        <div className="font-medium">{adset.name}</div>
-                        <div className="text-sm text-slate-600">
-                          Orçamento: R$ {adset.dailyBudget} | 
-                          Gênero: {adset.gender === 'all' ? 'Todos' : adset.gender} | 
-                          Idade: {adset.ageMin}-{adset.ageMax} anos
-                        </div>
-                        {adset.platforms.length > 0 && (
-                          <div className="text-sm text-slate-600">
-                            Plataformas: {adset.platforms.join(', ')}
-                          </div>
-                        )}
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveAdset(adset.id)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {adsets.length === 0 && (
-                <div className="text-center py-8 text-slate-500">
-                  <p>Nenhum conjunto adicionado ainda</p>
-                  <p className="text-sm">Clique em "Adicionar Conjunto" para começar</p>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleCreateCampaign}>
-              Criar Conjuntos
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Adset Creation Dialog */}
       <Dialog open={showAdsetForm} onOpenChange={setShowAdsetForm}>
@@ -1435,9 +1176,13 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
              <Button variant="outline" onClick={() => setShowBulkStatusDialog(false)}>
                Cancelar
              </Button>
-             <Button onClick={handleBulkStatusChange} disabled={isBulkUpdating}>
-               {isBulkUpdating ? 'Atualizando...' : 'Atualizar Status'}
-             </Button>
+                             <LoadingButton 
+                  onClick={handleBulkStatusChange} 
+                  loading={bulkUpdateLoading}
+                  loadingText="Atualizando..."
+                >
+                  Atualizar Status
+                </LoadingButton>
            </DialogFooter>
          </DialogContent>
        </Dialog>

@@ -3,11 +3,14 @@ import { useState, useEffect } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { LoadingButton } from '@/components/ui/loading-button';
+import { LoadingOverlay } from '@/components/ui/loading-overlay';
 import { RefreshCw, Users, Target, BarChart3, Megaphone, Settings, LogOut, Home } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
+import { useLoading } from '@/hooks/useLoading';
 import AccountsTab from '@/components/ads-manager/AccountsTab';
 import CampaignsTab from '@/components/ads-manager/CampaignsTab';
 import AdsetsTab from '@/components/ads-manager/AdsetsTab';
@@ -27,17 +30,18 @@ export default function Index() {
   const queryClient = useQueryClient();
   const { user, signOut } = useAuth();
   const { updateNameFilter } = useGlobalSettings();
+  const { loading: globalLoading, withLoading: withGlobalLoading } = useLoading();
 
   // Function to refresh all data
-  const refreshAllData = () => {
+  const refreshAllData = withGlobalLoading(async () => {
     // Invalidate all queries to force refresh
-    queryClient.invalidateQueries();
+    await queryClient.invalidateQueries();
     
     toast({
       title: "Dados atualizados",
       description: "As métricas foram atualizadas automaticamente.",
     });
-  };
+  });
 
   console.log('=== INDEX STATE ===');
   console.log('activeTab:', activeTab);
@@ -159,10 +163,16 @@ export default function Index() {
               Última atualização: {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
             </Badge>
             <ChatSidebar onToggle={setIsChatOpen} onWidthChange={setChatWidth} />
-            <Button onClick={handleRefresh} variant="outline" size="sm">
+            <LoadingButton 
+              onClick={handleRefresh} 
+              variant="outline" 
+              size="sm"
+              loading={globalLoading}
+              loadingText="Atualizando..."
+            >
               <RefreshCw className="h-4 w-4 mr-2" />
               Atualizar
-            </Button>
+            </LoadingButton>
             <Button onClick={signOut} variant="outline" size="sm">
               <LogOut className="h-4 w-4 mr-2" />
               Sair
@@ -233,6 +243,12 @@ export default function Index() {
           </div>
         </main>
       </div>
+      
+      {/* Global Loading Overlay */}
+      <LoadingOverlay 
+        isVisible={globalLoading} 
+        text="Atualizando dados..." 
+      />
     </div>
   );
 }
