@@ -31,13 +31,13 @@ export function EditModeToggle({ className = "", showLabel = true }: EditModeTog
       >
         {isEditMode ? (
           <>
-            <Edit3 className="h-4 w-4" />
-            {showLabel && <span>Editar</span>}
+            <Eye className="h-4 w-4" />
+            {showLabel && <span>Visualizar</span>}
           </>
         ) : (
           <>
-            <Eye className="h-4 w-4" />
-            {showLabel && <span>Visualizar</span>}
+            <Edit3 className="h-4 w-4" />
+            {showLabel && <span>Editar</span>}
           </>
         )}
       </Button>
