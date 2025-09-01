@@ -7,6 +7,13 @@ interface ChatMessage {
   text: string;
   isUser: boolean;
   timestamp: Date;
+  isHtml?: boolean; // Indica se a mensagem contém HTML
+}
+
+// Função para detectar se uma string contém HTML
+function containsHtml(text: string): boolean {
+  const htmlRegex = /<[^>]*>/;
+  return htmlRegex.test(text);
 }
 
 export function useChat() {
@@ -46,12 +53,29 @@ export function useChat() {
       const response = await fetch(`https://mkthooks.adaptahub.org/webhook/ads-manager/chat-to-traffic-answer?${params}`);
       const data = await response.json();
 
+      // Lidar com diferentes formatos de resposta
+      let responseText = 'Resposta não disponível';
+      
+      if (Array.isArray(data) && data.length > 0) {
+        // Formato: [{ "response": "..." }]
+        responseText = data[0].response || 'Resposta não disponível';
+      } else if (data.response) {
+        // Formato: { "response": "..." }
+        responseText = data.response;
+      } else {
+        // Formato direto ou outro
+        responseText = typeof data === 'string' ? data : JSON.stringify(data);
+      }
+
+      const isHtml = containsHtml(responseText);
+
       // Add bot response
       const botMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        text: data.response || 'Resposta não disponível',
+        text: responseText,
         isUser: false,
         timestamp: new Date(),
+        isHtml,
       };
 
       setMessages(prev => [...prev, botMessage]);
@@ -70,6 +94,8 @@ export function useChat() {
   const clearMessages = () => {
     setMessages([]);
   };
+
+
 
   return {
     messages,

@@ -32,6 +32,22 @@ export default function Index() {
   const { updateNameFilter } = useGlobalSettings();
   const { loading: globalLoading, withLoading: withGlobalLoading } = useLoading();
 
+  // Aplica classe ao root quando o chat está aberto
+  useEffect(() => {
+    const rootElement = document.getElementById('root');
+    const bodyElement = document.body;
+    
+    if (rootElement) {
+      if (isChatOpen) {
+        rootElement.classList.add('chat-open');
+        bodyElement.classList.add('chat-open');
+      } else {
+        rootElement.classList.remove('chat-open');
+        bodyElement.classList.remove('chat-open');
+      }
+    }
+  }, [isChatOpen]);
+
   // Function to refresh all data
   const refreshAllData = withGlobalLoading(async () => {
     // Invalidate all queries to force refresh
@@ -145,7 +161,14 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-card border-b border-border px-6 py-4">
+      <header 
+        className="bg-card border-b border-border px-6 py-4"
+        style={{ 
+          width: isChatOpen ? `calc(100vw - ${chatWidth}px)` : '100vw',
+          transition: 'width 0.3s ease-in-out',
+          minWidth: isChatOpen ? '900px' : 'auto'
+        }}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="bg-primary p-2 rounded-lg">
@@ -183,11 +206,15 @@ export default function Index() {
 
       {/* Main Content Container */}
       <div 
-        className={`chat-responsive-container ${isChatOpen ? '' : ''}`}
-        style={{ paddingRight: isChatOpen ? `${chatWidth}px` : '0px' }}
+        className={`chat-responsive-container ${isChatOpen ? 'chat-open' : ''}`}
+        style={{ 
+          width: isChatOpen ? `calc(100vw - ${chatWidth}px)` : '100vw',
+          transition: 'width 0.3s ease-in-out',
+          minWidth: isChatOpen ? '900px' : 'auto'
+        }}
       >
         <main className={`p-6 chat-responsive-main ${isChatOpen ? 'overflow-x-auto' : ''}`}>
-          <div className={`${isChatOpen ? 'min-w-max' : ''}`}>
+          <div className={`w-full ${isChatOpen ? 'min-w-max' : ''}`}>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="grid w-full grid-cols-6 lg:w-[600px]">
             <TabsTrigger value="home" className="flex items-center space-x-2">

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<title>Exemplo de Gráfico para Chat</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  body {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: inherit;
+    font-size: inherit;
+  }
+  h2 {
+    text-align: center;
+    margin-bottom: 15px;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  canvas {
+    width: 100% !important;
+    height: 200px !important;
+  }
+</style>
+</head>
+<body>
+<h2>Valor Investido por Dia</h2>
+<canvas id="investChart"></canvas>
+<script>
+const ctx = document.getElementById('investChart').getContext('2d');
+const investChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: ['27/05', '28/05', '29/05', '30/05'],
+        datasets: [{
+            label: 'Valor Investido (R$)',
+            data: [1234, 3144, 3098, 2798],
+            backgroundColor: 'rgba(54, 162, 235, 0.7)'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: function(value) {
+                        return 'R$ ' + value.toLocaleString('pt-BR');
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Valor Investido (R$)'
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Dia'
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top'
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        let val = context.parsed.y;
+                        return 'R$ ' + val.toLocaleString('pt-BR');
+                    }
+                }
+            }
+        }
+    }
+});
+</script>
+</body>
+</html>

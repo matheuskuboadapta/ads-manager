@@ -7,9 +7,100 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useChat } from '@/hooks/useChat';
 import { wrapText } from '@/utils/formatters';
 
+// Declaração do tipo Chart para TypeScript
+declare global {
+  interface Window {
+    Chart: any;
+  }
+}
+
 interface ChatSidebarProps {
   onToggle: (isOpen: boolean) => void;
   onWidthChange: (width: number) => void;
+}
+
+// Componente para renderizar mensagens com HTML usando iframe para isolamento completo
+function ChatMessageContent({ message }: { message: any }) {
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [iframeError, setIframeError] = useState(false);
+
+  useEffect(() => {
+    if (message.isHtml && iframeRef.current && !iframeError) {
+      const iframe = iframeRef.current;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      
+      if (doc) {
+        try {
+          // Escreve o HTML completo no iframe
+          doc.open();
+          doc.write(message.text);
+          doc.close();
+          
+          // Ajusta a altura do iframe baseado no conteúdo
+          const resizeObserver = new ResizeObserver(() => {
+            if (iframe.contentWindow?.document.body) {
+              const height = iframe.contentWindow.document.body.scrollHeight;
+              iframe.style.height = `${Math.min(height + 20, 400)}px`;
+            }
+          });
+          
+          if (iframe.contentWindow?.document.body) {
+            resizeObserver.observe(iframe.contentWindow.document.body);
+          }
+          
+          return () => resizeObserver.disconnect();
+        } catch (error) {
+          console.error('Erro ao carregar iframe:', error);
+          setIframeError(true);
+        }
+      }
+    }
+  }, [message.isHtml, message.text, iframeError]);
+
+  if (message.isHtml) {
+    if (iframeError) {
+      // Fallback: renderiza HTML diretamente com isolamento CSS
+      return (
+        <div 
+          className="html-content-fallback"
+          dangerouslySetInnerHTML={{ __html: message.text }}
+          style={{
+            maxWidth: '100%',
+            overflow: 'hidden',
+            wordWrap: 'break-word',
+            contain: 'layout style paint',
+            position: 'relative',
+            zIndex: 1,
+            backgroundColor: 'transparent',
+            padding: '10px',
+            borderRadius: '8px',
+          }}
+        />
+      );
+    }
+
+    return (
+      <div className="html-message-container">
+        <iframe
+          ref={iframeRef}
+          className="html-iframe"
+          style={{
+            width: '100%',
+            height: '300px',
+            border: 'none',
+            borderRadius: '8px',
+            backgroundColor: 'transparent',
+            overflow: 'hidden',
+          }}
+          sandbox="allow-scripts allow-same-origin"
+          title="Chat HTML Content"
+          onError={() => setIframeError(true)}
+        />
+      </div>
+    );
+  }
+  
+  return <span>{message.isUser ? message.text : wrapText(message.text, 60)}</span>;
 }
 
 export function ChatSidebar({ onToggle, onWidthChange }: ChatSidebarProps) {
@@ -105,7 +196,7 @@ export function ChatSidebar({ onToggle, onWidthChange }: ChatSidebarProps) {
       {/* Chat Sidebar */}
       {isOpen && (
         <div 
-          className="fixed inset-y-0 right-0 bg-background border-l shadow-lg z-50 flex flex-col"
+          className="fixed inset-y-0 right-0 bg-background border-l shadow-lg z-50 flex flex-col chat-sidebar"
           style={{ width: `${chatWidth}px` }}
         >
           {/* Resize Handle */}
@@ -121,7 +212,9 @@ export function ChatSidebar({ onToggle, onWidthChange }: ChatSidebarProps) {
 
           {/* Header */}
           <div className="px-6 py-4 border-b flex items-center justify-between bg-muted/50">
-            <h2 className="text-lg font-semibold">Chat de Suporte</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold">Chat de Suporte</h2>
+            </div>
             <Button
               onClick={handleToggle}
               variant="ghost"
@@ -154,9 +247,16 @@ export function ChatSidebar({ onToggle, onWidthChange }: ChatSidebarProps) {
                         message.isUser
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-muted text-foreground'
-                      }`}
+                      } ${message.isHtml ? 'html-message' : ''}`}
+                      style={{
+                        ...(message.isHtml && {
+                          maxWidth: '100%',
+                          width: '100%',
+                          overflow: 'hidden',
+                        })
+                      }}
                     >
-                      {message.isUser ? message.text : wrapText(message.text, 60)}
+                      <ChatMessageContent message={message} />
                     </div>
                   </div>
                 ))}

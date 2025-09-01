@@ -50,8 +50,11 @@ export function useHomeMetrics(selectedAccount?: string | null) {
     const todayStr = now.getFullYear() + '-' + 
       String(now.getMonth() + 1).padStart(2, '0') + '-' + 
       String(now.getDate()).padStart(2, '0');
+    
+    // Use the same logic as FilterBar: both from and to use T00:00:00
+    // This ensures consistency with how useAdsData processes the filters
     const today = new Date(todayStr + 'T00:00:00');
-    const todayEnd = new Date(todayStr + 'T23:59:59');
+    const todayEnd = new Date(todayStr + 'T00:00:00');
     
     const filter = {
       from: today,
@@ -72,8 +75,11 @@ export function useHomeMetrics(selectedAccount?: string | null) {
     const yesterdayStr = yesterday.getFullYear() + '-' + 
       String(yesterday.getMonth() + 1).padStart(2, '0') + '-' + 
       String(yesterday.getDate()).padStart(2, '0');
+    
+    // Use the same logic as FilterBar: both from and to use T00:00:00
+    // This ensures consistency with how useAdsData processes the filters
     const yesterdayDate = new Date(yesterdayStr + 'T00:00:00');
-    const yesterdayEnd = new Date(yesterdayStr + 'T23:59:59');
+    const yesterdayEnd = new Date(yesterdayStr + 'T00:00:00');
     
     const filter = {
       from: yesterdayDate,
@@ -90,13 +96,41 @@ export function useHomeMetrics(selectedAccount?: string | null) {
 
   // Filter accounts by selected account if specified
   const filteredTodayAccounts = useMemo(() => {
-    if (!selectedAccount || !todayAccounts) return todayAccounts;
-    return todayAccounts.filter(account => account.name === selectedAccount);
+    console.log('=== FILTERING TODAY ACCOUNTS DEBUG ===');
+    console.log('selectedAccount:', selectedAccount);
+    console.log('todayAccounts length:', todayAccounts?.length || 0);
+    console.log('todayAccounts sample:', todayAccounts?.slice(0, 2).map(acc => ({ name: acc.name, spend: acc.spend })));
+    
+    if (!selectedAccount || !todayAccounts) {
+      console.log('No filtering applied - returning all accounts');
+      return todayAccounts;
+    }
+    
+    const filtered = todayAccounts.filter(account => account.name === selectedAccount);
+    console.log('Filtered accounts length:', filtered.length);
+    console.log('Filtered accounts:', filtered.map(acc => ({ name: acc.name, spend: acc.spend })));
+    console.log('=== END FILTERING TODAY ACCOUNTS DEBUG ===');
+    
+    return filtered;
   }, [todayAccounts, selectedAccount]);
 
   const filteredYesterdayAccounts = useMemo(() => {
-    if (!selectedAccount || !yesterdayAccounts) return yesterdayAccounts;
-    return yesterdayAccounts.filter(account => account.name === selectedAccount);
+    console.log('=== FILTERING YESTERDAY ACCOUNTS DEBUG ===');
+    console.log('selectedAccount:', selectedAccount);
+    console.log('yesterdayAccounts length:', yesterdayAccounts?.length || 0);
+    console.log('yesterdayAccounts sample:', yesterdayAccounts?.slice(0, 2).map(acc => ({ name: acc.name, spend: acc.spend })));
+    
+    if (!selectedAccount || !yesterdayAccounts) {
+      console.log('No filtering applied - returning all accounts');
+      return yesterdayAccounts;
+    }
+    
+    const filtered = yesterdayAccounts.filter(account => account.name === selectedAccount);
+    console.log('Filtered accounts length:', filtered.length);
+    console.log('Filtered accounts:', filtered.map(acc => ({ name: acc.name, spend: acc.spend })));
+    console.log('=== END FILTERING YESTERDAY ACCOUNTS DEBUG ===');
+    
+    return filtered;
   }, [yesterdayAccounts, selectedAccount]);
 
 
@@ -122,23 +156,16 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       };
     }
 
-    // Ensure we're not double-counting by using unique account data
-    const uniqueAccounts = new Map<string, any>();
-    filteredTodayAccounts.forEach(acc => {
-      if (!uniqueAccounts.has(acc.name)) {
-        uniqueAccounts.set(acc.name, acc);
-      }
-    });
-
-    const uniqueAccountsArray = Array.from(uniqueAccounts.values());
-
-    const totalSpend = uniqueAccountsArray.reduce((sum, acc) => sum + acc.spend, 0);
-    const totalProfit = uniqueAccountsArray.reduce((sum, acc) => sum + acc.profit, 0);
-    const totalSales = uniqueAccountsArray.reduce((sum, acc) => sum + acc.sales, 0);
-    const totalClicks = uniqueAccountsArray.reduce((sum, acc) => sum + acc.clicks, 0);
-    const totalImpressions = uniqueAccountsArray.reduce((sum, acc) => sum + acc.impressions, 0);
+    // Use all accounts data directly without deduplication
+    // This matches the logic used in AccountsTab
+    const totalSpend = filteredTodayAccounts.reduce((sum, acc) => sum + acc.spend, 0);
+    const totalProfit = filteredTodayAccounts.reduce((sum, acc) => sum + acc.profit, 0);
+    const totalSales = filteredTodayAccounts.reduce((sum, acc) => sum + acc.sales, 0);
+    const totalClicks = filteredTodayAccounts.reduce((sum, acc) => sum + acc.clicks, 0);
+    const totalImpressions = filteredTodayAccounts.reduce((sum, acc) => sum + acc.impressions, 0);
 
     // Calculate CTR and CPM using the same logic as useAccountsData
+    // Use the same calculation as in useAdsData for consistency
     const totalCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
     const totalCPM = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0;
 
@@ -151,8 +178,39 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       cpa: totalSales > 0 ? totalSpend / totalSales : 0,
     };
 
+    // Debug: Log today metrics
+    console.log('=== TODAY METRICS DEBUG ===');
+    console.log('Today filter:', todayFilter);
+    console.log('Filtered accounts:', filteredTodayAccounts.length);
+    console.log('Today metrics calculated:', result);
+    console.log('Today metrics breakdown:', {
+      totalSpend,
+      totalSales,
+      totalProfit,
+      totalClicks,
+      totalImpressions,
+      totalCTR,
+      totalCPM,
+      cpa: totalSales > 0 ? totalSpend / totalSales : 0
+    });
+    
+    // Debug: Log detailed breakdown for today
+    console.log('Today detailed breakdown:', {
+      accounts: filteredTodayAccounts.map(acc => ({
+        name: acc.name,
+        spend: acc.spend,
+        sales: acc.sales,
+        clicks: acc.clicks,
+        impressions: acc.impressions,
+        ctr: acc.impressions > 0 ? (acc.clicks / acc.impressions) * 100 : 0,
+        cpm: acc.impressions > 0 ? (acc.spend / acc.impressions) * 1000 : 0,
+        cpa: acc.sales > 0 ? acc.spend / acc.sales : 0
+      }))
+    });
+    console.log('=== END TODAY METRICS DEBUG ===');
+
     return result;
-  }, [filteredTodayAccounts]);
+  }, [filteredTodayAccounts, todayFilter]);
 
   const yesterdayMetrics = useMemo(() => {
     if (!filteredYesterdayAccounts || filteredYesterdayAccounts.length === 0) {
@@ -167,21 +225,13 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       };
     }
 
-    // Ensure we're not double-counting by using unique account data
-    const uniqueAccounts = new Map<string, any>();
-    filteredYesterdayAccounts.forEach(acc => {
-      if (!uniqueAccounts.has(acc.name)) {
-        uniqueAccounts.set(acc.name, acc);
-      }
-    });
-
-    const uniqueAccountsArray = Array.from(uniqueAccounts.values());
-
-    const totalSpend = uniqueAccountsArray.reduce((sum, acc) => sum + acc.spend, 0);
-    const totalProfit = uniqueAccountsArray.reduce((sum, acc) => sum + acc.profit, 0);
-    const totalSales = uniqueAccountsArray.reduce((sum, acc) => sum + acc.sales, 0);
-    const totalClicks = uniqueAccountsArray.reduce((sum, acc) => sum + acc.clicks, 0);
-    const totalImpressions = uniqueAccountsArray.reduce((sum, acc) => sum + acc.impressions, 0);
+    // Use all accounts data directly without deduplication
+    // This matches the logic used in AccountsTab
+    const totalSpend = filteredYesterdayAccounts.reduce((sum, acc) => sum + acc.spend, 0);
+    const totalProfit = filteredYesterdayAccounts.reduce((sum, acc) => sum + acc.profit, 0);
+    const totalSales = filteredYesterdayAccounts.reduce((sum, acc) => sum + acc.sales, 0);
+    const totalClicks = filteredYesterdayAccounts.reduce((sum, acc) => sum + acc.clicks, 0);
+    const totalImpressions = filteredYesterdayAccounts.reduce((sum, acc) => sum + acc.impressions, 0);
 
     // Calculate CTR and CPM using the same logic as useAccountsData
     const totalCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
@@ -207,8 +257,29 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       totalCPM,
       cpa: totalSales > 0 ? totalSpend / totalSales : 0
     });
+    
+    // Debug: Log yesterday metrics
+    console.log('=== YESTERDAY METRICS DEBUG ===');
+    console.log('Yesterday filter:', yesterdayFilter);
+    console.log('Filtered accounts:', filteredYesterdayAccounts.length);
+    
+    // Debug: Log detailed breakdown for yesterday
+    console.log('Yesterday detailed breakdown:', {
+      accounts: filteredYesterdayAccounts.map(acc => ({
+        name: acc.name,
+        spend: acc.spend,
+        sales: acc.sales,
+        clicks: acc.clicks,
+        impressions: acc.impressions,
+        ctr: acc.impressions > 0 ? (acc.clicks / acc.impressions) * 100 : 0,
+        cpm: acc.impressions > 0 ? (acc.spend / acc.impressions) * 1000 : 0,
+        cpa: acc.sales > 0 ? acc.spend / acc.sales : 0
+      }))
+    });
+    console.log('=== END YESTERDAY METRICS DEBUG ===');
+    
     return result;
-  }, [filteredYesterdayAccounts]);
+  }, [filteredYesterdayAccounts, yesterdayFilter]);
 
   // Generate date filters for last 7 days using the same logic as FilterBar
   const last7DaysFilters = useMemo(() => {
@@ -221,8 +292,11 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       const dayStr = dayDate.getFullYear() + '-' + 
         String(dayDate.getMonth() + 1).padStart(2, '0') + '-' + 
         String(dayDate.getDate()).padStart(2, '0');
+      
+      // Use the same logic as FilterBar: both from and to use T00:00:00
+      // This ensures consistency with how useAdsData processes the filters
       const dayStart = new Date(dayStr + 'T00:00:00');
-      const dayEnd = new Date(dayStr + 'T23:59:59');
+      const dayEnd = new Date(dayStr + 'T00:00:00');
       
       return {
         from: dayStart,
@@ -231,10 +305,24 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       };
     });
 
+    // Debug: Log the created filters
+    console.log('=== LAST 7 DAYS FILTERS DEBUG ===');
+    filters.forEach((filter, index) => {
+      console.log(`Day ${index} filter:`, {
+        label: filter.label,
+        from: filter.from.toISOString(),
+        to: filter.to.toISOString(),
+        fromDate: filter.from.toISOString().split('T')[0],
+        toDate: filter.to.toISOString().split('T')[0]
+      });
+    });
+    console.log('=== END LAST 7 DAYS FILTERS DEBUG ===');
+
     return filters;
   }, []);
 
   // Use useAccountsData for each day (same logic as Scorecard)
+  // Apply account filter to each day's data
   const day0Data = useAccountsData(last7DaysFilters[0]);
   const day1Data = useAccountsData(last7DaysFilters[1]);
   const day2Data = useAccountsData(last7DaysFilters[2]);
@@ -243,17 +331,106 @@ export function useHomeMetrics(selectedAccount?: string | null) {
   const day5Data = useAccountsData(last7DaysFilters[5]);
   const day6Data = useAccountsData(last7DaysFilters[6]);
 
+  // Filter each day's data by selected account if specified
+  const filteredDay0Data = useMemo(() => {
+    if (!selectedAccount || !day0Data.data) return day0Data.data;
+    return day0Data.data.filter(account => account.name === selectedAccount);
+  }, [day0Data.data, selectedAccount]);
+
+  const filteredDay1Data = useMemo(() => {
+    if (!selectedAccount || !day1Data.data) return day1Data.data;
+    return day1Data.data.filter(account => account.name === selectedAccount);
+  }, [day1Data.data, selectedAccount]);
+
+  const filteredDay2Data = useMemo(() => {
+    if (!selectedAccount || !day2Data.data) return day2Data.data;
+    return day2Data.data.filter(account => account.name === selectedAccount);
+  }, [day2Data.data, selectedAccount]);
+
+  const filteredDay3Data = useMemo(() => {
+    if (!selectedAccount || !day3Data.data) return day3Data.data;
+    return day3Data.data.filter(account => account.name === selectedAccount);
+  }, [day3Data.data, selectedAccount]);
+
+  const filteredDay4Data = useMemo(() => {
+    if (!selectedAccount || !day4Data.data) return day4Data.data;
+    return day4Data.data.filter(account => account.name === selectedAccount);
+  }, [day4Data.data, selectedAccount]);
+
+  const filteredDay5Data = useMemo(() => {
+    if (!selectedAccount || !day5Data.data) return day5Data.data;
+    return day5Data.data.filter(account => account.name === selectedAccount);
+  }, [day5Data.data, selectedAccount]);
+
+  const filteredDay6Data = useMemo(() => {
+    if (!selectedAccount || !day6Data.data) return day6Data.data;
+    return day6Data.data.filter(account => account.name === selectedAccount);
+  }, [day6Data.data, selectedAccount]);
+
+  // Debug: Log account filtering for last 7 days
+  console.log('=== LAST 7 DAYS ACCOUNT FILTERING DEBUG ===');
+  console.log('selectedAccount:', selectedAccount);
+  console.log('Day 0 (today):', {
+    original: day0Data.data?.length || 0,
+    filtered: filteredDay0Data?.length || 0,
+    sample: filteredDay0Data?.slice(0, 2).map(acc => ({ name: acc.name, spend: acc.spend }))
+  });
+  console.log('Day 1 (yesterday):', {
+    original: day1Data.data?.length || 0,
+    filtered: filteredDay1Data?.length || 0,
+    sample: filteredDay1Data?.slice(0, 2).map(acc => ({ name: acc.name, spend: acc.spend }))
+  });
+  console.log('Day 2:', {
+    original: day2Data.data?.length || 0,
+    filtered: filteredDay2Data?.length || 0,
+    sample: filteredDay2Data?.slice(0, 2).map(acc => ({ name: acc.name, spend: acc.spend }))
+  });
+  console.log('Day 3:', {
+    original: day3Data.data?.length || 0,
+    filtered: filteredDay3Data?.length || 0,
+    sample: filteredDay3Data?.slice(0, 2).map(acc => ({ name: acc.name, spend: acc.spend }))
+  });
+  console.log('Day 4:', {
+    original: day4Data.data?.length || 0,
+    filtered: filteredDay4Data?.length || 0,
+    sample: filteredDay4Data?.slice(0, 2).map(acc => ({ name: acc.name, spend: acc.spend }))
+  });
+  console.log('Day 5:', {
+    original: day5Data.data?.length || 0,
+    filtered: filteredDay5Data?.length || 0,
+    sample: filteredDay5Data?.slice(0, 2).map(acc => ({ name: acc.name, spend: acc.spend }))
+  });
+  console.log('Day 6:', {
+    original: day6Data.data?.length || 0,
+    filtered: filteredDay6Data?.length || 0,
+    sample: filteredDay6Data?.slice(0, 2).map(acc => ({ name: acc.name, spend: acc.spend }))
+  });
+  console.log('=== END LAST 7 DAYS ACCOUNT FILTERING DEBUG ===');
+
   // Process last 7 days data using the same logic as Scorecard
   const last7DaysMetrics = useMemo(() => {
     const allDaysData = [
-      day0Data.data,
-      day1Data.data,
-      day2Data.data,
-      day3Data.data,
-      day4Data.data,
-      day5Data.data,
-      day6Data.data
+      filteredDay0Data,
+      filteredDay1Data,
+      filteredDay2Data,
+      filteredDay3Data,
+      filteredDay4Data,
+      filteredDay5Data,
+      filteredDay6Data
     ];
+
+    // Debug: Log the data for each day
+    console.log('=== LAST 7 DAYS METRICS DEBUG ===');
+    allDaysData.forEach((dayData, index) => {
+      const date = last7DaysFilters[index];
+      const totalSpend = dayData?.reduce((sum, acc) => sum + acc.spend, 0) || 0;
+      console.log(`Day ${index} (${date.label}):`, {
+        date: date.from.toISOString().split('T')[0],
+        accounts: dayData?.length || 0,
+        totalSpend,
+        sampleAccounts: dayData?.slice(0, 2).map(acc => ({ name: acc.name, spend: acc.spend }))
+      });
+    });
 
     const spend = allDaysData.map(dayAccounts => {
       if (!dayAccounts || dayAccounts.length === 0) return 0;
@@ -281,6 +458,7 @@ export function useHomeMetrics(selectedAccount?: string | null) {
     });
 
     // Calculate CTR and CPM for each day using the same logic as useAccountsData
+    // Use the same calculation as in useAdsData for consistency
     const ctr = clicks.map((clicksVal, i) => {
       const impressionsVal = impressions[i];
       return impressionsVal > 0 ? (clicksVal / impressionsVal) * 100 : 0;
@@ -296,8 +474,44 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       return salesVal > 0 ? spendVal / salesVal : 0;
     });
 
+    console.log('Last 7 days spend values:', spend);
+    console.log('Last 7 days sales values:', sales);
+    console.log('Last 7 days profit values:', profit);
+    console.log('Last 7 days clicks values:', clicks);
+    console.log('Last 7 days impressions values:', impressions);
+    console.log('Last 7 days CTR values:', ctr);
+    console.log('Last 7 days CPM values:', cpm);
+    console.log('Last 7 days CPA values:', cpa);
+    
+    // Debug: Log detailed breakdown for each day
+    console.log('=== DETAILED METRICS BREAKDOWN ===');
+    allDaysData.forEach((dayData, index) => {
+      const date = last7DaysFilters[index];
+      const daySpend = spend[index];
+      const daySales = sales[index];
+      const dayClicks = clicks[index];
+      const dayImpressions = impressions[index];
+      const dayCTR = ctr[index];
+      const dayCPM = cpm[index];
+      const dayCPA = cpa[index];
+      
+      console.log(`Day ${index} (${date.label}) - ${date.from.toISOString().split('T')[0]}:`, {
+        spend: daySpend,
+        sales: daySales,
+        clicks: dayClicks,
+        impressions: dayImpressions,
+        ctr: dayCTR,
+        cpm: dayCPM,
+        cpa: dayCPA,
+        accounts: dayData?.length || 0
+      });
+    });
+    console.log('=== END DETAILED METRICS BREAKDOWN ===');
+    
+    console.log('=== END LAST 7 DAYS METRICS DEBUG ===');
+
     return { spend, sales, profit, ctr, cpm, cpa };
-  }, [day0Data.data, day1Data.data, day2Data.data, day3Data.data, day4Data.data, day5Data.data, day6Data.data]);
+  }, [filteredDay0Data, filteredDay1Data, filteredDay2Data, filteredDay3Data, filteredDay4Data, filteredDay5Data, filteredDay6Data, last7DaysFilters]);
 
   const isLoading = todayLoading || yesterdayLoading || day0Data.isLoading || day1Data.isLoading || day2Data.isLoading || day3Data.isLoading || day4Data.isLoading || day5Data.isLoading || day6Data.isLoading;
 
