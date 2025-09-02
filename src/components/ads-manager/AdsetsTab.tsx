@@ -30,10 +30,11 @@ import { EditModeToggle } from '@/components/ui/edit-mode-toggle';
 
 interface AdsetsTabProps {
   campaignId: string | null;
-  onAdsetSelect: (adsetId: string) => void;
+  accountName: string | null;
+  onAdsetSelect: (adsetName: string) => void;
 }
 
-const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
+const AdsetsTab = ({ campaignId, accountName, onAdsetSelect }: AdsetsTabProps) => {
   const { user } = useAuth();
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
   const [tempBudget, setTempBudget] = useState<string>('');
@@ -1069,6 +1070,7 @@ const AdsetsTab = ({ campaignId, onAdsetSelect }: AdsetsTabProps) => {
         selectedTargets={selectedTargets}
         level="adset"
         onRuleCreated={handleRuleCreated}
+        accountName={accountName}
       />
     </div>
   );

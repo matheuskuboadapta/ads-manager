@@ -252,19 +252,19 @@ export default function Index() {
           </TabsContent>
 
           <TabsContent value="campaigns" className="space-y-4">
-            <CampaignsTab accountId={selectedAccount} onCampaignSelect={handleCampaignSelect} />
+            <CampaignsTab accountId={selectedAccount} accountName={selectedAccount} onCampaignSelect={handleCampaignSelect} />
           </TabsContent>
 
           <TabsContent value="adsets" className="space-y-4">
-            <AdsetsTab campaignId={selectedCampaign} onAdsetSelect={handleAdsetSelect} />
+            <AdsetsTab campaignId={selectedCampaign} accountName={selectedAccount} onAdsetSelect={handleAdsetSelect} />
           </TabsContent>
 
           <TabsContent value="ads" className="space-y-4">
-            <AdsTab adsetId={selectedAdset} campaignId={selectedCampaign} />
+            <AdsTab adsetId={selectedAdset} campaignId={selectedCampaign} accountName={selectedAccount} />
           </TabsContent>
 
           <TabsContent value="rules" className="space-y-4">
-            <RulesTab />
+            <RulesTab accountName={selectedAccount} />
           </TabsContent>
         </Tabs>
           </div>

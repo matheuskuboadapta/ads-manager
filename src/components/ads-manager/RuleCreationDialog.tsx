@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Plus, Trash2, HelpCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,6 +17,7 @@ interface Condition {
   metric: string;
   operator: string;
   value: string;
+  timeInterval: string;
   logic: 'AND' | 'OR';
 }
 
@@ -23,6 +26,17 @@ interface Action {
   action_type: string;
   params: { [key: string]: any };
   order: number;
+}
+
+interface Schedule {
+  type: 'continuous' | 'daily' | 'custom';
+  customSchedule: {
+    [key: string]: {
+      enabled: boolean;
+      startTime: string;
+      endTime: string;
+    };
+  };
 }
 
 interface TargetItem {
@@ -36,6 +50,7 @@ interface RuleCreationDialogProps {
   onOpenChange: (open: boolean) => void;
   selectedTargets: TargetItem[];
   level: 'campaign' | 'adset' | 'ad';
+  accountName: string | null;
   onRuleCreated: () => void;
 }
 
@@ -44,6 +59,7 @@ const RuleCreationDialog = ({
   onOpenChange, 
   selectedTargets, 
   level, 
+  accountName,
   onRuleCreated 
 }: RuleCreationDialogProps) => {
   const { toast } = useToast();
@@ -51,9 +67,8 @@ const RuleCreationDialog = ({
 
   // Form state
   const [ruleName, setRuleName] = useState('');
-  const [ruleLevel, setRuleLevel] = useState(level);
   const [conditions, setConditions] = useState<Condition[]>([
-    { id: 'cond_' + Date.now(), metric: '', operator: '', value: '', logic: 'AND' }
+    { id: 'cond_' + Date.now(), metric: 'spend', operator: '', value: '', timeInterval: 'yesterday_spent', logic: 'AND' }
   ]);
   const [action, setAction] = useState<Action>({
     id: 'act_' + Date.now(),
@@ -61,11 +76,23 @@ const RuleCreationDialog = ({
     params: {},
     order: 1
   });
+  const [schedule, setSchedule] = useState<Schedule>({
+    type: 'continuous',
+    customSchedule: {
+      sunday: { enabled: true, startTime: '07:00', endTime: '07:00' },
+      monday: { enabled: true, startTime: '07:00', endTime: '07:00' },
+      tuesday: { enabled: true, startTime: '07:00', endTime: '07:00' },
+      wednesday: { enabled: true, startTime: '07:00', endTime: '07:00' },
+      thursday: { enabled: true, startTime: '07:00', endTime: '07:00' },
+      friday: { enabled: true, startTime: '07:00', endTime: '07:00' },
+      saturday: { enabled: true, startTime: '07:00', endTime: '07:00' }
+    }
+  });
 
   const handleAddCondition = () => {
     setConditions([
       ...conditions,
-      { id: 'cond_' + Date.now(), metric: '', operator: '', value: '', logic: 'AND' }
+      { id: 'cond_' + Date.now(), metric: 'spend', operator: '', value: '', timeInterval: 'yesterday_spent', logic: 'AND' }
     ]);
   };
 
@@ -99,18 +126,46 @@ const RuleCreationDialog = ({
     }));
   };
 
+  const handleScheduleTypeChange = (type: 'continuous' | 'daily' | 'custom') => {
+    setSchedule(prev => ({ ...prev, type }));
+  };
+
+  const handleCustomScheduleChange = (day: string, field: 'enabled' | 'startTime' | 'endTime', value: boolean | string) => {
+    setSchedule(prev => ({
+      ...prev,
+      customSchedule: {
+        ...prev.customSchedule,
+        [day]: {
+          ...prev.customSchedule[day as keyof typeof prev.customSchedule],
+          [field]: value
+        }
+      }
+    }));
+  };
+
   const resetForm = () => {
     setRuleName('');
-    setRuleLevel(level);
-    setConditions([{ id: 'cond_' + Date.now(), metric: '', operator: '', value: '', logic: 'AND' }]);
+    setConditions([{ id: 'cond_' + Date.now(), metric: 'spend', operator: '', value: '', timeInterval: 'yesterday_spent', logic: 'AND' }]);
     setAction({ id: 'act_' + Date.now(), action_type: '', params: {}, order: 1 });
+    setSchedule({
+      type: 'continuous',
+      customSchedule: {
+        sunday: { enabled: true, startTime: '07:00', endTime: '07:00' },
+        monday: { enabled: true, startTime: '07:00', endTime: '07:00' },
+        tuesday: { enabled: true, startTime: '07:00', endTime: '07:00' },
+        wednesday: { enabled: true, startTime: '07:00', endTime: '07:00' },
+        thursday: { enabled: true, startTime: '07:00', endTime: '07:00' },
+        friday: { enabled: true, startTime: '07:00', endTime: '07:00' },
+        saturday: { enabled: true, startTime: '07:00', endTime: '07:00' }
+      }
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
-    if (!ruleName || !ruleLevel) {
+    if (!ruleName) {
       toast({
         title: "Formulário incompleto",
         description: "Por favor, preencha os campos obrigatórios.",
@@ -142,18 +197,67 @@ const RuleCreationDialog = ({
     // Prepare target IDs based on level
     const targetIds = selectedTargets.map(target => target.id);
 
+    // Format schedule data
+    let formattedSchedule;
+    if (schedule.type === 'custom') {
+      // Convert time to minutes and days to numbers (0-6)
+      const scheduleArray = [];
+      const dayMapping = {
+        sunday: 0,
+        monday: 1,
+        tuesday: 2,
+        wednesday: 3,
+        thursday: 4,
+        friday: 5,
+        saturday: 6
+      };
+
+      Object.entries(schedule.customSchedule).forEach(([dayKey, daySchedule]) => {
+        if (daySchedule.enabled) {
+          // Convert time to minutes (e.g., "07:00" -> 420 minutes)
+          const [startHour, startMinute] = daySchedule.startTime.split(':').map(Number);
+          const [endHour, endMinute] = daySchedule.endTime.split(':').map(Number);
+          const startMinutes = startHour * 60 + startMinute;
+          const endMinutes = endHour * 60 + endMinute;
+
+          scheduleArray.push({
+            start_minute: startMinutes,
+            end_minute: endMinutes,
+            days: [dayMapping[dayKey as keyof typeof dayMapping]]
+          });
+        }
+      });
+
+      formattedSchedule = {
+        schedule_type: "CUSTOM",
+        schedule: scheduleArray
+      };
+    } else {
+      formattedSchedule = {
+        schedule_type: schedule.type.toUpperCase()
+      };
+    }
+
+    // Convert target IDs array to object format
+    const targetsObject: { [key: string]: string } = {};
+    targetIds.forEach((id, index) => {
+      targetsObject[index.toString()] = id;
+    });
+
     const ruleData = {
-      name: ruleName,
-      is_active: true, // Sempre inicia como ativa
-      level: ruleLevel,
-      conditions: conditionsObject,
-      actions: actionsObject,
-      target_ids: targetIds // Send array of target IDs
+      value: targetsObject, // Object com os IDs dos targets
+      level: level, // campaign, adset, ou ad
+      account_name: accountName || user?.email || 'unknown_account', // account_name do usuário
+      name: ruleName, // nome da regra
+      conditions: conditionsObject, // condições incluindo intervalo de tempo
+      action: actionData, // ação
+      schedule: formattedSchedule, // programação formatada
+      target_ids: targetIds // array completo de IDs dos alvos (mantido para compatibilidade)
     };
 
     try {
       // Send data to webhook
-      const response = await fetch('https://mkthooks.adaptahub.org/webhook/adapta-ads-rules', {
+      const response = await fetch('https://mkthooks.adaptahub.org/webhook/ads-manager/create-rules', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -187,52 +291,28 @@ const RuleCreationDialog = ({
   };
 
   const renderActionParams = () => {
-    switch (action.action_type) {
-      case 'pause':
-        return null;
-      case 'notify':
-        return (
-          <>
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Ex: usuario@exemplo.com"
-                value={action.params.email || ''}
-                onChange={(e) => handleActionParamChange('email', e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="message">Mensagem</Label>
-              <Textarea
-                id="message"
-                placeholder="Ex: Alerta de alto CPC na campanha"
-                value={action.params.message || ''}
-                onChange={(e) => handleActionParamChange('message', e.target.value)}
-              />
-            </div>
-          </>
-        );
-      case 'edit_budget':
-        return (
-          <div>
-            <Label htmlFor="budget">Novo Orçamento</Label>
-            <Input
-              id="budget"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="Ex: 100.00"
-              value={action.params.new_budget || ''}
-              onChange={(e) => handleActionParamChange('new_budget', e.target.value)}
-            />
-          </div>
-        );
-      default:
-        return null;
-    }
+    // Para as ações "Ativar" e "Pausar", não há parâmetros adicionais necessários
+    return null;
   };
+
+  const daysOfWeek = [
+    { key: 'sunday', label: 'Domingo' },
+    { key: 'monday', label: 'Segunda' },
+    { key: 'tuesday', label: 'Terça' },
+    { key: 'wednesday', label: 'Quarta' },
+    { key: 'thursday', label: 'Quinta' },
+    { key: 'friday', label: 'Sexta' },
+    { key: 'saturday', label: 'Sábado' }
+  ];
+
+  // Gerar opções de horário de 30 em 30 minutos
+  const timeOptions = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 30) {
+      const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      timeOptions.push(timeString);
+    }
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -273,31 +353,11 @@ const RuleCreationDialog = ({
               </Label>
               <Input
                 id="rule-name"
-                placeholder="Ex: Pausar AdSet se CPC Alto"
+                placeholder="Ex: Pausar AdSet se Gastos Altos"
                 value={ruleName}
                 onChange={(e) => setRuleName(e.target.value)}
                 required
               />
-            </div>
-
-            <div>
-              <Label htmlFor="rule-level">
-                Nível da Regra <span className="text-destructive">*</span>
-              </Label>
-              <Select
-                value={ruleLevel}
-                onValueChange={(value: 'campaign' | 'adset' | 'ad') => setRuleLevel(value)}
-                required
-              >
-                <SelectTrigger id="rule-level">
-                  <SelectValue placeholder="Selecione o nível de aplicação" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="campaign">Campanha</SelectItem>
-                  <SelectItem value="adset">Conjunto de Anúncios</SelectItem>
-                  <SelectItem value="ad">Anúncio</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             <div>
@@ -313,7 +373,7 @@ const RuleCreationDialog = ({
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-sm">
-                      <p>Condições baseadas em métricas, combinadas com AND/OR. Ex: CPC {'>'} 4.5 AND Impressões {'>'} 1000</p>
+                      <p>Condições baseadas em gastos, combinadas com AND/OR. Ex: Gastos {'>'} 1000 E Gastos {'<'} 5000</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -333,7 +393,7 @@ const RuleCreationDialog = ({
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                       <div>
                         <Label htmlFor={`metric-${condition.id}`}>Métrica</Label>
                         <Select
@@ -347,10 +407,6 @@ const RuleCreationDialog = ({
                             <SelectValue placeholder="Selecionar" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="clicks">Cliques</SelectItem>
-                            <SelectItem value="conversions">Vendas</SelectItem>
-                            <SelectItem value="roas">ROAS</SelectItem>
-                            <SelectItem value="cpa">CPA</SelectItem>
                             <SelectItem value="spend">Gastos</SelectItem>
                           </SelectContent>
                         </Select>
@@ -370,9 +426,6 @@ const RuleCreationDialog = ({
                           <SelectContent>
                             <SelectItem value=">">Maior que {'>'}</SelectItem>
                             <SelectItem value="<">Menor que {'<'}</SelectItem>
-                            <SelectItem value="=">Igual a (=)</SelectItem>
-                            <SelectItem value=">=">Maior ou igual a {'>='}</SelectItem>
-                            <SelectItem value="<=">Menor ou igual a {'<='}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -387,6 +440,29 @@ const RuleCreationDialog = ({
                           }
                           required
                         />
+                      </div>
+                      <div>
+                        <Label htmlFor={`time-interval-${condition.id}`}>
+                          Intervalo de Tempo <span className="text-destructive">*</span>
+                        </Label>
+                        <Select
+                          value={condition.timeInterval}
+                          onValueChange={(value) =>
+                            handleConditionChange(condition.id, 'timeInterval', value)
+                          }
+                          required
+                        >
+                          <SelectTrigger id={`time-interval-${condition.id}`}>
+                            <SelectValue placeholder="Selecionar" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="today_spent">Hoje</SelectItem>
+                            <SelectItem value="yesterday_spent">Ontem</SelectItem>
+                            <SelectItem value="LAST_3_DAYS">Últimos 3 dias</SelectItem>
+                            <SelectItem value="LAST_7_DAYS">Últimos 7 dias</SelectItem>
+                            <SelectItem value="lifetime_spent">Vitalício</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                     {index < conditions.length - 1 && (
@@ -454,9 +530,8 @@ const RuleCreationDialog = ({
                         <SelectValue placeholder="Selecionar" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="activate">Ativar</SelectItem>
                         <SelectItem value="pause">Pausar</SelectItem>
-                        <SelectItem value="notify">Notificar</SelectItem>
-                        <SelectItem value="edit_budget">Editar Orçamento</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -466,6 +541,112 @@ const RuleCreationDialog = ({
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-lg font-medium">
+                  Programação
+                </Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <HelpCircle className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-sm">
+                      <p>Configure quando a regra deve ser executada. Se a hora início e de término forem iguais, a regra será executada uma vez por dia entre 30 e 60 minutos após o horário definido. Todos os horários estão no fuso: <strong>Horário de São Paulo</strong></p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div className="space-y-4 border rounded-md p-4 bg-muted/30">
+                <RadioGroup value={schedule.type} onValueChange={handleScheduleTypeChange}>
+                  <div className="space-y-3">
+                    <div className="flex items-start space-x-2">
+                      <RadioGroupItem value="continuous" id="continuous" />
+                      <div className="grid gap-1.5 leading-none">
+                        <Label htmlFor="continuous" className="font-medium">Continuamente</Label>
+                        <p className="text-sm text-muted-foreground">
+                          A regra é executada com a maior frequência possível (normalmente a cada 30 a 60 minutos).
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                      <RadioGroupItem value="daily" id="daily" />
+                      <div className="grid gap-1.5 leading-none">
+                        <Label htmlFor="daily" className="font-medium">Diariamente</Label>
+                        <p className="text-sm text-muted-foreground">
+                          entre 0h00 e 1h00 Horário de São Paulo
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                      <RadioGroupItem value="custom" id="custom" />
+                      <div className="grid gap-1.5 leading-none">
+                        <Label htmlFor="custom" className="font-medium">Personalizado</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Ajuste a programação da regra para ser executada em dias e horários do dia específicos. Se a hora início e de término forem iguais, a regra será executada uma vez por dia entre 30 e 60 minutos após o horário definido. Todos os horários estão neste fuso: <strong>Horário de São Paulo</strong>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </RadioGroup>
+
+                {schedule.type === 'custom' && (
+                  <div className="mt-4 space-y-3">
+                    <div className="text-sm font-medium">Agendamento Personalizado</div>
+                    <div className="space-y-2">
+                      {daysOfWeek.map((day) => (
+                        <div key={day.key} className="flex items-center space-x-3">
+                          <Checkbox
+                            id={`${day.key}-enabled`}
+                            checked={schedule.customSchedule[day.key as keyof typeof schedule.customSchedule].enabled}
+                            onCheckedChange={(checked) => 
+                              handleCustomScheduleChange(day.key, 'enabled', checked as boolean)
+                            }
+                          />
+                          <Label htmlFor={`${day.key}-enabled`} className="w-16 text-sm">
+                            {day.label}
+                          </Label>
+                          <Select
+                            value={schedule.customSchedule[day.key as keyof typeof schedule.customSchedule].startTime}
+                            onValueChange={(value) => 
+                              handleCustomScheduleChange(day.key, 'startTime', value)
+                            }
+                          >
+                            <SelectTrigger className="w-24">
+                              <SelectValue placeholder="HH:MM" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {timeOptions.map(time => (
+                                <SelectItem key={time} value={time}>{time}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <span className="text-sm text-muted-foreground">a</span>
+                          <Select
+                            value={schedule.customSchedule[day.key as keyof typeof schedule.customSchedule].endTime}
+                            onValueChange={(value) => 
+                              handleCustomScheduleChange(day.key, 'endTime', value)
+                            }
+                          >
+                            <SelectTrigger className="w-24">
+                              <SelectValue placeholder="HH:MM" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {timeOptions.map(time => (
+                                <SelectItem key={time} value={time}>{time}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

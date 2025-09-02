@@ -36,10 +36,11 @@ import { EditModeToggle } from '@/components/ui/edit-mode-toggle';
 
 interface CampaignsTabProps {
   accountId: string | null;
+  accountName: string | null;
   onCampaignSelect: (campaignName: string) => void;
 }
 
-const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
+const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTabProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -1578,6 +1579,7 @@ const CampaignsTab = ({ accountId, onCampaignSelect }: CampaignsTabProps) => {
         onOpenChange={setShowRuleCreation}
         selectedTargets={selectedTargets}
         level="campaign"
+        accountName={accountName}
         onRuleCreated={handleRuleCreated}
       />
     </div>

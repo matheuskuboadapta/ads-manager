@@ -35,9 +35,10 @@ import { EditModeToggle } from '@/components/ui/edit-mode-toggle';
 interface AdsTabProps {
   adsetId: string | null;
   campaignId: string | null;
+  accountName: string | null;
 }
 
-const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
+const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [expandedAd, setExpandedAd] = useState<string | null>(null);
@@ -1134,6 +1135,7 @@ const AdsTab = ({ adsetId, campaignId }: AdsTabProps) => {
         selectedTargets={selectedTargets}
         level="ad"
         onRuleCreated={handleRuleCreated}
+        accountName={accountName}
       />
 
              {/* Bulk Status Dialog */}
