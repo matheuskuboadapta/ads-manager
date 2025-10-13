@@ -1,0 +1,458 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+/* Remove padding quando o chat está aberto para evitar borda branca */
+#root.chat-open {
+  padding: 0;
+  max-width: none;
+  margin: 0;
+}
+
+/* Garante que o body também não tenha margens quando o chat está aberto */
+body.chat-open {
+  margin: 0;
+  padding: 0;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* Estilos para HTML no chat */
+.html-message {
+  overflow: hidden;
+  word-wrap: break-word;
+  /* Isola completamente o conteúdo do chat */
+  contain: layout style paint;
+}
+
+.html-message-container {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  /* Isola completamente o container do iframe */
+  contain: layout style paint;
+  position: relative;
+  z-index: 1;
+}
+
+.html-iframe {
+  width: 100% !important;
+  max-width: 100% !important;
+  border: none !important;
+  border-radius: 8px !important;
+  background-color: transparent !important;
+  overflow: hidden !important;
+  /* Garante que o iframe não afete o layout externo */
+  position: relative !important;
+  z-index: 1 !important;
+  /* Força o isolamento completo */
+  contain: layout style paint !important;
+}
+
+/* Remove estilos antigos que não são mais necessários */
+.html-message .html-content {
+  max-width: 100%;
+  overflow: hidden;
+  /* Garante que o HTML não afete o layout externo */
+  position: relative;
+  z-index: 1;
+}
+
+.html-message .html-content canvas {
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: 300px !important;
+  /* Evita que o canvas afete o layout */
+  display: block;
+}
+
+.html-message .html-content h1,
+.html-message .html-content h2,
+.html-message .html-content h3,
+.html-message .html-content h4,
+.html-message .html-content h5,
+.html-message .html-content h6 {
+  margin: 0.5rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  /* Garante que títulos não quebrem o layout */
+  line-height: 1.2;
+  word-wrap: break-word;
+}
+
+.html-message .html-content p {
+  margin: 0.25rem 0;
+  /* Evita que parágrafos afetem o layout */
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.html-message .html-content body {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  /* Isola completamente o body do HTML externo */
+  position: relative;
+  overflow: hidden;
+}
+
+.html-message .html-content html {
+  margin: 0 !important;
+  padding: 0 !important;
+  /* Garante que o HTML não afete o layout externo */
+  position: relative;
+  overflow: hidden;
+}
+
+.html-message .html-content * {
+  box-sizing: border-box;
+  /* Garante que todos os elementos respeitem o container */
+  max-width: 100%;
+}
+
+/* Ajustes específicos para gráficos Chart.js */
+.html-message .html-content .chartjs-render-monitor {
+  max-width: 100% !important;
+  height: auto !important;
+  /* Evita que o monitor de renderização afete o layout */
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.html-message .html-content .chart-container {
+  max-width: 100% !important;
+  overflow: hidden;
+  /* Garante que o container do gráfico não afete o layout */
+  position: relative;
+}
+
+/* Isola completamente scripts e estilos do HTML externo */
+.html-message .html-content script {
+  display: none !important;
+}
+
+.html-message .html-content style {
+  display: none !important;
+}
+
+/* Garante que o chat não afete o layout principal */
+.chat-sidebar .html-message {
+  /* Isola completamente o conteúdo do chat */
+  contain: layout style paint;
+  position: relative;
+  z-index: 1;
+}
+
+/* Estilos específicos para o chat sidebar */
+.chat-sidebar {
+  /* Garante que o chat não afete o layout principal */
+  contain: layout style paint;
+  position: fixed;
+  z-index: 50;
+}
+
+/* Isola completamente o conteúdo HTML dentro do chat */
+.chat-sidebar .html-content {
+  /* Garante que o HTML não afete o layout externo */
+  contain: layout style paint;
+  position: relative;
+  z-index: 1;
+  /* Força o conteúdo a respeitar o container */
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Estilos específicos para o iframe no chat */
+.chat-sidebar .html-message-container {
+  /* Isola completamente o container do iframe */
+  contain: layout style paint;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  /* Garante que não haja margens ou paddings indesejados */
+  margin: 0;
+  padding: 0;
+}
+
+.chat-sidebar .html-iframe {
+  /* Garante que o iframe não afete o layout externo */
+  contain: layout style paint;
+  position: relative !important;
+  z-index: 1 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  border: none !important;
+  border-radius: 8px !important;
+  background-color: transparent !important;
+  overflow: hidden !important;
+  /* Força o isolamento completo */
+  display: block !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Garante que scripts e estilos não afetem o layout externo */
+.chat-sidebar .html-content script,
+.chat-sidebar .html-content style {
+  display: none !important;
+}
+
+/* Força o isolamento de todos os elementos HTML */
+.chat-sidebar .html-content * {
+  /* Garante que todos os elementos respeitem o container */
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Específico para gráficos Chart.js no chat */
+.chat-sidebar .html-content canvas {
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: 300px !important;
+  /* Evita que o canvas afete o layout */
+  display: block !important;
+  position: relative !important;
+}
+
+.chat-sidebar .html-content .chartjs-render-monitor {
+  max-width: 100% !important;
+  height: auto !important;
+  /* Evita que o monitor de renderização afete o layout */
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* Estilos para o layout responsivo quando o chat está aberto */
+.chat-responsive-container {
+  position: relative;
+  transition: width 0.3s ease-in-out;
+  overflow-x: hidden; /* Evita scroll duplo */
+  /* Garante que não haja margens ou paddings indesejados */
+  margin: 0;
+  padding: 0;
+}
+
+.chat-responsive-container.chat-open {
+  /* Garante que o container principal mantenha sua funcionalidade */
+  min-height: 100vh;
+  overflow-x: auto;
+}
+
+.chat-responsive-main {
+  /* Garante que o conteúdo principal mantenha sua largura mínima */
+  min-width: 900px; /* Aumentei a largura mínima */
+  transition: all 0.3s ease-in-out;
+  /* Garante que o conteúdo não seja cortado */
+  width: 100%;
+  max-width: none;
+}
+
+.chat-responsive-main.overflow-x-auto {
+  /* Melhora a aparência do scroll horizontal */
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted)) transparent;
+  /* Garante que o scroll funcione corretamente */
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.chat-responsive-main.overflow-x-auto::-webkit-scrollbar {
+  height: 8px;
+}
+
+.chat-responsive-main.overflow-x-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-responsive-main.overflow-x-auto::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+.chat-responsive-main.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground));
+}
+
+/* Garante que o header também se adapte */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: hsl(var(--card));
+  border-bottom: 1px solid hsl(var(--border));
+  /* Garante que o header não cause scroll horizontal */
+  overflow-x: hidden;
+}
+
+/* Ajustes para telas menores */
+@media (max-width: 1024px) {
+  .chat-responsive-main {
+    min-width: 700px;
+  }
+}
+
+@media (max-width: 768px) {
+  .chat-responsive-main {
+    min-width: 500px;
+  }
+}
+
+/* Garante que o conteúdo das tabs não seja cortado */
+.TabsContent {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Ajusta o grid de métricas para ser mais responsivo */
+.grid {
+  min-width: 0;
+  width: 100%;
+}
+
+/* Estilos específicos para melhorar o comportamento responsivo */
+.chat-responsive-container.chat-open .grid {
+  /* Garante que os grids se adaptem quando o chat está aberto */
+  min-width: 0;
+  width: 100%;
+}
+
+.chat-responsive-container.chat-open .space-y-6 {
+  /* Garante que o espaçamento seja mantido */
+  width: 100%;
+}
+
+.chat-responsive-container.chat-open .space-y-4 {
+  /* Garante que o espaçamento seja mantido */
+  width: 100%;
+}
+
+/* Melhora o comportamento das tabs */
+.chat-responsive-container.chat-open .TabsList {
+  /* Garante que as tabs se adaptem */
+  width: 100%;
+  max-width: none;
+}
+
+/* Garante que os cards de métricas se adaptem */
+.chat-responsive-container.chat-open .card {
+  /* Garante que os cards não sejam cortados */
+  min-width: 0;
+  width: 100%;
+}
+
+/* Estilos para o fallback do HTML quando iframe não funciona */
+.html-content-fallback {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  word-wrap: break-word !important;
+  contain: layout style paint !important;
+  position: relative !important;
+  z-index: 1 !important;
+  background-color: transparent !important;
+  padding: 10px !important;
+  border-radius: 8px !important;
+  /* Garante que todos os elementos respeitem o container */
+  box-sizing: border-box !important;
+}
+
+.html-content-fallback * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  /* Garante que todos os elementos respeitem o container */
+  overflow: hidden !important;
+}
+
+.html-content-fallback canvas {
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: 300px !important;
+  display: block !important;
+  position: relative !important;
+}
+
+.html-content-fallback .chart-container {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  position: relative !important;
+}
+
+.html-content-fallback h1,
+.html-content-fallback h2,
+.html-content-fallback h3,
+.html-content-fallback h4,
+.html-content-fallback h5,
+.html-content-fallback h6 {
+  margin: 0.5rem 0 !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  word-wrap: break-word !important;
+}
+
+.html-content-fallback p {
+  margin: 0.25rem 0 !important;
+  line-height: 1.4 !important;
+  word-wrap: break-word !important;
+}
+
+.html-content-fallback body {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-family: inherit !important;
+  font-size: inherit !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.html-content-fallback html {
+  margin: 0 !important;
+  padding: 0 !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* Garante que scripts e estilos não afetem o layout externo */
+.html-content-fallback script,
+.html-content-fallback style {
+  display: none !important;
+}
