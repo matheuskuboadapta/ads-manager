@@ -21,9 +21,7 @@ export default function UploadAds() {
   const [formData, setFormData] = useState({
     groupName: '',
     funnel: '',
-    customFunnel: '',
     actor: '',
-    customActor: '',
     adLinks: ''
   });
 
@@ -47,7 +45,7 @@ export default function UploadAds() {
       return;
     }
 
-    if (!formData.funnel && !formData.customFunnel.trim()) {
+    if (!formData.funnel) {
       toast({
         title: "Erro",
         description: "Funil é obrigatório",
@@ -56,7 +54,7 @@ export default function UploadAds() {
       return;
     }
 
-    if (!formData.actor && !formData.customActor.trim()) {
+    if (!formData.actor) {
       toast({
         title: "Erro",
         description: "Ator é obrigatório",
@@ -86,8 +84,8 @@ export default function UploadAds() {
       // Preparar dados para envio
       const payload = {
         groupName: formData.groupName.trim(),
-        funnel: formData.funnel === 'custom' ? formData.customFunnel.trim() : formData.funnel,
-        actor: formData.actor === 'custom' ? formData.customActor.trim() : formData.actor,
+        funnel: formData.funnel,
+        actor: formData.actor,
         adLinks: linksArray
       };
 
@@ -110,9 +108,7 @@ export default function UploadAds() {
         setFormData({
           groupName: '',
           funnel: '',
-          customFunnel: '',
           actor: '',
-          customActor: '',
           adLinks: ''
         });
       } else {
@@ -198,16 +194,8 @@ export default function UploadAds() {
                           {funnel}
                         </SelectItem>
                       ))}
-                      <SelectItem value="custom">Outro (escrever)</SelectItem>
                     </SelectContent>
                   </Select>
-                  {formData.funnel === 'custom' && (
-                    <Input
-                      value={formData.customFunnel}
-                      onChange={(e) => handleInputChange('customFunnel', e.target.value)}
-                      placeholder="Digite o nome do funil"
-                    />
-                  )}
                   {funnelError && (
                     <p className="text-sm text-red-500">
                       Erro ao carregar opções de funil. Usando opções padrão.
@@ -228,16 +216,8 @@ export default function UploadAds() {
                           {actor}
                         </SelectItem>
                       ))}
-                      <SelectItem value="custom">Outro (escrever)</SelectItem>
                     </SelectContent>
                   </Select>
-                  {formData.actor === 'custom' && (
-                    <Input
-                      value={formData.customActor}
-                      onChange={(e) => handleInputChange('customActor', e.target.value)}
-                      placeholder="Digite o nome do ator"
-                    />
-                  )}
                   {actorError && (
                     <p className="text-sm text-red-500">
                       Erro ao carregar opções de ator. Usando opções padrão.
