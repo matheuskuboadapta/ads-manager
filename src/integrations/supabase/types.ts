@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      ads_manager_actors: {
+        Row: {
+          id: number
+          actor: string
+          created_at: string | null
+        }
+        Insert: {
+          id?: number
+          actor: string
+          created_at?: string | null
+        }
+        Update: {
+          id?: number
+          actor?: string
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      ads_manager_copies: {
+        Row: {
+          id: number
+          funnel: string
+          actor: string | null
+          ad_link: string | null
+          group_name: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: number
+          funnel: string
+          actor?: string | null
+          ad_link?: string | null
+          group_name?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: number
+          funnel?: string
+          actor?: string | null
+          ad_link?: string | null
+          group_name?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
       ad_metrics_logs: {
         Row: {
           edit_details: Json

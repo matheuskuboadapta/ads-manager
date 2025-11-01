@@ -1,0 +1,162 @@
+# Product Requirements Document – Adapta Ads Manager
+
+## 1. Visão Geral do Produto
+
+O **Adapta Ads Manager** é uma ferramenta interna que replica o fluxo do Meta Ads Manager, consumindo dados do nosso banco PostgreSQL para permitir monitoramento em tempo quase-real e edição de campanhas, conjuntos de anúncios e anúncios da Adapta.
+
+---
+
+## 2. Problema / Oportunidade
+
+- As squads de mídia precisam de uma **visão consolidada** das métricas financeiras e de performance sem dependência direta da interface do Meta.
+- Ajustes rápidos (pausar/retomar, alterar budget/objetivo) hoje exigem acesso direto ao Meta ou tickets para Engenharia.
+
+---
+
+## 3. Objetivos do Produto
+
+1. **Visualizar métricas-chave** em até 5 min após gravação no banco.
+2. **Editar status, budget e objective** via UI própria, disparando POST para webhook interno.
+3. **Garantir feedback instantâneo** (sucesso/erro) ao usuário após cada ação.
+4. **Subir anúncios, conjuntos e campanhas** de maneira rápida.
+
+---
+
+## 4. Usuários-Alvo & Perfis
+
+| Perfil | Descrição | Permissões |
+|--------|-----------|------------|
+| **Admin** (Mídia-buyer, Analista, Gestor) | Usuários atuais com acesso ao painel | Visualização, edição, criação, exportação |
+
+> **Nota:** Neste MVP todos os logins existentes terão papel admin.
+
+---
+
+## 5. Métricas Exibidas (nos 3 níveis)
+
+- **Valor Gasto** (Spend)
+- **Faturamento** (Revenue)
+- **Vendas** (Sales)
+- **Profit**
+- **CPA**
+- **Cliques**
+- **CPM**
+- **CPC**
+- **CTR**
+- **Click CV** (Taxa de conversão pós-clique)
+- **EPC**
+- **ROAS**
+
+---
+
+## 6. Funcionalidades Principais
+
+### 6.1 Abas de Navegação
+**Contas → Campanhas → Conjuntos → Anúncios** (UX similar a navegadores).
+
+### 6.2 Drill-Down
+Clicar no nome do nível atual abre a lista do nível imediatamente abaixo.
+
+### 6.3 Tabela de Métricas
+- Colunas fixas (Status toggle + métricas listadas)
+- Ordenação & filtros básicos
+
+### 6.4 Edição Inline
+- **Status** (toggle)
+- **Budget** (campo editável em Adset)
+
+### 6.5 Home
+- Resumos de métricas
+- Métricas por dia/hora
+- Função de subir anúncios
+
+---
+
+## 7. Estrutura de Dados
+
+### 7.1 View com as Métricas dos Anúncios
+
+```sql
+CREATE MATERIALIZED VIEW public.meta_ads_view AS
+WITH
+  metrics_daily AS (
+    SELECT
+      m_1.ad_id,
+      m_1.date_start,
+      MIN(m_1.campaign_name) AS campaign_name,
+      MIN(m_1.adset_name)    AS adset_name,
+      MIN(m_1.ad_name)       AS ad_name,
+      MIN(m_1.account_name)  AS account_name,
+      MIN(m_1.effective_status::text) AS effective_status,
+      MIN(m_1.adset_status::text)     AS adset_status,
+      MIN(m_1.campaign_status::text)  AS campaign_status,
+      SUM(m_1.spend)         AS spend,
+      SUM(m_1.impressions)   AS impressions,
+      SUM(m_1.outbound_clicks) AS clicks
+    FROM meta_ads_metrics m_1
+    WHERE m_1.campaign_name !~~ '%NoConv%'
+    GROUP BY m_1.ad_id, m_1.date_start
+  ),
+  sales_daily AS (
+    SELECT
+      s_1.ad_id,
+      s_1.confirmed_at AS date_start,
+      COUNT(s_1.transaction_id) AS real_sales,
+      SUM(s_1.product_value)    AS real_revenue
+    FROM meta_ads_sales s_1
+    GROUP BY s_1.ad_id, s_1.confirmed_at
+  )
+SELECT
+  m.ad_id,
+  m.date_start,
+  m.campaign_name,
+  m.adset_name,
+  m.ad_name,
+  m.account_name,
+  m.effective_status,
+  m.adset_status,
+  m.campaign_status,
+  m.spend,
+  m.impressions,
+  m.clicks,
+  COALESCE(s.real_sales, 0)    AS real_sales,
+  COALESCE(s.real_revenue, 0)  AS real_revenue,
+  COALESCE(s.real_revenue, 0) - m.spend AS profit
+FROM metrics_daily m
+LEFT JOIN sales_daily s
+  ON s.ad_id::text = m.ad_id::text
+ AND s.date_start = m.date_start;
+```
+
+### 7.2 Tabela para Listar os Funis (coluna `funnel`)
+
+```sql
+CREATE TABLE public.ads_manager_copies (
+  funnel      TEXT NOT NULL,
+  body_copy   TEXT NULL,
+  title       TEXT NULL,
+  description TEXT NULL DEFAULT 'Clique em saiba mais para entender como aproveitar ainda hoje.'::text,
+  link        TEXT NULL,
+  created_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  CONSTRAINT ads_manager_copies_pkey PRIMARY KEY (funnel)
+) TABLESPACE pg_default;
+```
+
+### 7.3 Tabela para Listar os Atores
+
+```sql
+CREATE TABLE public.ads_manager_actors (
+  actor      TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+  CONSTRAINT ads_manager_actors_pkey PRIMARY KEY (actor)
+) TABLESPACE pg_default;
+```
+
+---
+
+## 8. Considerações Técnicas
+
+- **Latência de dados:** Máximo 5 minutos entre gravação no banco e exibição na UI
+- **Feedback de ações:** Resposta imediata (sucesso/erro) após edições
+- **Integração:** Webhooks internos para propagação de mudanças ao Meta
+- **Performance:** Uso de materialized views para otimização de queries complexas

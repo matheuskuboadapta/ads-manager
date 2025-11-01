@@ -9,28 +9,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Upload, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/ui/loading-button';
-
-const FUNNEL_OPTIONS = [
-  'Tramontina',
-  'Clube das IAs',
-  'Pacote',
-  'IA School'
-];
-
-const ACTOR_OPTIONS = [
-  'Adapta',
-  'Carioca',
-  'Tramontina',
-  'Hanah',
-  'Zuker',
-  'Duda',
-  'Leda'
-];
+import { useFunnelOptions } from '@/hooks/useFunnelOptions';
+import { useActorOptions } from '@/hooks/useActorOptions';
 
 export default function UploadAds() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const { data: funnelOptions, isLoading: isLoadingFunnels, error: funnelError } = useFunnelOptions();
+  const { data: actorOptions, isLoading: isLoadingActors, error: actorError } = useActorOptions();
   const [formData, setFormData] = useState({
     groupName: '',
     funnel: '',
@@ -99,8 +86,8 @@ export default function UploadAds() {
       // Preparar dados para envio
       const payload = {
         groupName: formData.groupName.trim(),
-        funnel: formData.funnel || formData.customFunnel.trim(),
-        actor: formData.actor || formData.customActor.trim(),
+        funnel: formData.funnel === 'custom' ? formData.customFunnel.trim() : formData.funnel,
+        actor: formData.actor === 'custom' ? formData.customActor.trim() : formData.actor,
         adLinks: linksArray
       };
 
@@ -203,10 +190,10 @@ export default function UploadAds() {
                   <Label htmlFor="funnel">Funil *</Label>
                   <Select value={formData.funnel} onValueChange={(value) => handleInputChange('funnel', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione um funil" />
+                      <SelectValue placeholder={isLoadingFunnels ? "Carregando opções..." : "Selecione um funil"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {FUNNEL_OPTIONS.map((funnel) => (
+                      {funnelOptions?.map((funnel) => (
                         <SelectItem key={funnel} value={funnel}>
                           {funnel}
                         </SelectItem>
@@ -221,6 +208,11 @@ export default function UploadAds() {
                       placeholder="Digite o nome do funil"
                     />
                   )}
+                  {funnelError && (
+                    <p className="text-sm text-red-500">
+                      Erro ao carregar opções de funil. Usando opções padrão.
+                    </p>
+                  )}
                 </div>
 
                 {/* Ator */}
@@ -228,10 +220,10 @@ export default function UploadAds() {
                   <Label htmlFor="actor">Ator *</Label>
                   <Select value={formData.actor} onValueChange={(value) => handleInputChange('actor', value)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione um ator" />
+                      <SelectValue placeholder={isLoadingActors ? "Carregando opções..." : "Selecione um ator"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {ACTOR_OPTIONS.map((actor) => (
+                      {actorOptions?.map((actor) => (
                         <SelectItem key={actor} value={actor}>
                           {actor}
                         </SelectItem>
@@ -245,6 +237,11 @@ export default function UploadAds() {
                       onChange={(e) => handleInputChange('customActor', e.target.value)}
                       placeholder="Digite o nome do ator"
                     />
+                  )}
+                  {actorError && (
+                    <p className="text-sm text-red-500">
+                      Erro ao carregar opções de ator. Usando opções padrão.
+                    </p>
                   )}
                 </div>
 
