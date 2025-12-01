@@ -22,9 +22,7 @@ export default function UploadAds() {
     groupName: '',
     funnel: '',
     actor: '',
-    adLinks: '',
-    budget: '500',
-    startDate: 'tomorrow'
+    adLinks: ''
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -74,24 +72,6 @@ export default function UploadAds() {
       return;
     }
 
-    if (!formData.budget || parseInt(formData.budget) < 1) {
-      toast({
-        title: "Erro",
-        description: "Orçamento deve ser maior que zero",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.startDate) {
-      toast({
-        title: "Erro",
-        description: "Data de início é obrigatória",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setIsLoading(true);
 
     try {
@@ -101,15 +81,15 @@ export default function UploadAds() {
         .map(link => link.trim())
         .filter(link => link.length > 0);
 
-      // Preparar dados para envio
+      // Preparar dados para envio - ENVIANDO LINKS DO DRIVE DIRETAMENTE
       const payload = {
         groupName: formData.groupName.trim(),
         funnel: formData.funnel,
         actor: formData.actor,
-        adLinks: linksArray,
-        budget: parseInt(formData.budget),
-        startDate: formData.startDate
+        adLinks: linksArray // Links do Drive originais
       };
+
+      console.log('Enviando payload:', payload);
 
       // Enviar via webhook
       const response = await fetch('https://mkthooks.adaptahub.org/webhook/db09b37c-53d0-4783-a8b9-76e9c9e04479', {
@@ -131,9 +111,7 @@ export default function UploadAds() {
           groupName: '',
           funnel: '',
           actor: '',
-          adLinks: '',
-          budget: '500',
-          startDate: 'tomorrow'
+          adLinks: ''
         });
       } else {
         throw new Error('Erro ao enviar dados');
@@ -188,7 +166,7 @@ export default function UploadAds() {
                 <span>Formulário de Upload</span>
               </CardTitle>
               <CardDescription>
-                Preencha os dados abaixo para enviar seus anúncios
+                Preencha os dados abaixo para enviar seus anúncios (Links do Drive serão enviados diretamente)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -261,42 +239,7 @@ export default function UploadAds() {
                     required
                   />
                   <p className="text-sm text-muted-foreground">
-                    Cole os links do Google Drive, um por linha. Cada link será processado separadamente.
-                  </p>
-                </div>
-
-                {/* Orçamento */}
-                <div className="space-y-2">
-                  <Label htmlFor="budget">Orçamento *</Label>
-                  <Input
-                    id="budget"
-                    type="number"
-                    value={formData.budget}
-                    onChange={(e) => handleInputChange('budget', e.target.value)}
-                    placeholder="Digite o orçamento"
-                    min="1"
-                    required
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Defina o orçamento para a campanha
-                  </p>
-                </div>
-
-                {/* Data de início */}
-                <div className="space-y-2">
-                  <Label htmlFor="startDate">Data de início *</Label>
-                  <Select value={formData.startDate} onValueChange={(value) => handleInputChange('startDate', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="today">Hoje</SelectItem>
-                      <SelectItem value="tomorrow">Amanhã</SelectItem>
-                      <SelectItem value="dayAfterTomorrow">Depois de amanhã</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    Selecione quando a campanha deve começar
+                    Cole os links do Google Drive, um por linha. Os links serão enviados diretamente para processamento.
                   </p>
                 </div>
 
@@ -327,3 +270,4 @@ export default function UploadAds() {
     </div>
   );
 }
+
