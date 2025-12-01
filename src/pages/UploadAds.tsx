@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ArrowLeft, Upload, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/ui/loading-button';
@@ -16,6 +17,7 @@ export default function UploadAds() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [platform, setPlatform] = useState<'meta' | 'youtube'>('meta');
   const { data: funnelOptions, isLoading: isLoadingFunnels, error: funnelError } = useFunnelOptions();
   const { data: actorOptions, isLoading: isLoadingActors, error: actorError } = useActorOptions();
   const [formData, setFormData] = useState({
@@ -38,28 +40,48 @@ export default function UploadAds() {
     e.preventDefault();
     
     // Validação básica
-    if (!formData.groupName.trim()) {
-      toast({
-        title: "Erro",
-        description: "Nome do grupo de anúncios é obrigatório",
-        variant: "destructive"
-      });
-      return;
+    if (platform === 'meta') {
+      if (!formData.groupName.trim()) {
+        toast({
+          title: "Erro",
+          description: "Nome do grupo de anúncios é obrigatório",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!formData.actor) {
+        toast({
+          title: "Erro",
+          description: "Ator é obrigatório",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!formData.budget || parseInt(formData.budget) < 1) {
+        toast({
+          title: "Erro",
+          description: "Orçamento deve ser maior que zero",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!formData.startDate) {
+        toast({
+          title: "Erro",
+          description: "Data de início é obrigatória",
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
     if (!formData.funnel) {
       toast({
         title: "Erro",
         description: "Funil é obrigatório",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.actor) {
-      toast({
-        title: "Erro",
-        description: "Ator é obrigatório",
         variant: "destructive"
       });
       return;
@@ -74,50 +96,62 @@ export default function UploadAds() {
       return;
     }
 
-    if (!formData.budget || parseInt(formData.budget) < 1) {
-      toast({
-        title: "Erro",
-        description: "Orçamento deve ser maior que zero",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!formData.startDate) {
-      toast({
-        title: "Erro",
-        description: "Data de início é obrigatória",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      // Processar links - dividir por quebra de linha e filtrar vazios
-      const linksArray = formData.adLinks
-        .split('\n')
-        .map(link => link.trim())
-        .filter(link => link.length > 0);
+      let endpoint: string;
+      let headers: HeadersInit;
+      let body: string | FormData;
 
-      // Preparar dados para envio
-      const payload = {
-        groupName: formData.groupName.trim(),
-        funnel: formData.funnel,
-        actor: formData.actor,
-        adLinks: linksArray,
-        budget: parseInt(formData.budget),
-        startDate: formData.startDate
-      };
+      if (platform === 'youtube') {
+        // Processar links - dividir por quebra de linha e filtrar vazios
+        const linksArray = formData.adLinks
+          .split('\n')
+          .map(link => link.trim())
+          .filter(link => link.length > 0);
+
+        // Endpoint do Youtube
+        endpoint = 'https://hooks.adaptaops.org/rota/7a4bf8e0-df75-4026-8604-8aea95cbb697';
+        
+        // Usar FormData para formulário HTML
+        const formDataToSend = new FormData();
+        formDataToSend.append('link do video no drive', linksArray.join('\n'));
+        formDataToSend.append('funil', formData.funnel);
+        
+        body = formDataToSend;
+        headers = {}; // FormData define o Content-Type automaticamente com boundary
+      } else {
+        // Processar links - dividir por quebra de linha e filtrar vazios
+        const linksArray = formData.adLinks
+          .split('\n')
+          .map(link => link.trim())
+          .filter(link => link.length > 0);
+
+        // Endpoint do Meta
+        endpoint = 'https://mkthooks.adaptahub.org/webhook/db09b37c-53d0-4783-a8b9-76e9c9e04479';
+        
+        // Payload para Meta (JSON)
+        const payload = {
+          platform: platform,
+          funnel: formData.funnel,
+          adLinks: linksArray,
+          groupName: formData.groupName.trim(),
+          actor: formData.actor,
+          budget: parseInt(formData.budget),
+          startDate: formData.startDate
+        };
+        
+        body = JSON.stringify(payload);
+        headers = {
+          'Content-Type': 'application/json',
+        };
+      }
 
       // Enviar via webhook
-      const response = await fetch('https://mkthooks.adaptahub.org/webhook/db09b37c-53d0-4783-a8b9-76e9c9e04479', {
+      const response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
+        headers: headers,
+        body: body
       });
 
       if (response.ok) {
@@ -181,6 +215,39 @@ export default function UploadAds() {
       {/* Main Content */}
       <main className="p-6">
         <div className="max-w-2xl mx-auto">
+          {/* Platform Switch */}
+          <div className="mb-6 flex justify-center">
+            <ToggleGroup 
+              type="single" 
+              value={platform} 
+              onValueChange={(value) => {
+                if (value) setPlatform(value as 'meta' | 'youtube');
+              }}
+              className="inline-flex h-10 items-center justify-center rounded-full border border-input bg-card p-0.5 gap-0 shadow-sm"
+            >
+              <ToggleGroupItem
+                value="meta"
+                aria-label="Meta"
+                className={platform === 'meta' 
+                  ? "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary rounded-l-full border-r border-input px-4 font-medium transition-colors" 
+                  : "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground rounded-l-full border-r border-input px-4 transition-colors"
+                }
+              >
+                Meta
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="youtube"
+                aria-label="Youtube"
+                className={platform === 'youtube' 
+                  ? "bg-primary/10 text-primary hover:bg-primary/10 hover:text-primary rounded-r-full px-4 font-medium transition-colors" 
+                  : "bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground rounded-r-full px-4 transition-colors"
+                }
+              >
+                Youtube
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
@@ -193,19 +260,80 @@ export default function UploadAds() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Nome do grupo de anúncios */}
-                <div className="space-y-2">
-                  <Label htmlFor="groupName">Nome do grupo de anúncios *</Label>
-                  <Input
-                    id="groupName"
-                    value={formData.groupName}
-                    onChange={(e) => handleInputChange('groupName', e.target.value)}
-                    placeholder="Digite o nome do grupo de anúncios"
-                    required
-                  />
-                </div>
+                {platform === 'meta' && (
+                  <>
+                    {/* Nome do grupo de anúncios */}
+                    <div className="space-y-2">
+                      <Label htmlFor="groupName">Nome do grupo de anúncios *</Label>
+                      <Input
+                        id="groupName"
+                        value={formData.groupName}
+                        onChange={(e) => handleInputChange('groupName', e.target.value)}
+                        placeholder="Digite o nome do grupo de anúncios"
+                        required
+                      />
+                    </div>
 
-                {/* Funil */}
+                    {/* Ator */}
+                    <div className="space-y-2">
+                      <Label htmlFor="actor">Ator *</Label>
+                      <Select value={formData.actor} onValueChange={(value) => handleInputChange('actor', value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={isLoadingActors ? "Carregando opções..." : "Selecione um ator"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {actorOptions?.map((actor) => (
+                            <SelectItem key={actor} value={actor}>
+                              {actor}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {actorError && (
+                        <p className="text-sm text-red-500">
+                          Erro ao carregar opções de ator. Usando opções padrão.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Orçamento */}
+                    <div className="space-y-2">
+                      <Label htmlFor="budget">Orçamento *</Label>
+                      <Input
+                        id="budget"
+                        type="number"
+                        value={formData.budget}
+                        onChange={(e) => handleInputChange('budget', e.target.value)}
+                        placeholder="Digite o orçamento"
+                        min="1"
+                        required
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Defina o orçamento para a campanha
+                      </p>
+                    </div>
+
+                    {/* Data de início */}
+                    <div className="space-y-2">
+                      <Label htmlFor="startDate">Data de início *</Label>
+                      <Select value={formData.startDate} onValueChange={(value) => handleInputChange('startDate', value)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="today">Hoje</SelectItem>
+                          <SelectItem value="tomorrow">Amanhã</SelectItem>
+                          <SelectItem value="dayAfterTomorrow">Depois de amanhã</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-sm text-muted-foreground">
+                        Selecione quando a campanha deve começar
+                      </p>
+                    </div>
+                  </>
+                )}
+
+                {/* Funil - sempre visível */}
                 <div className="space-y-2">
                   <Label htmlFor="funnel">Funil *</Label>
                   <Select value={formData.funnel} onValueChange={(value) => handleInputChange('funnel', value)}>
@@ -227,76 +355,25 @@ export default function UploadAds() {
                   )}
                 </div>
 
-                {/* Ator */}
+                {/* Links dos anúncios - sempre visível */}
                 <div className="space-y-2">
-                  <Label htmlFor="actor">Ator *</Label>
-                  <Select value={formData.actor} onValueChange={(value) => handleInputChange('actor', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={isLoadingActors ? "Carregando opções..." : "Selecione um ator"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {actorOptions?.map((actor) => (
-                        <SelectItem key={actor} value={actor}>
-                          {actor}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {actorError && (
-                    <p className="text-sm text-red-500">
-                      Erro ao carregar opções de ator. Usando opções padrão.
-                    </p>
-                  )}
-                </div>
-
-                {/* Links dos anúncios */}
-                <div className="space-y-2">
-                  <Label htmlFor="adLinks">Links dos anúncios *</Label>
+                  <Label htmlFor="adLinks">Link dos anúncios *</Label>
                   <Textarea
                     id="adLinks"
                     value={formData.adLinks}
                     onChange={(e) => handleInputChange('adLinks', e.target.value)}
-                    placeholder="Cole os links do drive aqui, um por linha:&#10;https://drive.google.com/file/d/1abc...&#10;https://drive.google.com/file/d/2def...&#10;https://drive.google.com/file/d/3ghi..."
+                    placeholder={platform === 'meta' 
+                      ? "Cole os links do drive aqui, um por linha:&#10;https://drive.google.com/file/d/1abc...&#10;https://drive.google.com/file/d/2def...&#10;https://drive.google.com/file/d/3ghi..."
+                      : "Cole os links dos anúncios aqui, um por linha"
+                    }
                     rows={6}
                     required
                   />
                   <p className="text-sm text-muted-foreground">
-                    Cole os links do Google Drive, um por linha. Cada link será processado separadamente.
-                  </p>
-                </div>
-
-                {/* Orçamento */}
-                <div className="space-y-2">
-                  <Label htmlFor="budget">Orçamento *</Label>
-                  <Input
-                    id="budget"
-                    type="number"
-                    value={formData.budget}
-                    onChange={(e) => handleInputChange('budget', e.target.value)}
-                    placeholder="Digite o orçamento"
-                    min="1"
-                    required
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Defina o orçamento para a campanha
-                  </p>
-                </div>
-
-                {/* Data de início */}
-                <div className="space-y-2">
-                  <Label htmlFor="startDate">Data de início *</Label>
-                  <Select value={formData.startDate} onValueChange={(value) => handleInputChange('startDate', value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="today">Hoje</SelectItem>
-                      <SelectItem value="tomorrow">Amanhã</SelectItem>
-                      <SelectItem value="dayAfterTomorrow">Depois de amanhã</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    Selecione quando a campanha deve começar
+                    {platform === 'meta' 
+                      ? "Cole os links do Google Drive, um por linha. Cada link será processado separadamente."
+                      : "Cole os links dos anúncios, um por linha."
+                    }
                   </p>
                 </div>
 
