@@ -57,15 +57,15 @@ const MobileCampaignsList = ({
         return (
           <Card 
             key={campaign.id} 
-            className="cursor-pointer hover:shadow-md transition-shadow"
+            className="cursor-pointer hover:shadow-md transition-shadow overflow-hidden"
             onClick={() => onCampaignClick(campaign)}
           >
             <CardContent className="p-4 space-y-3">
               {/* Header com nome e status */}
               <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-base truncate pr-2">
-                    {campaign.name}
+                <div className="flex-1 min-w-0 overflow-hidden max-w-[calc(100%-90px)]">
+                  <h3 className="font-semibold text-base truncate break-all">
+                    {campaign.name.length > 20 ? `${campaign.name.substring(0, 20)}...` : campaign.name}
                   </h3>
                   <div className="flex items-center gap-2 mt-1">
                     <Badge 
@@ -77,7 +77,7 @@ const MobileCampaignsList = ({
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-2 flex-shrink-0 w-[90px] justify-end" onClick={(e) => e.stopPropagation()}>
                   <Switch
                     checked={isChecked}
                     onCheckedChange={(checked) => onStatusChange(campaign, checked)}

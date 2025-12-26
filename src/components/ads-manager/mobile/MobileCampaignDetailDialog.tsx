@@ -205,7 +205,9 @@ const MobileCampaignDetailDialog = ({
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto p-0">
           <DialogHeader className="p-4 pb-0 pr-12">
-            <DialogTitle className="text-lg truncate pr-2">{campaign.name}</DialogTitle>
+            <DialogTitle className="text-lg truncate pr-2">
+              {campaign.name.length > 20 ? `${campaign.name.substring(0, 20)}...` : campaign.name}
+            </DialogTitle>
           </DialogHeader>
 
           {/* Métricas resumidas da campanha */}
@@ -251,11 +253,13 @@ const MobileCampaignDetailDialog = ({
                   const isUpdating = statusUpdateLoading && localStatus !== undefined;
 
                   return (
-                    <Card key={adset.id}>
+                    <Card key={adset.id} className="overflow-hidden">
                       <CardContent className="p-3 space-y-2">
                         <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0 overflow-hidden">
-                            <h4 className="font-medium text-sm truncate">{adset.name}</h4>
+                          <div className="flex-1 min-w-0 overflow-hidden max-w-[calc(100%-60px)]">
+                            <h4 className="font-medium text-sm truncate break-all">
+                              {adset.name.length > 40 ? `${adset.name.substring(0, 40)}...` : adset.name}
+                            </h4>
                             <Badge 
                               variant="secondary" 
                               className={`text-xs mt-1 ${getStatusColor(currentStatus)}`}
@@ -263,7 +267,7 @@ const MobileCampaignDetailDialog = ({
                               {currentStatus === 'ACTIVE' || currentStatus === 'ATIVO' ? 'Ativo' : 'Pausado'}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="flex items-center gap-2 flex-shrink-0 w-[60px] justify-end">
                             <Switch
                               checked={isChecked}
                               onCheckedChange={(checked) => handleAdsetStatusChange(adset, checked)}
@@ -370,11 +374,13 @@ const MobileCampaignDetailDialog = ({
                   const isUpdating = statusUpdateLoading && localStatus !== undefined;
 
                   return (
-                    <Card key={ad.id}>
+                    <Card key={ad.id} className="overflow-hidden">
                       <CardContent className="p-3 space-y-2">
                         <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0 overflow-hidden">
-                            <h4 className="font-medium text-sm truncate">{ad.name}</h4>
+                          <div className="flex-1 min-w-0 overflow-hidden max-w-[calc(100%-60px)]">
+                            <h4 className="font-medium text-sm truncate break-all">
+                              {ad.name.length > 40 ? `${ad.name.substring(0, 40)}...` : ad.name}
+                            </h4>
                             <Badge 
                               variant="secondary" 
                               className={`text-xs mt-1 ${getStatusColor(currentStatus)}`}
@@ -382,7 +388,7 @@ const MobileCampaignDetailDialog = ({
                               {currentStatus === 'ACTIVE' || currentStatus === 'ATIVO' ? 'Ativo' : 'Pausado'}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
+                          <div className="flex items-center gap-2 flex-shrink-0 w-[60px] justify-end">
                             <Switch
                               checked={isChecked}
                               onCheckedChange={(checked) => handleAdStatusChange(ad, checked)}
