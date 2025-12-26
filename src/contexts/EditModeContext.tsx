@@ -12,14 +12,23 @@ interface EditModeProviderProps {
   children: ReactNode;
 }
 
+// Detecta se é mobile
+const MOBILE_BREAKPOINT = 768;
+const isMobileDevice = () => window.innerWidth < MOBILE_BREAKPOINT;
+
 export function EditModeProvider({ children }: EditModeProviderProps) {
-  const [isEditMode, setIsEditMode] = useState<boolean>(false);
+  // Por padrão, ativa o modo de edição se for mobile
+  const [isEditMode, setIsEditMode] = useState<boolean>(isMobileDevice());
 
   // Load edit mode from localStorage on mount
   useEffect(() => {
     const savedEditMode = localStorage.getItem('adapta-edit-mode');
     if (savedEditMode !== null) {
       setIsEditMode(JSON.parse(savedEditMode));
+    } else if (isMobileDevice()) {
+      // Se não há valor salvo e é mobile, ativa por padrão
+      setIsEditMode(true);
+      localStorage.setItem('adapta-edit-mode', JSON.stringify(true));
     }
   }, []);
 
