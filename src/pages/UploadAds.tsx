@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/ui/loading-button';
 import { useFunnelOptions } from '@/hooks/useFunnelOptions';
 import { useActorOptions } from '@/hooks/useActorOptions';
+import { getNextAdsetGroupName, getLastAdsetGroupName, saveLastAdsetGroupName } from '@/utils/formatters';
 
 export default function UploadAds() {
   const navigate = useNavigate();
@@ -24,10 +25,23 @@ export default function UploadAds() {
     groupName: '',
     funnel: '',
     actor: '',
+    adAccount: 'act_371216193594378',
     adLinks: '',
     budget: '500',
     startDate: 'tomorrow'
   });
+
+  // Carregar o próximo valor do grupo de anúncios quando o componente montar
+  useEffect(() => {
+    if (platform === 'meta') {
+      const lastValue = getLastAdsetGroupName();
+      const nextValue = getNextAdsetGroupName(lastValue);
+      setFormData(prev => ({
+        ...prev,
+        groupName: nextValue
+      }));
+    }
+  }, [platform]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -54,6 +68,15 @@ export default function UploadAds() {
         toast({
           title: "Erro",
           description: "Ator é obrigatório",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!formData.adAccount) {
+        toast({
+          title: "Erro",
+          description: "Conta de anúncios é obrigatória",
           variant: "destructive"
         });
         return;
@@ -137,6 +160,7 @@ export default function UploadAds() {
           adLinks: linksArray,
           groupName: formData.groupName.trim(),
           actor: formData.actor,
+          adAccount: formData.adAccount,
           budget: parseInt(formData.budget),
           startDate: formData.startDate
         };
@@ -160,11 +184,20 @@ export default function UploadAds() {
           description: "Dados enviados com sucesso",
         });
         
-        // Limpar formulário
+        // Salvar o valor do grupo de anúncios usado (apenas para Meta)
+        if (platform === 'meta' && formData.groupName.trim()) {
+          saveLastAdsetGroupName(formData.groupName.trim());
+        }
+        
+        // Limpar formulário e gerar próximo valor
+        const lastValue = platform === 'meta' ? formData.groupName.trim() : null;
+        const nextGroupName = platform === 'meta' ? getNextAdsetGroupName(lastValue) : '';
+        
         setFormData({
-          groupName: '',
+          groupName: nextGroupName,
           funnel: '',
           actor: '',
+          adAccount: 'act_371216193594378',
           adLinks: '',
           budget: '500',
           startDate: 'tomorrow'
@@ -294,6 +327,24 @@ export default function UploadAds() {
                           Erro ao carregar opções de ator. Usando opções padrão.
                         </p>
                       )}
+                    </div>
+
+                    {/* Conta de anúncios */}
+                    <div className="space-y-2">
+                      <Label htmlFor="adAccount">Conta de anúncios *</Label>
+                      <Select value={formData.adAccount} onValueChange={(value) => handleInputChange('adAccount', value)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione uma conta de anúncios" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="act_905921799754775">Conta 1</SelectItem>
+                          <SelectItem value="act_371216193594378">Conta 3</SelectItem>
+                          <SelectItem value="act_2076696925768157">Conta 4</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-sm text-muted-foreground">
+                        Selecione a conta de anúncios do Meta
+                      </p>
                     </div>
 
                     {/* Orçamento */}

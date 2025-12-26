@@ -33,6 +33,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useQueryClient } from '@tanstack/react-query';
 import { useEditMode } from '@/contexts/EditModeContext';
 import { EditModeToggle } from '@/components/ui/edit-mode-toggle';
+import { useIsMobile } from '@/hooks/use-mobile';
+import MobileCampaignsList from './mobile/MobileCampaignsList';
+import MobileCampaignDetailDialog from './mobile/MobileCampaignDetailDialog';
 
 interface CampaignsTabProps {
   accountId: string | null;
@@ -119,6 +122,9 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
   const { isEditMode } = useEditMode();
+  const isMobile = useIsMobile();
+  const [selectedCampaignMobile, setSelectedCampaignMobile] = useState<any>(null);
+  const [showMobileDetailDialog, setShowMobileDetailDialog] = useState(false);
 
   // Fechar dropdowns quando clicar fora
   useEffect(() => {
@@ -388,6 +394,17 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
   const handleBudgetConfirmationCancel = () => {
     setShowBudgetConfirmation(false);
     setPendingBudgetChange(null);
+  };
+
+  // Mobile handlers
+  const handleMobileCampaignClick = (campaign: any) => {
+    setSelectedCampaignMobile(campaign);
+    setShowMobileDetailDialog(true);
+  };
+
+  const handleMobileDialogClose = () => {
+    setShowMobileDetailDialog(false);
+    setSelectedCampaignMobile(null);
   };
 
   const handleBudgetCancel = () => {
@@ -663,89 +680,90 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Campanhas</h2>
-          <p className="text-slate-600">Gerencie suas campanhas de anúncios</p>
+      {!isMobile && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Campanhas</h2>
+            <p className="text-slate-600">Gerencie suas campanhas de anúncios</p>
+          </div>
+          
+          <div className="flex items-center space-x-3">
+            <Badge variant="secondary" className="px-3 py-1">
+              {filteredCampaigns.length} campanhas
+            </Badge>
+            
+            <Button
+              variant={isSelectionMode ? "default" : "outline"}
+              size="sm"
+              onClick={handleToggleSelectionMode}
+              disabled={!isEditMode}
+              className="flex items-center gap-2"
+            >
+              <Target className="h-4 w-4" />
+              {isSelectionMode ? "Sair da Seleção" : "Selecionar Campanhas"}
+            </Button>
+            
+            {isSelectionMode && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowBulkStatusDialog(true)}
+                  className="flex items-center gap-2"
+                  disabled={selectedTargets.length === 0 || !isEditMode}
+                >
+                  <Power className="h-4 w-4" />
+                  Mudar Status
+                  {selectedTargets.length > 0 && (
+                    <Badge variant="secondary" className="ml-1">
+                      {selectedTargets.length}
+                    </Badge>
+                  )}
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowRuleCreation(true)}
+                  className="flex items-center gap-2"
+                  disabled={selectedTargets.length === 0 || !isEditMode}
+                >
+                  <Plus className="h-4 w-4" />
+                  Nova Regra
+                  {selectedTargets.length > 0 && (
+                    <Badge variant="secondary" className="ml-1">
+                      {selectedTargets.length}
+                    </Badge>
+                  )}
+                </Button>
+              </>
+            )}
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCreateDialog(true)}
+              disabled={!isEditMode}
+              className="flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Nova Campanha
+            </Button>
+            
+            <ColumnOrderDialog
+              tableType="campaigns"
+              columnOrder={getVisibleColumns('campaigns')}
+              onColumnOrderChange={(newOrder) => updateColumnOrder('campaigns', newOrder)}
+              onReset={() => resetColumnOrder('campaigns')}
+              getAllColumns={() => getAllColumns('campaigns')}
+              isColumnVisible={(column) => isColumnVisible('campaigns', column)}
+              toggleColumnVisibility={(column) => toggleColumnVisibility('campaigns', column)}
+            />
+            
+            <EditModeToggle />
+          </div>
         </div>
-        
-        <div className="flex items-center space-x-3">
-          <Badge variant="secondary" className="px-3 py-1">
-            {filteredCampaigns.length} campanhas
-          </Badge>
-          
-          <Button
-            variant={isSelectionMode ? "default" : "outline"}
-            size="sm"
-            onClick={handleToggleSelectionMode}
-            disabled={!isEditMode}
-            className="flex items-center gap-2"
-          >
-            <Target className="h-4 w-4" />
-            {isSelectionMode ? "Sair da Seleção" : "Selecionar Campanhas"}
-          </Button>
-          
-          {isSelectionMode && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowBulkStatusDialog(true)}
-                className="flex items-center gap-2"
-                disabled={selectedTargets.length === 0 || !isEditMode}
-              >
-                <Power className="h-4 w-4" />
-                Mudar Status
-                {selectedTargets.length > 0 && (
-                  <Badge variant="secondary" className="ml-1">
-                    {selectedTargets.length}
-                  </Badge>
-                )}
-              </Button>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowRuleCreation(true)}
-                className="flex items-center gap-2"
-                disabled={selectedTargets.length === 0 || !isEditMode}
-              >
-                <Plus className="h-4 w-4" />
-                Nova Regra
-                {selectedTargets.length > 0 && (
-                  <Badge variant="secondary" className="ml-1">
-                    {selectedTargets.length}
-                  </Badge>
-                )}
-              </Button>
-            </>
-          )}
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowCreateDialog(true)}
-            disabled={!isEditMode}
-            className="flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Nova Campanha
-          </Button>
-          
-          <ColumnOrderDialog
-            tableType="campaigns"
-            columnOrder={getVisibleColumns('campaigns')}
-            onColumnOrderChange={(newOrder) => updateColumnOrder('campaigns', newOrder)}
-            onReset={() => resetColumnOrder('campaigns')}
-            getAllColumns={() => getAllColumns('campaigns')}
-            isColumnVisible={(column) => isColumnVisible('campaigns', column)}
-            toggleColumnVisibility={(column) => toggleColumnVisibility('campaigns', column)}
-          />
-          
-          <EditModeToggle />
-        </div>
-
-      </div>
+      )}
 
       <FilterBar
         activeTab="campaigns"
@@ -756,6 +774,29 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
         onNameFilter={updateNameFilter}
         onStatusFilter={updateStatusFilter}
       />
+
+      {/* Mobile View */}
+      {isMobile ? (
+        <>
+          <MobileCampaignsList
+            campaigns={filteredCampaigns}
+            onCampaignClick={handleMobileCampaignClick}
+            onStatusChange={handleStatusChange}
+            onBudgetEdit={handleBudgetEdit}
+            statusUpdateLoading={statusUpdateLoading}
+            isEditMode={isEditMode}
+            localStatusUpdates={localStatusUpdates}
+          />
+          
+          <MobileCampaignDetailDialog
+            campaign={selectedCampaignMobile}
+            isOpen={showMobileDetailDialog}
+            onClose={handleMobileDialogClose}
+            isEditMode={isEditMode}
+          />
+        </>
+      ) : (
+        // Desktop View
 
       <div className="border rounded-lg">
         <div className="overflow-x-auto chat-table-container">
@@ -1134,6 +1175,7 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
           </Table>
         </div>
       </div>
+      )}
 
       {/* Budget Confirmation Dialog */}
       <AlertDialog open={showBudgetConfirmation} onOpenChange={setShowBudgetConfirmation}>

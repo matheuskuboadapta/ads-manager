@@ -19,6 +19,9 @@ import AdsTab from '@/components/ads-manager/AdsTab';
 import RulesTab from '@/components/ads-manager/RulesTab';
 import { HomeTab } from '@/components/home/HomeTab';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Menu } from 'lucide-react';
 
 export default function Index() {
   const [activeTab, setActiveTab] = useState('home');
@@ -33,6 +36,8 @@ export default function Index() {
   const { updateNameFilter } = useGlobalSettings();
   const { loading: globalLoading, withLoading: withGlobalLoading } = useLoading();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Aplica classe ao root quando o chat está aberto
   useEffect(() => {
@@ -173,43 +178,177 @@ export default function Index() {
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="bg-primary p-2 rounded-lg">
+            {isMobile && (
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm" className="p-2">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[250px] sm:w-[300px] p-0">
+                  <div className="flex flex-col h-full">
+                    <div className="p-4 border-b">
+                      <h2 className="font-semibold">Menu</h2>
+                    </div>
+                    <nav className="flex-1 p-4">
+                      <ul className="space-y-2">
+                        <li>
+                          <Button
+                            variant={activeTab === 'home' ? 'default' : 'ghost'}
+                            className="w-full justify-start"
+                            onClick={() => {
+                              setActiveTab('home');
+                              setMobileMenuOpen(false);
+                            }}
+                          >
+                            <Home className="h-4 w-4 mr-2" />
+                            Home
+                          </Button>
+                        </li>
+                        <li>
+                          <Button
+                            variant={activeTab === 'accounts' ? 'default' : 'ghost'}
+                            className="w-full justify-start"
+                            onClick={() => {
+                              setActiveTab('accounts');
+                              setMobileMenuOpen(false);
+                            }}
+                          >
+                            <Users className="h-4 w-4 mr-2" />
+                            Contas
+                          </Button>
+                        </li>
+                        <li>
+                          <Button
+                            variant={activeTab === 'campaigns' ? 'default' : 'ghost'}
+                            className="w-full justify-start"
+                            onClick={() => {
+                              setActiveTab('campaigns');
+                              setMobileMenuOpen(false);
+                            }}
+                          >
+                            <Target className="h-4 w-4 mr-2" />
+                            Campanhas
+                          </Button>
+                        </li>
+                        <li>
+                          <Button
+                            variant={activeTab === 'adsets' ? 'default' : 'ghost'}
+                            className="w-full justify-start"
+                            onClick={() => {
+                              setActiveTab('adsets');
+                              setMobileMenuOpen(false);
+                            }}
+                          >
+                            <BarChart3 className="h-4 w-4 mr-2" />
+                            Conjuntos
+                          </Button>
+                        </li>
+                        <li>
+                          <Button
+                            variant={activeTab === 'ads' ? 'default' : 'ghost'}
+                            className="w-full justify-start"
+                            onClick={() => {
+                              setActiveTab('ads');
+                              setMobileMenuOpen(false);
+                            }}
+                          >
+                            <Megaphone className="h-4 w-4 mr-2" />
+                            Anúncios
+                          </Button>
+                        </li>
+                        <li>
+                          <Button
+                            variant={activeTab === 'rules' ? 'default' : 'ghost'}
+                            className="w-full justify-start"
+                            onClick={() => {
+                              setActiveTab('rules');
+                              setMobileMenuOpen(false);
+                            }}
+                          >
+                            <Settings className="h-4 w-4 mr-2" />
+                            Regras
+                          </Button>
+                        </li>
+                      </ul>
+                    </nav>
+                    <div className="p-4 border-t space-y-2">
+                      <div className="text-sm text-muted-foreground mb-2">
+                        {user?.email}
+                      </div>
+                      <Button
+                        onClick={() => {
+                          navigate('/upload-ads');
+                          setMobileMenuOpen(false);
+                        }}
+                        variant="outline"
+                        className="w-full justify-start"
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload de ads
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          signOut();
+                          setMobileMenuOpen(false);
+                        }}
+                        variant="outline"
+                        className="w-full justify-start"
+                      >
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Sair
+                      </Button>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            )}
+            <div className={isMobile ? "hidden" : "bg-primary p-2 rounded-lg"}>
               <BarChart3 className="h-6 w-6 text-primary-foreground" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Adapta Ads Manager</h1>
-              <p className="text-muted-foreground text-sm">
-                Logado como: {user?.email}
-              </p>
+            <div className={isMobile ? "" : ""}>
+              <h1 className={`font-bold text-foreground ${isMobile ? 'text-lg' : 'text-xl'}`}>Adapta Ads Manager</h1>
+              {!isMobile && (
+                <p className="text-muted-foreground text-sm">
+                  Logado como: {user?.email}
+                </p>
+              )}
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <Badge variant="outline" className="text-muted-foreground">
-              Última atualização: {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-            </Badge>
-            <ChatSidebar onToggle={setIsChatOpen} onWidthChange={setChatWidth} />
-            <Button 
-              onClick={() => navigate('/upload-ads')} 
-              variant="outline" 
-              size="sm"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload de ads
-            </Button>
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            {!isMobile && (
+              <>
+                <Badge variant="outline" className="text-muted-foreground">
+                  Última atualização: {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </Badge>
+                <ChatSidebar onToggle={setIsChatOpen} onWidthChange={setChatWidth} />
+                <Button 
+                  onClick={() => navigate('/upload-ads')} 
+                  variant="outline" 
+                  size="sm"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload de ads
+                </Button>
+              </>
+            )}
             <LoadingButton 
               onClick={handleRefresh} 
               variant="outline" 
               size="sm"
               loading={globalLoading}
-              loadingText="Atualizando..."
+              loadingText={isMobile ? "" : "Atualizando..."}
+              className={isMobile ? "p-2" : ""}
             >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Atualizar
+              <RefreshCw className={`h-4 w-4 ${!isMobile ? 'mr-2' : ''}`} />
+              {!isMobile && 'Atualizar'}
             </LoadingButton>
-            <Button onClick={signOut} variant="outline" size="sm">
-              <LogOut className="h-4 w-4 mr-2" />
-              Sair
-            </Button>
+            {!isMobile && (
+              <Button onClick={signOut} variant="outline" size="sm">
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -223,10 +362,11 @@ export default function Index() {
           minWidth: isChatOpen ? '900px' : 'auto'
         }}
       >
-        <main className={`p-6 chat-responsive-main ${isChatOpen ? 'overflow-x-auto' : ''}`}>
+        <main className={`${isMobile ? 'p-4' : 'p-6'} chat-responsive-main ${isChatOpen ? 'overflow-x-auto' : ''}`}>
           <div className={`w-full ${isChatOpen ? 'min-w-max' : ''}`}>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 lg:w-[600px]">
+          {!isMobile && (
+            <TabsList className="grid w-full grid-cols-6 lg:w-[600px]">
             <TabsTrigger value="home" className="flex items-center space-x-2">
               <Home className="h-4 w-4" />
               <span className="hidden sm:inline">Home</span>
@@ -251,7 +391,8 @@ export default function Index() {
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">Regras</span>
             </TabsTrigger>
-          </TabsList>
+            </TabsList>
+          )}
 
           <TabsContent value="home" className="space-y-4">
             <HomeTab />

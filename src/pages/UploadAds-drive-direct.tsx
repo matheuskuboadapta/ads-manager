@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/ui/loading-button';
 import { useFunnelOptions } from '@/hooks/useFunnelOptions';
 import { useActorOptions } from '@/hooks/useActorOptions';
+import { getNextAdsetGroupName, getLastAdsetGroupName, saveLastAdsetGroupName } from '@/utils/formatters';
 
 export default function UploadAds() {
   const navigate = useNavigate();
@@ -24,6 +25,16 @@ export default function UploadAds() {
     actor: '',
     adLinks: ''
   });
+
+  // Carregar o próximo valor do grupo de anúncios quando o componente montar
+  useEffect(() => {
+    const lastValue = getLastAdsetGroupName();
+    const nextValue = getNextAdsetGroupName(lastValue);
+    setFormData(prev => ({
+      ...prev,
+      groupName: nextValue
+    }));
+  }, []);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -106,9 +117,16 @@ export default function UploadAds() {
           description: "Dados enviados com sucesso",
         });
         
-        // Limpar formulário
+        // Salvar o valor do grupo de anúncios usado
+        if (formData.groupName.trim()) {
+          saveLastAdsetGroupName(formData.groupName.trim());
+        }
+        
+        // Limpar formulário e gerar próximo valor
+        const nextGroupName = getNextAdsetGroupName(formData.groupName.trim());
+        
         setFormData({
-          groupName: '',
+          groupName: nextGroupName,
           funnel: '',
           actor: '',
           adLinks: ''

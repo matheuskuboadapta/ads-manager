@@ -107,3 +107,101 @@ export function wrapText(text: string, maxLength: number = 80): string {
 
   return lines.join('\n');
 }
+
+/**
+ * Obtém as 3 primeiras letras do mês atual em português
+ */
+export function getCurrentMonthPrefix(): string {
+  const months = [
+    'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+    'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
+  ];
+  const currentMonth = new Date().getMonth();
+  return months[currentMonth];
+}
+
+/**
+ * Parseia um valor de grupo de anúncios no formato [Mês] [Letra] [Número]
+ * Ex: "Dez F1" -> { month: "Dez", letter: "F", number: 1 }
+ */
+export function parseAdsetGroupName(value: string): { month: string; letter: string; number: number } | null {
+  const match = value.match(/^([A-Za-z]{3})\s+([A-Z])(\d+)$/);
+  if (!match) return null;
+  
+  // Capitaliza a primeira letra do mês (Dez, Jan, etc.)
+  const month = match[1].charAt(0).toUpperCase() + match[1].slice(1).toLowerCase();
+  
+  return {
+    month: month,
+    letter: match[2],
+    number: parseInt(match[3], 10)
+  };
+}
+
+/**
+ * Gera o próximo valor de grupo de anúncios baseado no último valor usado
+ * Formato: [Mês] [Letra] [Número]
+ * - Número vai de 1 a 9
+ * - Quando passa de 9, volta para 1 e incrementa a letra
+ * - Se mudar de mês, começa do zero com o novo mês
+ */
+export function getNextAdsetGroupName(lastValue: string | null): string {
+  const currentMonth = getCurrentMonthPrefix();
+  
+  // Se não há último valor ou o último valor é de outro mês, começa do zero
+  if (!lastValue) {
+    return `${currentMonth} A1`;
+  }
+  
+  const parsed = parseAdsetGroupName(lastValue);
+  if (!parsed) {
+    // Se não conseguiu parsear, começa do zero
+    return `${currentMonth} A1`;
+  }
+  
+  // Se o mês mudou, começa do zero com o novo mês
+  if (parsed.month !== currentMonth) {
+    return `${currentMonth} A1`;
+  }
+  
+  // Incrementa o número
+  let nextNumber = parsed.number + 1;
+  let nextLetter = parsed.letter;
+  
+  // Se passou de 9, volta para 1 e incrementa a letra
+  if (nextNumber > 9) {
+    nextNumber = 1;
+    // Incrementa a letra (A -> B -> C -> ... -> Z)
+    const letterCode = nextLetter.charCodeAt(0);
+    if (letterCode >= 90) { // Se for Z, volta para A
+      nextLetter = 'A';
+    } else {
+      nextLetter = String.fromCharCode(letterCode + 1);
+    }
+  }
+  
+  return `${currentMonth} ${nextLetter}${nextNumber}`;
+}
+
+/**
+ * Salva o último valor usado do grupo de anúncios no localStorage
+ */
+export function saveLastAdsetGroupName(value: string): void {
+  try {
+    localStorage.setItem('lastAdsetGroupName', value);
+  } catch (error) {
+    console.error('Erro ao salvar último valor do grupo de anúncios:', error);
+  }
+}
+
+/**
+ * Carrega o último valor usado do grupo de anúncios do localStorage
+ */
+export function getLastAdsetGroupName(): string | null {
+  try {
+    return localStorage.getItem('lastAdsetGroupName');
+  } catch (error) {
+    console.error('Erro ao carregar último valor do grupo de anúncios:', error);
+    return null;
+  }
+}
