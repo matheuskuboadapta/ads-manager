@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { ChevronRight, TrendingUp, TrendingDown, Edit2, Check, X } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
-import { useToast } from '@/hooks/use-toast';
 
 interface MobileCampaignsListProps {
   campaigns: any[];
@@ -38,8 +37,6 @@ const MobileCampaignsList = ({
   isEditMode,
   localStatusUpdates
 }: MobileCampaignsListProps) => {
-  const { toast } = useToast();
-
   const getStatusColor = (status: string) => {
     return status === 'ATIVO' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
   };

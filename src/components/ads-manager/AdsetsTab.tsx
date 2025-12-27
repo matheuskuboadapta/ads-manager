@@ -12,7 +12,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, BarChart3, Edit2, Check, X, ChevronDown, ChevronRight, TrendingUp, TrendingDown, Target, Trash2, Power, PowerOff } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage, getCPAColorClass } from '@/utils/formatters';
-import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { updateAdset, createAdset, createCampaign } from '@/utils/api';
 import { useAdsetsData } from '@/hooks/useAdsData';
@@ -97,7 +96,6 @@ const AdsetsTab = ({ campaignId, accountName, onAdsetSelect }: AdsetsTabProps) =
   const [bulkStatusValue, setBulkStatusValue] = useState<'ATIVO' | 'DESATIVADA'>('ATIVO');
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   
-  const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
   const { isEditMode } = useEditMode();
@@ -217,18 +215,8 @@ const AdsetsTab = ({ campaignId, accountName, onAdsetSelect }: AdsetsTabProps) =
       
       // Update optimistic only after successful response
       updateOptimistic(adset.firstAdId, { statusFinal: status });
-      
-      toast({
-        title: "Status atualizado",
-        description: `Conjunto ${newStatus ? 'ativado' : 'pausado'} com sucesso.`,
-      });
     } catch (error) {
       console.error('Error updating adset status:', error);
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar status do conjunto.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -256,11 +244,6 @@ const AdsetsTab = ({ campaignId, accountName, onAdsetSelect }: AdsetsTabProps) =
         updateOptimistic(adset.firstAdId, { statusFinal: bulkStatusValue });
       });
       
-      toast({
-        title: "Status atualizado em massa",
-        description: `${selectedAdsets.length} conjunto(s) ${bulkStatusValue === 'ATIVO' ? 'ativado(s)' : 'pausado(s)'} com sucesso.`,
-      });
-      
       // Close dialog and reset selection
       setShowBulkStatusDialog(false);
       setSelectedTargets([]);
@@ -268,11 +251,6 @@ const AdsetsTab = ({ campaignId, accountName, onAdsetSelect }: AdsetsTabProps) =
       
     } catch (error) {
       console.error('Error updating bulk adset status:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o status dos conjuntos selecionados.",
-        variant: "destructive",
-      });
     } finally {
       setIsBulkUpdating(false);
     }
@@ -286,11 +264,6 @@ const AdsetsTab = ({ campaignId, accountName, onAdsetSelect }: AdsetsTabProps) =
   const handleBudgetSave = async (adset: any) => {
     const newBudget = parseFloat(tempBudget);
     if (isNaN(newBudget) || newBudget <= 0) {
-      toast({
-        title: "Erro",
-        description: "Valor de orçamento inválido.",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -318,19 +291,9 @@ const AdsetsTab = ({ campaignId, accountName, onAdsetSelect }: AdsetsTabProps) =
       updateOptimistic(adset.firstAdId, { dailyBudget: newBudget });
       
       setEditingBudget(null);
-      toast({
-        title: "Orçamento atualizado",
-        description: "Orçamento diário alterado com sucesso.",
-      });
     } catch (error) {
       console.error('Error updating adset budget:', error);
       setEditingBudget(null);
-      
-      toast({
-        title: "Erro",
-        description: "Falha ao atualizar orçamento.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -364,20 +327,10 @@ const AdsetsTab = ({ campaignId, accountName, onAdsetSelect }: AdsetsTabProps) =
   // Adset management functions
   const handleAddAdset = () => {
     if (!currentAdset.name.trim()) {
-      toast({
-        title: "Nome obrigatório",
-        description: "Por favor, insira um nome para o conjunto.",
-        variant: "destructive",
-      });
       return;
     }
 
     if (!currentAdset.dailyBudget || parseFloat(currentAdset.dailyBudget) <= 0) {
-      toast({
-        title: "Orçamento obrigatório",
-        description: "Por favor, insira um orçamento válido para o conjunto.",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -414,11 +367,6 @@ const AdsetsTab = ({ campaignId, accountName, onAdsetSelect }: AdsetsTabProps) =
       ]
     });
     setShowAdsetForm(false);
-
-    toast({
-      title: "Conjunto adicionado",
-      description: `Conjunto "${currentAdset.name}" adicionado à campanha.`,
-    });
   };
 
   const handleRemoveAdset = (adsetId: string) => {
@@ -1029,7 +977,7 @@ const AdsetsTab = ({ campaignId, accountName, onAdsetSelect }: AdsetsTabProps) =
                Cancelar
              </Button>
              <Button onClick={handleBulkStatusChange} disabled={isBulkUpdating}>
-               {isBulkUpdating ? 'Atualizando...' : 'Atualizar Status'}
+               Atualizar Status
              </Button>
            </DialogFooter>
          </DialogContent>

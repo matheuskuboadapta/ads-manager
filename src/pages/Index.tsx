@@ -4,9 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LoadingButton } from '@/components/ui/loading-button';
-import { LoadingOverlay } from '@/components/ui/loading-overlay';
 import { RefreshCw, Users, Target, BarChart3, Megaphone, Settings, LogOut, Home, Upload } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
@@ -30,7 +28,6 @@ export default function Index() {
   const [selectedAdset, setSelectedAdset] = useState<string | null>(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatWidth, setChatWidth] = useState(400);
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, signOut } = useAuth();
   const { updateNameFilter } = useGlobalSettings();
@@ -59,11 +56,6 @@ export default function Index() {
   const refreshAllData = withGlobalLoading(async () => {
     // Invalidate all queries to force refresh
     await queryClient.invalidateQueries();
-    
-    toast({
-      title: "Dados atualizados",
-      description: "As métricas foram atualizadas automaticamente.",
-    });
   });
 
   console.log('=== INDEX STATE ===');
@@ -285,7 +277,7 @@ export default function Index() {
               variant="outline" 
               size="sm"
               loading={globalLoading}
-              loadingText={isMobile ? "" : "Atualizando..."}
+              loadingText=""
               className={isMobile ? "p-2" : ""}
             >
               <RefreshCw className={`h-4 w-4 ${!isMobile ? 'mr-2' : ''}`} />
@@ -369,12 +361,6 @@ export default function Index() {
           </div>
         </main>
       </div>
-      
-      {/* Global Loading Overlay */}
-      <LoadingOverlay 
-        isVisible={globalLoading} 
-        text="Atualizando dados..." 
-      />
     </div>
   );
 }

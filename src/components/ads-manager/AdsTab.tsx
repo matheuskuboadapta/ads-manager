@@ -14,7 +14,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Megaphone, ExternalLink, Play, ChevronDown, ChevronRight, TrendingUp, TrendingDown, Target, Plus, Trash2, Power, PowerOff } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
 import { formatCurrency, formatPercentage, getCPAColorClass } from '@/utils/formatters';
-import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { updateAd, createCampaign, createAdset } from '@/utils/api';
 import { useAdsListData } from '@/hooks/useAdsData';
@@ -106,7 +105,6 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
   const [showBulkStatusDialog, setShowBulkStatusDialog] = useState(false);
   const [bulkStatusValue, setBulkStatusValue] = useState<'ATIVO' | 'DESATIVADO'>('ATIVO');
   
-  const { toast } = useToast();
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
   const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
   const { isEditMode } = useEditMode();
@@ -259,11 +257,6 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
     queryClient.invalidateQueries({
       queryKey: ['ads-list-data', adsetId, campaignId, settings.dateFilter]
     });
-    
-    toast({
-      title: "Status atualizado",
-      description: `Anúncio ${newStatus ? 'ativado' : 'pausado'} com sucesso.`,
-    });
   });
 
   // Bulk status change handler
@@ -296,11 +289,6 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
     console.log('Invalidating bulk query with key:', ['ads-list-data', adsetId, campaignId, settings.dateFilter]);
     queryClient.invalidateQueries({
       queryKey: ['ads-list-data', adsetId, campaignId, settings.dateFilter]
-    });
-    
-    toast({
-      title: "Status atualizado em massa",
-      description: `${selectedAds.length} anúncio(s) ${bulkStatusValue === 'ATIVO' ? 'ativado(s)' : 'pausado(s)'} com sucesso.`,
     });
     
     // Close dialog and reset selection
@@ -353,20 +341,10 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
   // Adset management functions
   const handleAddAdset = () => {
     if (!currentAdset.name.trim()) {
-      toast({
-        title: "Nome obrigatório",
-        description: "Por favor, insira um nome para o conjunto.",
-        variant: "destructive",
-      });
       return;
     }
 
     if (!currentAdset.dailyBudget || parseFloat(currentAdset.dailyBudget) <= 0) {
-      toast({
-        title: "Orçamento obrigatório",
-        description: "Por favor, insira um orçamento válido para o conjunto.",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -403,11 +381,6 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
       ]
     });
     setShowAdsetForm(false);
-
-    toast({
-      title: "Conjunto adicionado",
-      description: `Conjunto "${currentAdset.name}" adicionado à campanha.`,
-    });
   };
 
   const handleRemoveAdset = (adsetId: string) => {
@@ -1199,7 +1172,7 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
                              <LoadingButton 
                   onClick={handleBulkStatusChange} 
                   loading={bulkUpdateLoading}
-                  loadingText="Atualizando..."
+                  loadingText=""
                 >
                   Atualizar Status
                 </LoadingButton>

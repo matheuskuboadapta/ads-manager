@@ -10,12 +10,12 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Edit2, Check, X, TrendingUp, TrendingDown } from 'lucide-react';
 import { formatCurrency, formatPercentage } from '@/utils/formatters';
 import { useCampaignDetails } from '@/hooks/useCampaignDetails';
-import { useToast } from '@/hooks/use-toast';
 import { updateAdset, updateAd } from '@/utils/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface MobileCampaignDetailDialogProps {
   campaign: any;
@@ -31,7 +31,6 @@ const MobileCampaignDetailDialog = ({
   isEditMode
 }: MobileCampaignDetailDialogProps) => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const { settings } = useGlobalSettings();
   const [activeTab, setActiveTab] = useState<'adsets' | 'ads'>('adsets');
@@ -41,6 +40,8 @@ const MobileCampaignDetailDialog = ({
   const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
   const [showBudgetConfirmation, setShowBudgetConfirmation] = useState(false);
   const [pendingBudgetChange, setPendingBudgetChange] = useState<{ item: any; newBudget: number; currentBudget: number; type: 'adset' | 'ad' } | null>(null);
+  const [showAdActivationDialog, setShowAdActivationDialog] = useState(false);
+  const [pendingAdActivation, setPendingAdActivation] = useState<{ ad: any; accountName: string | null } | null>(null);
 
   const { data: campaignDetails, isLoading: detailsLoading } = useCampaignDetails(
     campaign?.name || null,
@@ -70,18 +71,8 @@ const MobileCampaignDetailDialog = ({
       queryClient.invalidateQueries({
         queryKey: ['ads-data', settings.dateFilter]
       });
-      
-      toast({
-        title: "Status atualizado",
-        description: `Conjunto "${adset.name}" ${newStatus ? 'ativado' : 'pausado'} com sucesso.`,
-      });
     } catch (error) {
       console.error('Error updating adset status:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o status do conjunto.",
-        variant: "destructive",
-      });
       setLocalStatusUpdates(prev => {
         const newState = { ...prev };
         delete newState[adset.id];
@@ -93,6 +84,43 @@ const MobileCampaignDetailDialog = ({
   };
 
   const handleAdStatusChange = async (ad: any, newStatus: boolean) => {
+    // Verificar o status atual considerando updates locais
+    const localStatus = localStatusUpdates[ad.id];
+    const currentStatus = localStatus || ad.status;
+    
+    // Se está tentando ligar um anúncio desligado, mostrar dialog de confirmação
+    const isPaused = currentStatus === 'PAUSED' || currentStatus === 'PAUSADO';
+    
+    if (newStatus && isPaused) {
+      // Buscar account_name diretamente do banco de dados
+      try {
+        const { data: adData, error } = await supabase
+          .from('meta_ads_view')
+          .select('account_name')
+          .eq('ad_id', ad.id)
+          .limit(1)
+          .single();
+
+        if (error) {
+          console.error('Error fetching account name:', error);
+        }
+
+        const accountName = adData?.account_name || null;
+        setPendingAdActivation({ ad, accountName });
+        setShowAdActivationDialog(true);
+      } catch (error) {
+        console.error('Error fetching account name:', error);
+        setPendingAdActivation({ ad, accountName: null });
+        setShowAdActivationDialog(true);
+      }
+      return;
+    }
+    
+    // Se está desligando, seguir fluxo normal
+    await performAdStatusChange(ad, newStatus);
+  };
+
+  const performAdStatusChange = async (ad: any, newStatus: boolean) => {
     const status = newStatus ? 'ACTIVE' : 'PAUSED';
     
     setLocalStatusUpdates(prev => ({ ...prev, [ad.id]: status }));
@@ -107,18 +135,8 @@ const MobileCampaignDetailDialog = ({
       queryClient.invalidateQueries({
         queryKey: ['ads-data', settings.dateFilter]
       });
-      
-      toast({
-        title: "Status atualizado",
-        description: `Anúncio "${ad.name}" ${newStatus ? 'ativado' : 'pausado'} com sucesso.`,
-      });
     } catch (error) {
       console.error('Error updating ad status:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar o status do anúncio.",
-        variant: "destructive",
-      });
       setLocalStatusUpdates(prev => {
         const newState = { ...prev };
         delete newState[ad.id];
@@ -138,11 +156,6 @@ const MobileCampaignDetailDialog = ({
     const budget = parseFloat(tempBudget);
     
     if (isNaN(budget) || budget < 0) {
-      toast({
-        title: "Valor inválido",
-        description: "Por favor, insira um valor válido para o orçamento.",
-        variant: "destructive",
-      });
       return;
     }
 
@@ -172,18 +185,8 @@ const MobileCampaignDetailDialog = ({
       queryClient.invalidateQueries({
         queryKey: ['ads-data', settings.dateFilter]
       });
-      
-      toast({
-        title: "Orçamento atualizado",
-        description: `Orçamento do ${type === 'adset' ? 'conjunto' : 'anúncio'} "${item.name}" alterado para ${formatCurrency(budget)}.`,
-      });
     } catch (error) {
       console.error(`Error updating ${type} budget:`, error);
-      toast({
-        title: "Erro",
-        description: `Não foi possível atualizar o orçamento do ${type === 'adset' ? 'conjunto' : 'anúncio'}.`,
-        variant: "destructive",
-      });
     }
   };
 
@@ -198,6 +201,48 @@ const MobileCampaignDetailDialog = ({
   const handleBudgetCancel = () => {
     setEditingBudget(null);
     setTempBudget('');
+  };
+
+  const handleActivateNow = async () => {
+    if (pendingAdActivation) {
+      setShowAdActivationDialog(false);
+      await performAdStatusChange(pendingAdActivation.ad, true);
+      setPendingAdActivation(null);
+    }
+  };
+
+  const handleCreateRuleForTomorrow = async () => {
+    if (!pendingAdActivation) return;
+
+    const { ad, accountName } = pendingAdActivation;
+    
+    if (!accountName) {
+      setShowAdActivationDialog(false);
+      setPendingAdActivation(null);
+      return;
+    }
+
+    try {
+      const response = await fetch('https://mkthooks.adaptahub.org/webhook/ads-manager/create-rules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ad_id: ad.id,
+          account_name: accountName,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Falha ao criar regra');
+      }
+    } catch (error) {
+      console.error('Error creating rule:', error);
+    } finally {
+      setShowAdActivationDialog(false);
+      setPendingAdActivation(null);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -462,6 +507,40 @@ const MobileCampaignDetailDialog = ({
             <AlertDialogAction onClick={handleBudgetConfirmation}>
               Confirmar
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Ad Activation Dialog */}
+      <AlertDialog open={showAdActivationDialog} onOpenChange={setShowAdActivationDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Você quer:</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 pt-4">
+              <Button 
+                onClick={handleActivateNow}
+                className="w-full"
+                size="lg"
+              >
+                Ligar ad agora
+              </Button>
+              <Button 
+                onClick={handleCreateRuleForTomorrow}
+                variant="outline"
+                className="w-full"
+                size="lg"
+              >
+                Criar regra para ligar amanhã
+              </Button>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowAdActivationDialog(false);
+              setPendingAdActivation(null);
+            }}>
+              Cancelar
+            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

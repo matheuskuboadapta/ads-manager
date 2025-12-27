@@ -39,6 +39,7 @@ interface AdData {
   clicks: number;
   impressions: number;
   dailyBudget: number;
+  accountName?: string;
 }
 
 interface CampaignDetailsData {
@@ -168,7 +169,8 @@ export const useCampaignDetails = (campaignName: string | null, dateFilter: stri
             ctr: 0,
             clickCv: 0,
             epc: 0,
-            dailyBudget: Number(row.daily_budget) || 0
+            dailyBudget: Number(row.daily_budget) || 0,
+            accountName: row.account_name || undefined
           };
 
           existing.spend += spend;

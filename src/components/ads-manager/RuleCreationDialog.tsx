@@ -8,7 +8,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Plus, Trash2, HelpCircle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -62,7 +61,6 @@ const RuleCreationDialog = ({
   accountName,
   onRuleCreated 
 }: RuleCreationDialogProps) => {
-  const { toast } = useToast();
   const { user } = useAuth();
 
   // Form state
@@ -166,20 +164,10 @@ const RuleCreationDialog = ({
     
     // Basic validation
     if (!ruleName) {
-      toast({
-        title: "Formulário incompleto",
-        description: "Por favor, preencha os campos obrigatórios.",
-        variant: "destructive"
-      });
       return;
     }
 
     if (selectedTargets.length === 0) {
-      toast({
-        title: "Nenhum alvo selecionado",
-        description: "Por favor, selecione pelo menos um alvo para aplicar a regra.",
-        variant: "destructive"
-      });
       return;
     }
 
@@ -269,11 +257,6 @@ const RuleCreationDialog = ({
         throw new Error('Erro ao enviar regra para o webhook');
       }
 
-      toast({
-        title: "Regra criada com sucesso",
-        description: `A regra foi salva e será aplicada a ${selectedTargets.length} alvo(s) selecionado(s).`
-      });
-      
       // Close dialog and reset form
       onOpenChange(false);
       resetForm();
@@ -282,11 +265,6 @@ const RuleCreationDialog = ({
       onRuleCreated();
     } catch (error) {
       console.error('Error submitting rule:', error);
-      toast({
-        title: "Erro ao criar regra",
-        description: error instanceof Error ? error.message : "Ocorreu um erro ao enviar a regra",
-        variant: "destructive"
-      });
     }
   };
 

@@ -288,7 +288,7 @@ export function ChatSidebar({ onToggle, onWidthChange }: ChatSidebarProps) {
                   onClick={handleSendMessage}
                   disabled={!inputMessage.trim() || isLoading}
                   loading={isLoading}
-                  loadingText="Enviando..."
+                  loadingText=""
                   size="sm"
                   className="self-end"
                 >

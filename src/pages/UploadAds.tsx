@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { ArrowLeft, Upload, CheckCircle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 import { LoadingButton } from '@/components/ui/loading-button';
 import { useFunnelOptions } from '@/hooks/useFunnelOptions';
 import { useActorOptions } from '@/hooks/useActorOptions';
@@ -16,7 +15,6 @@ import { getNextAdsetGroupName, getLastAdsetGroupName, saveLastAdsetGroupName } 
 
 export default function UploadAds() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [platform, setPlatform] = useState<'meta' | 'youtube'>('meta');
   const { data: funnelOptions, isLoading: isLoadingFunnels, error: funnelError } = useFunnelOptions();
@@ -56,66 +54,31 @@ export default function UploadAds() {
     // Validação básica
     if (platform === 'meta') {
       if (!formData.groupName.trim()) {
-        toast({
-          title: "Erro",
-          description: "Nome do grupo de anúncios é obrigatório",
-          variant: "destructive"
-        });
         return;
       }
 
       if (!formData.actor) {
-        toast({
-          title: "Erro",
-          description: "Ator é obrigatório",
-          variant: "destructive"
-        });
         return;
       }
 
       if (!formData.adAccount) {
-        toast({
-          title: "Erro",
-          description: "Conta de anúncios é obrigatória",
-          variant: "destructive"
-        });
         return;
       }
 
       if (!formData.budget || parseInt(formData.budget) < 1) {
-        toast({
-          title: "Erro",
-          description: "Orçamento deve ser maior que zero",
-          variant: "destructive"
-        });
         return;
       }
 
       if (!formData.startDate) {
-        toast({
-          title: "Erro",
-          description: "Data de início é obrigatória",
-          variant: "destructive"
-        });
         return;
       }
     }
 
     if (!formData.funnel) {
-      toast({
-        title: "Erro",
-        description: "Funil é obrigatório",
-        variant: "destructive"
-      });
       return;
     }
 
     if (!formData.adLinks.trim()) {
-      toast({
-        title: "Erro",
-        description: "Links dos anúncios são obrigatórios",
-        variant: "destructive"
-      });
       return;
     }
 
@@ -179,11 +142,6 @@ export default function UploadAds() {
       });
 
       if (response.ok) {
-        toast({
-          title: "Sucesso!",
-          description: "Dados enviados com sucesso",
-        });
-        
         // Salvar o valor do grupo de anúncios usado (apenas para Meta)
         if (platform === 'meta' && formData.groupName.trim()) {
           saveLastAdsetGroupName(formData.groupName.trim());
@@ -207,11 +165,6 @@ export default function UploadAds() {
       }
     } catch (error) {
       console.error('Erro ao enviar dados:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao enviar dados. Tente novamente.",
-        variant: "destructive"
-      });
     } finally {
       setIsLoading(false);
     }
@@ -440,7 +393,7 @@ export default function UploadAds() {
                   <LoadingButton
                     type="submit"
                     loading={isLoading}
-                    loadingText="Enviando..."
+                    loadingText=""
                     className="flex items-center space-x-2"
                   >
                     <CheckCircle className="h-4 w-4" />

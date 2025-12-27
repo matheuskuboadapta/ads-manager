@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Search, Check, X } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 
 interface TargetItem {
   id: string;
@@ -35,7 +34,6 @@ const TargetSelectionDialog = ({
 }: TargetSelectionDialogProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [localSelectedTargets, setLocalSelectedTargets] = useState<TargetItem[]>(selectedTargets);
-  const { toast } = useToast();
 
   // Filter targets based on search term
   const filteredTargets = targets.filter(target =>
@@ -82,11 +80,6 @@ const TargetSelectionDialog = ({
     onTargetsSelected(localSelectedTargets);
     onOpenChange(false);
     setSearchTerm('');
-    
-    toast({
-      title: "Alvos selecionados",
-      description: `${localSelectedTargets.length} alvo(s) selecionado(s) para aplicar regras.`
-    });
   };
 
   // Handle cancel

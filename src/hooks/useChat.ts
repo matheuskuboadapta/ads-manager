@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useAuth } from './useAuth';
-import { useToast } from './use-toast';
 
 interface ChatMessage {
   id: string;
@@ -20,15 +19,10 @@ export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
-  const { toast } = useToast();
 
   const sendMessage = async (text: string) => {
     if (!user?.email) {
-      toast({
-        title: "Erro",
-        description: "Usuário não autenticado",
-        variant: "destructive",
-      });
+      console.error('Usuário não autenticado');
       return;
     }
 
@@ -81,11 +75,6 @@ export function useChat() {
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       console.error('Chat error:', error);
-      toast({
-        title: "Erro no chat",
-        description: "Não foi possível enviar a mensagem",
-        variant: "destructive",
-      });
     } finally {
       setIsLoading(false);
     }

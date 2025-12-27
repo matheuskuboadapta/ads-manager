@@ -1,6 +1,3 @@
-
-import { useToast } from '@/hooks/use-toast';
-
 const WEBHOOK_URL = 'https://mkthooks.adaptahub.org/webhook/ads-manager';
 const REQUEST_TIMEOUT = 3000; // 3 seconds
 

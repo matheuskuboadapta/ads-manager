@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useToast } from "@/hooks/use-toast";
 
 export default function Auth() {
   const [email, setEmail] = useState("");
@@ -14,7 +13,6 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   useEffect(() => {
     // Check if user is already logged in
@@ -41,10 +39,6 @@ export default function Auth() {
       if (error) throw error;
 
       if (data.user) {
-        toast({
-          title: "Login realizado com sucesso!",
-          description: "Bem-vindo ao Adapta Ads Manager.",
-        });
         window.location.href = "/";
       }
     } catch (error: any) {

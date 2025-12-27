@@ -22,7 +22,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 
 
@@ -189,10 +188,6 @@ const RulesTab = ({ accountName }: RulesTabProps) => {
   const { data: rules, isLoading, error, refetch } = useAdRules();
 
   const [isExcludeDialogOpen, setIsExcludeDialogOpen] = useState(false);
-  
-
-  
-  const { toast } = useToast();
   const { user } = useAuth();
 
   // Filter states
@@ -287,11 +282,6 @@ const RulesTab = ({ accountName }: RulesTabProps) => {
   // Handle exclude selected rules
   const handleExcludeRules = async () => {
     if (selectedRules.size === 0) {
-      toast({
-        title: "Nenhuma regra selecionada",
-        description: "Selecione pelo menos uma regra para excluir.",
-        variant: "destructive"
-      });
       return;
     }
 
@@ -316,11 +306,6 @@ const RulesTab = ({ accountName }: RulesTabProps) => {
         throw new Error('Erro ao excluir regras');
       }
 
-      toast({
-        title: "Regras excluídas",
-        description: `${selectedRules.size} regra(s) foram excluída(s) com sucesso.`
-      });
-
       // Clear selection and refetch rules
       setSelectedRules(new Set());
       setSelectAll(false);
@@ -328,11 +313,6 @@ const RulesTab = ({ accountName }: RulesTabProps) => {
       refetch();
     } catch (error) {
       console.error('Error excluding rules:', error);
-      toast({
-        title: "Erro ao excluir regras",
-        description: error instanceof Error ? error.message : "Ocorreu um erro ao excluir as regras",
-        variant: "destructive"
-      });
     }
   };
 
@@ -374,20 +354,10 @@ const RulesTab = ({ accountName }: RulesTabProps) => {
         throw new Error('Erro ao alterar status da regra');
       }
 
-      toast({
-        title: isActive ? "Regra ativada" : "Regra desativada",
-        description: `A regra foi ${isActive ? 'ativada' : 'desativada'} com sucesso.`
-      });
-      
       // Refetch rules to update the list
       refetch();
     } catch (error) {
       console.error('Error toggling rule:', error);
-      toast({
-        title: "Erro ao alterar regra",
-        description: error instanceof Error ? error.message : "Ocorreu um erro ao alterar o status da regra",
-        variant: "destructive"
-      });
     }
   };
 

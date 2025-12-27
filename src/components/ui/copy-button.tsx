@@ -1,6 +1,5 @@
 import { Copy, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 
 interface CopyButtonProps {
@@ -10,7 +9,6 @@ interface CopyButtonProps {
 
 export const CopyButton = ({ text, className = "" }: CopyButtonProps) => {
   const [copied, setCopied] = useState(false);
-  const { toast } = useToast();
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -18,19 +16,9 @@ export const CopyButton = ({ text, className = "" }: CopyButtonProps) => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
-      
-      toast({
-        title: "Copiado!",
-        description: "Nome copiado para o clipboard.",
-      });
-
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Falha ao copiar para o clipboard.",
-        variant: "destructive",
-      });
+      console.error('Erro ao copiar para o clipboard:', error);
     }
   };
 
