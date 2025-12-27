@@ -10,12 +10,16 @@ interface HomeMetrics {
   todaySpend: number;
   todaySales: number;
   todayProfit: number;
+  todayRevenue: number;
+  todayROAS: number;
   todayCTR: number;
   todayCPM: number;
   todayCPA: number;
   previousDaySpend: number;
   previousDaySales: number;
   previousDayProfit: number;
+  previousDayRevenue: number;
+  previousDayROAS: number;
   previousDayCTR: number;
   previousDayCPM: number;
   previousDayCPA: number;
@@ -23,6 +27,8 @@ interface HomeMetrics {
   last7DaysSpend: number[];
   last7DaysSales: number[];
   last7DaysProfit: number[];
+  last7DaysRevenue: number[];
+  last7DaysROAS: number[];
   last7DaysCTR: number[];
   last7DaysCPM: number[];
   last7DaysCPA: number[];
@@ -150,6 +156,8 @@ export function useHomeMetrics(selectedAccount?: string | null) {
         spend: 0,
         sales: 0,
         profit: 0,
+        revenue: 0,
+        roas: 0,
         ctr: 0,
         cpm: 0,
         cpa: 0,
@@ -161,6 +169,7 @@ export function useHomeMetrics(selectedAccount?: string | null) {
     const totalSpend = filteredTodayAccounts.reduce((sum, acc) => sum + acc.spend, 0);
     const totalProfit = filteredTodayAccounts.reduce((sum, acc) => sum + acc.profit, 0);
     const totalSales = filteredTodayAccounts.reduce((sum, acc) => sum + acc.sales, 0);
+    const totalRevenue = filteredTodayAccounts.reduce((sum, acc) => sum + acc.revenue, 0);
     const totalClicks = filteredTodayAccounts.reduce((sum, acc) => sum + acc.clicks, 0);
     const totalImpressions = filteredTodayAccounts.reduce((sum, acc) => sum + acc.impressions, 0);
 
@@ -168,11 +177,14 @@ export function useHomeMetrics(selectedAccount?: string | null) {
     // Use the same calculation as in useAdsData for consistency
     const totalCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
     const totalCPM = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0;
+    const totalROAS = totalSpend > 0 ? totalRevenue / totalSpend : 0;
 
     const result = {
       spend: totalSpend,
       sales: totalSales,
       profit: totalProfit,
+      revenue: totalRevenue,
+      roas: totalROAS,
       ctr: totalCTR,
       cpm: totalCPM,
       cpa: totalSales > 0 ? totalSpend / totalSales : 0,
@@ -187,6 +199,8 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       totalSpend,
       totalSales,
       totalProfit,
+      totalRevenue,
+      totalROAS,
       totalClicks,
       totalImpressions,
       totalCTR,
@@ -219,6 +233,8 @@ export function useHomeMetrics(selectedAccount?: string | null) {
         spend: 0,
         sales: 0,
         profit: 0,
+        revenue: 0,
+        roas: 0,
         ctr: 0,
         cpm: 0,
         cpa: 0,
@@ -230,17 +246,21 @@ export function useHomeMetrics(selectedAccount?: string | null) {
     const totalSpend = filteredYesterdayAccounts.reduce((sum, acc) => sum + acc.spend, 0);
     const totalProfit = filteredYesterdayAccounts.reduce((sum, acc) => sum + acc.profit, 0);
     const totalSales = filteredYesterdayAccounts.reduce((sum, acc) => sum + acc.sales, 0);
+    const totalRevenue = filteredYesterdayAccounts.reduce((sum, acc) => sum + acc.revenue, 0);
     const totalClicks = filteredYesterdayAccounts.reduce((sum, acc) => sum + acc.clicks, 0);
     const totalImpressions = filteredYesterdayAccounts.reduce((sum, acc) => sum + acc.impressions, 0);
 
     // Calculate CTR and CPM using the same logic as useAccountsData
     const totalCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
     const totalCPM = totalImpressions > 0 ? (totalSpend / totalImpressions) * 1000 : 0;
+    const totalROAS = totalSpend > 0 ? totalRevenue / totalSpend : 0;
 
     const result = {
       spend: totalSpend,
       sales: totalSales,
       profit: totalProfit,
+      revenue: totalRevenue,
+      roas: totalROAS,
       ctr: totalCTR,
       cpm: totalCPM,
       cpa: totalSales > 0 ? totalSpend / totalSales : 0,
@@ -251,6 +271,8 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       totalSpend,
       totalSales,
       totalProfit,
+      totalRevenue,
+      totalROAS,
       totalClicks,
       totalImpressions,
       totalCTR,
@@ -447,6 +469,11 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       return dayAccounts.reduce((sum, acc) => sum + acc.profit, 0);
     });
 
+    const revenue = allDaysData.map(dayAccounts => {
+      if (!dayAccounts || dayAccounts.length === 0) return 0;
+      return dayAccounts.reduce((sum, acc) => sum + acc.revenue, 0);
+    });
+
     const clicks = allDaysData.map(dayAccounts => {
       if (!dayAccounts || dayAccounts.length === 0) return 0;
       return dayAccounts.reduce((sum, acc) => sum + acc.clicks, 0);
@@ -474,14 +501,21 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       return salesVal > 0 ? spendVal / salesVal : 0;
     });
 
+    const roas = spend.map((spendVal, i) => {
+      const revenueVal = revenue[i];
+      return spendVal > 0 ? revenueVal / spendVal : 0;
+    });
+
     console.log('Last 7 days spend values:', spend);
     console.log('Last 7 days sales values:', sales);
     console.log('Last 7 days profit values:', profit);
+    console.log('Last 7 days revenue values:', revenue);
     console.log('Last 7 days clicks values:', clicks);
     console.log('Last 7 days impressions values:', impressions);
     console.log('Last 7 days CTR values:', ctr);
     console.log('Last 7 days CPM values:', cpm);
     console.log('Last 7 days CPA values:', cpa);
+    console.log('Last 7 days ROAS values:', roas);
     
     // Debug: Log detailed breakdown for each day
     console.log('=== DETAILED METRICS BREAKDOWN ===');
@@ -510,7 +544,7 @@ export function useHomeMetrics(selectedAccount?: string | null) {
     
     console.log('=== END LAST 7 DAYS METRICS DEBUG ===');
 
-    return { spend, sales, profit, ctr, cpm, cpa };
+    return { spend, sales, profit, revenue, roas, ctr, cpm, cpa };
   }, [filteredDay0Data, filteredDay1Data, filteredDay2Data, filteredDay3Data, filteredDay4Data, filteredDay5Data, filteredDay6Data, last7DaysFilters]);
 
   const isLoading = todayLoading || yesterdayLoading || day0Data.isLoading || day1Data.isLoading || day2Data.isLoading || day3Data.isLoading || day4Data.isLoading || day5Data.isLoading || day6Data.isLoading;
@@ -519,6 +553,8 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       todaySpend: todayMetrics.spend,
       todaySales: todayMetrics.sales,
       todayProfit: todayMetrics.profit,
+      todayRevenue: todayMetrics.revenue,
+      todayROAS: todayMetrics.roas,
       todayCTR: todayMetrics.ctr,
       todayCPM: todayMetrics.cpm,
       todayCPA: todayMetrics.cpa,
@@ -526,6 +562,8 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       previousDaySpend: yesterdayMetrics.spend,
       previousDaySales: yesterdayMetrics.sales,
       previousDayProfit: yesterdayMetrics.profit,
+      previousDayRevenue: yesterdayMetrics.revenue,
+      previousDayROAS: yesterdayMetrics.roas,
       previousDayCTR: yesterdayMetrics.ctr,
       previousDayCPM: yesterdayMetrics.cpm,
       previousDayCPA: yesterdayMetrics.cpa,
@@ -533,6 +571,8 @@ export function useHomeMetrics(selectedAccount?: string | null) {
       last7DaysSpend: last7DaysMetrics.spend,
       last7DaysSales: last7DaysMetrics.sales,
       last7DaysProfit: last7DaysMetrics.profit,
+      last7DaysRevenue: last7DaysMetrics.revenue,
+      last7DaysROAS: last7DaysMetrics.roas,
       last7DaysCTR: last7DaysMetrics.ctr,
       last7DaysCPM: last7DaysMetrics.cpm,
       last7DaysCPA: last7DaysMetrics.cpa,

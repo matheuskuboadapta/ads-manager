@@ -2,7 +2,7 @@
 import { Clock, User, Activity, BarChart3 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAdLogs } from '@/hooks/useAdLogs';
-import { formatCurrency } from '@/utils/formatters';
+import { formatCurrency, formatCurrencyNoDecimals } from '@/utils/formatters';
 import { Loader2 } from 'lucide-react';
 
 interface LogsViewProps {
@@ -129,7 +129,7 @@ const LogsView = ({ objectId, objectName }: LogsViewProps) => {
       { key: 'daily_budget_per_row', label: 'Orçamento Diário', format: 'currency' },
       { key: 'impressions', label: 'Impressões', format: 'number' },
       { key: 'clicks', label: 'Cliques', format: 'number' },
-      { key: 'cpm', label: 'CPM', format: 'currency' },
+      { key: 'cpm', label: 'CPM', format: 'currency_no_decimals' },
       { key: 'ctr', label: 'CTR', format: 'percentage' },
       { key: 'click_cv', label: 'CLICK CV', format: 'percentage' },
       { key: 'epc', label: 'EPC', format: 'currency' },
@@ -154,6 +154,8 @@ const LogsView = ({ objectId, objectName }: LogsViewProps) => {
       switch (format) {
         case 'currency':
           return formatCurrency(numValue);
+        case 'currency_no_decimals':
+          return formatCurrencyNoDecimals(numValue);
         case 'number':
           return numValue.toLocaleString('pt-BR');
         case 'percentage':

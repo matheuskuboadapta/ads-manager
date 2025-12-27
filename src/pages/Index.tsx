@@ -210,6 +210,19 @@ export default function Index() {
                             Campanhas
                           </Button>
                         </li>
+                        <li>
+                          <Button
+                            variant={activeTab === 'rules' ? 'default' : 'ghost'}
+                            className="w-full justify-start"
+                            onClick={() => {
+                              setActiveTab('rules');
+                              setMobileMenuOpen(false);
+                            }}
+                          >
+                            <Settings className="h-4 w-4 mr-2" />
+                            Regras
+                          </Button>
+                        </li>
                       </ul>
                     </nav>
                     <div className="p-4 border-t space-y-2">

@@ -1,12 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency, formatNumber } from '@/utils/formatters';
+import { formatCurrency, formatCurrencyNoDecimals, formatNumber } from '@/utils/formatters';
 import { MiniChart } from './MiniChart';
 
 interface MetricsScoreCardProps {
   title: string;
   currentValue: number;
   previousValue: number;
-  format: 'currency' | 'number' | 'percentage';
+  format: 'currency' | 'currency_no_decimals' | 'number' | 'percentage' | 'multiplier';
   chartData?: number[];
 }
 
@@ -15,8 +15,12 @@ export function MetricsScorecard({ title, currentValue, previousValue, format, c
     switch (format) {
       case 'currency':
         return formatCurrency(value);
+      case 'currency_no_decimals':
+        return formatCurrencyNoDecimals(value);
       case 'percentage':
         return `${value.toFixed(2)}%`;
+      case 'multiplier':
+        return `${value.toFixed(2)}x`;
       default:
         return formatNumber(value);
     }

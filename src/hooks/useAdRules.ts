@@ -19,7 +19,8 @@ export const useAdRules = () => {
       
       const { data, error } = await supabase
         .from('ad_rules')
-        .select('*');
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching ad rules data:', error);

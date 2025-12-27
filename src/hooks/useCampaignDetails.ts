@@ -11,6 +11,7 @@ interface AdsetData {
   sales: number;
   profit: number;
   cpa: number;
+  cpc: number;
   cpm: number;
   roas: number;
   ctr: number;
@@ -31,6 +32,7 @@ interface AdData {
   sales: number;
   profit: number;
   cpa: number;
+  cpc: number;
   cpm: number;
   roas: number;
   ctr: number;
@@ -131,6 +133,7 @@ export const useCampaignDetails = (campaignName: string | null, dateFilter: stri
             clicks: 0,
             impressions: 0,
             cpa: 0,
+            cpc: 0,
             cpm: 0,
             roas: 0,
             ctr: 0,
@@ -164,6 +167,7 @@ export const useCampaignDetails = (campaignName: string | null, dateFilter: stri
             clicks: 0,
             impressions: 0,
             cpa: 0,
+            cpc: 0,
             cpm: 0,
             roas: 0,
             ctr: 0,
@@ -188,6 +192,7 @@ export const useCampaignDetails = (campaignName: string | null, dateFilter: stri
       const adsets = Array.from(adsetMap.values()).map(adset => ({
         ...adset,
         cpa: adset.sales > 0 ? adset.spend / adset.sales : 0,
+        cpc: adset.clicks > 0 ? adset.spend / adset.clicks : 0,
         cpm: adset.impressions > 0 ? (adset.spend / adset.impressions) * 1000 : 0,
         roas: adset.spend > 0 ? adset.revenue / adset.spend : 0,
         ctr: adset.impressions > 0 ? (adset.clicks / adset.impressions) * 100 : 0,
@@ -199,6 +204,7 @@ export const useCampaignDetails = (campaignName: string | null, dateFilter: stri
       const ads = Array.from(adMap.values()).map(ad => ({
         ...ad,
         cpa: ad.sales > 0 ? ad.spend / ad.sales : 0,
+        cpc: ad.clicks > 0 ? ad.spend / ad.clicks : 0,
         cpm: ad.impressions > 0 ? (ad.spend / ad.impressions) * 1000 : 0,
         roas: ad.spend > 0 ? ad.revenue / ad.spend : 0,
         ctr: ad.impressions > 0 ? (ad.clicks / ad.impressions) * 100 : 0,

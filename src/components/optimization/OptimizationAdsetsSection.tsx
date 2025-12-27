@@ -2,7 +2,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useOptimizationData } from '@/hooks/useOptimizationData';
-import { formatCurrency, formatPercentage, formatNumber } from '@/utils/formatters';
+import { formatCurrency, formatCurrencyNoDecimals, formatPercentage, formatNumber } from '@/utils/formatters';
 
 interface OptimizationAdsetsSectionProps {
   dateRange: number;
@@ -238,8 +238,8 @@ export function OptimizationAdsetsSection({ dateRange }: OptimizationAdsetsSecti
                         <TableCell>{formatCurrency(adset.cpa)}</TableCell>
                         <TableCell>{formatNumber(adset.clicks)}</TableCell>
                         <TableCell>{formatPercentage(adset.ctr)}</TableCell>
-                        <TableCell>{formatCurrency(adset.cpc)}</TableCell>
-                        <TableCell>{formatCurrency(adset.cpm)}</TableCell>
+                        <TableCell>{formatCurrencyNoDecimals(adset.cpc)}</TableCell>
+                        <TableCell>{formatCurrencyNoDecimals(adset.cpm)}</TableCell>
                         <TableCell>{formatCurrency(adset.revenue)}</TableCell>
                         <TableCell>{formatCurrency(adset.profit)}</TableCell>
                         <TableCell>{formatPercentage(adset.roas)}</TableCell>

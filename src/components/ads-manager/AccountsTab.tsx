@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { BarChart3 } from 'lucide-react';
-import { formatCurrency, formatPercentage, getCPAColorClass } from '@/utils/formatters';
+import { formatCurrency, formatCurrencyNoDecimals, formatPercentage, getCPAColorClass } from '@/utils/formatters';
 import { useAccountsData } from '@/hooks/useAdsData';
 import FilterBar from './FilterBar';
 import ColumnOrderDialog from './ColumnOrderDialog';
@@ -243,7 +243,7 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
                           </span>
                         )}
                         {column === 'cpa' && formatCurrency(account.cpa)}
-                        {column === 'cpm' && formatCurrency(account.cpm)}
+                        {column === 'cpm' && formatCurrencyNoDecimals(account.cpm)}
                         {column === 'roas' && (
                           <span className="font-semibold">{account.roas.toFixed(2)}x</span>
                         )}
@@ -281,7 +281,7 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
                           </span>
                         )}
                         {column === 'cpa' && formatCurrency(summaryMetrics.cpa)}
-                        {column === 'cpm' && formatCurrency(summaryMetrics.cpm)}
+                        {column === 'cpm' && formatCurrencyNoDecimals(summaryMetrics.cpm)}
                         {column === 'roas' && (
                           <span className="font-semibold">{summaryMetrics.roas.toFixed(2)}x</span>
                         )}

@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ChevronRight, TrendingUp, TrendingDown, Edit2, Check, X } from 'lucide-react';
-import { formatCurrency, formatPercentage } from '@/utils/formatters';
+import { formatCurrency, formatCurrencyNoDecimals, formatPercentage } from '@/utils/formatters';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 interface MobileCampaignsListProps {
@@ -98,24 +98,39 @@ const MobileCampaignsList = ({
               </div>
 
               {/* Métricas principais */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <p className="text-xs text-gray-500">CTR</p>
-                  <p className="font-semibold text-sm">{formatPercentage(campaign.ctr)}</p>
+              <div className="flex gap-3">
+                {/* Coluna esquerda - métricas principais */}
+                <div className="flex-1 grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-500">CTR</p>
+                    <p className="font-semibold text-sm">{formatPercentage(campaign.ctr)}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-500">CPA</p>
+                    <p className="font-semibold text-sm">
+                      {formatCurrency(campaign.cpa)}
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-500">Gasto</p>
+                    <p className="font-semibold text-sm">{formatCurrency(campaign.spend)}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-500">Vendas</p>
+                    <p className="font-semibold text-sm">{campaign.sales}</p>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-gray-500">CPA</p>
-                  <p className="font-semibold text-sm">
-                    {formatCurrency(campaign.cpa)}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-gray-500">Gasto</p>
-                  <p className="font-semibold text-sm">{formatCurrency(campaign.spend)}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-gray-500">Vendas</p>
-                  <p className="font-semibold text-sm">{campaign.sales}</p>
+
+                {/* Coluna direita - CPC e CPM */}
+                <div className="flex flex-col gap-3 text-right min-w-[80px]">
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-500">CPC</p>
+                    <p className="font-semibold text-sm">{formatCurrencyNoDecimals(campaign.cpc)}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-500">CPM</p>
+                    <p className="font-semibold text-sm">{formatCurrencyNoDecimals(campaign.cpm)}</p>
+                  </div>
                 </div>
               </div>
 

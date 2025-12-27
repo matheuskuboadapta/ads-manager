@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Edit2, Check, X, TrendingUp, TrendingDown } from 'lucide-react';
-import { formatCurrency, formatPercentage } from '@/utils/formatters';
+import { formatCurrency, formatCurrencyNoDecimals, formatPercentage } from '@/utils/formatters';
 import { useCampaignDetails } from '@/hooks/useCampaignDetails';
 import { updateAdset, updateAd } from '@/utils/api';
 import { useAuth } from '@/hooks/useAuth';
@@ -329,24 +329,39 @@ const MobileCampaignDetailDialog = ({
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div>
-                            <p className="text-gray-500">CPA</p>
-                            <p className="font-semibold">
-                              {formatCurrency(adset.cpa)}
-                            </p>
+                        <div className="flex gap-2 text-xs">
+                          {/* Coluna esquerda - métricas principais */}
+                          <div className="flex-1 grid grid-cols-2 gap-2">
+                            <div>
+                              <p className="text-gray-500">CPA</p>
+                              <p className="font-semibold">
+                                {formatCurrency(adset.cpa)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">CTR</p>
+                              <p className="font-semibold">{formatPercentage(adset.ctr)}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Gasto</p>
+                              <p className="font-semibold">{formatCurrency(adset.spend)}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Vendas</p>
+                              <p className="font-semibold">{adset.sales}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-gray-500">CTR</p>
-                            <p className="font-semibold">{formatPercentage(adset.ctr)}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Gasto</p>
-                            <p className="font-semibold">{formatCurrency(adset.spend)}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Vendas</p>
-                            <p className="font-semibold">{adset.sales}</p>
+
+                          {/* Coluna direita - CPC e CPM */}
+                          <div className="flex flex-col gap-2 text-right min-w-[70px]">
+                            <div>
+                              <p className="text-gray-500">CPC</p>
+                              <p className="font-semibold">{formatCurrencyNoDecimals(adset.cpc)}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">CPM</p>
+                              <p className="font-semibold">{formatCurrencyNoDecimals(adset.cpm)}</p>
+                            </div>
                           </div>
                         </div>
 
@@ -450,24 +465,39 @@ const MobileCampaignDetailDialog = ({
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div>
-                            <p className="text-gray-500">CPA</p>
-                            <p className="font-semibold">
-                              {formatCurrency(ad.cpa)}
-                            </p>
+                        <div className="flex gap-2 text-xs">
+                          {/* Coluna esquerda - métricas principais */}
+                          <div className="flex-1 grid grid-cols-2 gap-2">
+                            <div>
+                              <p className="text-gray-500">CPA</p>
+                              <p className="font-semibold">
+                                {formatCurrency(ad.cpa)}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">CTR</p>
+                              <p className="font-semibold">{formatPercentage(ad.ctr)}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Gasto</p>
+                              <p className="font-semibold">{formatCurrency(ad.spend)}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">Vendas</p>
+                              <p className="font-semibold">{ad.sales}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-gray-500">CTR</p>
-                            <p className="font-semibold">{formatPercentage(ad.ctr)}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Gasto</p>
-                            <p className="font-semibold">{formatCurrency(ad.spend)}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Vendas</p>
-                            <p className="font-semibold">{ad.sales}</p>
+
+                          {/* Coluna direita - CPC e CPM */}
+                          <div className="flex flex-col gap-2 text-right min-w-[70px]">
+                            <div>
+                              <p className="text-gray-500">CPC</p>
+                              <p className="font-semibold">{formatCurrencyNoDecimals(ad.cpc)}</p>
+                            </div>
+                            <div>
+                              <p className="text-gray-500">CPM</p>
+                              <p className="font-semibold">{formatCurrencyNoDecimals(ad.cpm)}</p>
+                            </div>
                           </div>
                         </div>
                       </CardContent>

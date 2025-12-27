@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Megaphone, ExternalLink, Play, ChevronDown, ChevronRight, TrendingUp, TrendingDown, Target, Plus, Trash2, Power, PowerOff } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
-import { formatCurrency, formatPercentage, getCPAColorClass } from '@/utils/formatters';
+import { formatCurrency, formatCurrencyNoDecimals, formatPercentage, getCPAColorClass } from '@/utils/formatters';
 import { useAuth } from '@/hooks/useAuth';
 import { updateAd, createCampaign, createAdset } from '@/utils/api';
 import { useAdsListData } from '@/hooks/useAdsData';
@@ -670,7 +670,7 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
                           </span>
                         )}
                         {column === 'cpa' && formatCurrency(ad.cpa)}
-                        {column === 'cpm' && formatCurrency(ad.cpm)}
+                        {column === 'cpm' && formatCurrencyNoDecimals(ad.cpm)}
                         {column === 'roas' && (
                           <span className="font-semibold">{ad.roas.toFixed(2)}x</span>
                         )}
@@ -728,7 +728,7 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
                               </span>
                             )}
                             {column === 'cpa' && formatCurrency(metrics.cpa)}
-                            {column === 'cpm' && formatCurrency(metrics.cpm)}
+                            {column === 'cpm' && formatCurrencyNoDecimals(metrics.cpm)}
                             {column === 'roas' && (
                               <span className="font-semibold">{metrics.roas.toFixed(2)}x</span>
                             )}
@@ -792,7 +792,7 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
                               </span>
                             )}
                             {column === 'cpa' && formatCurrency(metrics.cpa)}
-                            {column === 'cpm' && formatCurrency(metrics.cpm)}
+                            {column === 'cpm' && formatCurrencyNoDecimals(metrics.cpm)}
                             {column === 'roas' && (
                               <span className="font-semibold">{metrics.roas.toFixed(2)}x</span>
                             )}
@@ -875,7 +875,7 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
                             {formatCurrency(summaryMetrics.cpa)}
                           </span>
                         )}
-                        {column === 'cpm' && formatCurrency(summaryMetrics.cpm)}
+                        {column === 'cpm' && formatCurrencyNoDecimals(summaryMetrics.cpm)}
                         {column === 'roas' && (
                           <span className="font-semibold">{summaryMetrics.roas.toFixed(2)}x</span>
                         )}

@@ -2,7 +2,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useOptimizationData } from '@/hooks/useOptimizationData';
-import { formatCurrency, formatPercentage, formatNumber } from '@/utils/formatters';
+import { formatCurrency, formatCurrencyNoDecimals, formatPercentage, formatNumber } from '@/utils/formatters';
 
 interface OptimizationCampaignsSectionProps {
   dateRange: number;
@@ -240,8 +240,8 @@ export function OptimizationCampaignsSection({ dateRange }: OptimizationCampaign
                         <TableCell>{formatCurrency(campaign.cpa)}</TableCell>
                         <TableCell>{formatNumber(campaign.clicks)}</TableCell>
                         <TableCell>{formatPercentage(campaign.ctr)}</TableCell>
-                        <TableCell>{formatCurrency(campaign.cpc)}</TableCell>
-                        <TableCell>{formatCurrency(campaign.cpm)}</TableCell>
+                        <TableCell>{formatCurrencyNoDecimals(campaign.cpc)}</TableCell>
+                        <TableCell>{formatCurrencyNoDecimals(campaign.cpm)}</TableCell>
                         <TableCell>{formatCurrency(campaign.revenue)}</TableCell>
                         <TableCell>{formatCurrency(campaign.profit)}</TableCell>
                         <TableCell>{formatPercentage(campaign.roas)}</TableCell>

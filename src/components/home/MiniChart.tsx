@@ -1,10 +1,10 @@
-import { formatCurrency, formatNumber } from '@/utils/formatters';
+import { formatCurrency, formatCurrencyNoDecimals, formatNumber } from '@/utils/formatters';
 import { format as formatDate } from 'date-fns';
 import { useState } from 'react';
 
 interface MiniChartProps {
   data: number[];
-  format: 'currency' | 'number' | 'percentage';
+  format: 'currency' | 'currency_no_decimals' | 'number' | 'percentage' | 'multiplier';
   className?: string;
 }
 
@@ -66,8 +66,12 @@ export function MiniChart({ data, format, className = "" }: MiniChartProps) {
     switch (format) {
       case 'currency':
         return formatCurrency(value);
+      case 'currency_no_decimals':
+        return formatCurrencyNoDecimals(value);
       case 'percentage':
         return `${value.toFixed(2)}%`;
+      case 'multiplier':
+        return `${value.toFixed(2)}x`;
       default:
         return formatNumber(value);
     }

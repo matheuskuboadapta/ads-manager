@@ -23,6 +23,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useAuth } from '@/hooks/useAuth';
+import { useIsMobile } from '@/hooks/use-mobile';
+import MobileRulesList from './mobile/MobileRulesList';
 
 
 interface RulesTabProps {
@@ -186,6 +188,7 @@ const parseActions = (actions: any): string => {
 
 const RulesTab = ({ accountName }: RulesTabProps) => {
   const { data: rules, isLoading, error, refetch } = useAdRules();
+  const isMobile = useIsMobile();
 
   const [isExcludeDialogOpen, setIsExcludeDialogOpen] = useState(false);
   const { user } = useAuth();
@@ -376,6 +379,29 @@ const RulesTab = ({ accountName }: RulesTabProps) => {
     );
   }
 
+  // Mobile view
+  if (isMobile) {
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Regras</h2>
+        </div>
+        
+        {rules && rules.length > 0 ? (
+          <MobileRulesList 
+            rules={rules} 
+            statusUpdateLoading={false}
+          />
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            Nenhuma regra encontrada.
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop view
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">

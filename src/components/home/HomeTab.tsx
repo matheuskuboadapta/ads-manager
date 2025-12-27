@@ -79,11 +79,11 @@ export function HomeTab() {
           chartData={metrics?.last7DaysSpend}
         />
         <MetricsScorecard
-          title="Vendas"
-          currentValue={metrics?.todaySales || 0}
-          previousValue={metrics?.previousDaySales || 0}
-          format="number"
-          chartData={metrics?.last7DaysSales}
+          title="Retorno"
+          currentValue={metrics?.todayRevenue || 0}
+          previousValue={metrics?.previousDayRevenue || 0}
+          format="currency"
+          chartData={metrics?.last7DaysRevenue}
         />
         <MetricsScorecard
           title="Profit"
@@ -93,10 +93,17 @@ export function HomeTab() {
           chartData={metrics?.last7DaysProfit}
         />
         <MetricsScorecard
+          title="Vendas"
+          currentValue={metrics?.todaySales || 0}
+          previousValue={metrics?.previousDaySales || 0}
+          format="number"
+          chartData={metrics?.last7DaysSales}
+        />
+        <MetricsScorecard
           title="CPM"
           currentValue={metrics?.todayCPM || 0}
           previousValue={metrics?.previousDayCPM || 0}
-          format="currency"
+          format="currency_no_decimals"
           chartData={metrics?.last7DaysCPM}
         />
         <MetricsScorecard
