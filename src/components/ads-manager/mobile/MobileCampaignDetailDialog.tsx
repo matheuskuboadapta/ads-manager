@@ -64,6 +64,9 @@ const MobileCampaignDetailDialog = ({
     try {
       await updateAdset(adset.realId || adset.id, 'status', status, user?.email || '');
       
+      // Wait a bit before invalidating to give the database time to update
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       queryClient.invalidateQueries({
         queryKey: ['ads-data', settings.dateFilter]
       });
@@ -97,6 +100,9 @@ const MobileCampaignDetailDialog = ({
     
     try {
       await updateAd(ad.realId || ad.id, 'status', status, user?.email || '');
+      
+      // Wait a bit before invalidating to give the database time to update
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       queryClient.invalidateQueries({
         queryKey: ['ads-data', settings.dateFilter]
@@ -203,10 +209,10 @@ const MobileCampaignDetailDialog = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto p-0">
+        <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto p-0 rounded-2xl">
           <DialogHeader className="p-4 pb-0 pr-12">
             <DialogTitle className="text-lg truncate pr-2">
-              {campaign.name.length > 20 ? `${campaign.name.substring(0, 20)}...` : campaign.name}
+              {campaign.name.length > 40 ? `${campaign.name.substring(0, 40)}...` : campaign.name}
             </DialogTitle>
           </DialogHeader>
 

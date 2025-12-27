@@ -125,6 +125,7 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
   const isMobile = useIsMobile();
   const [selectedCampaignMobile, setSelectedCampaignMobile] = useState<any>(null);
   const [showMobileDetailDialog, setShowMobileDetailDialog] = useState(false);
+  const [localSelectedAccount, setLocalSelectedAccount] = useState<string | null>(accountId);
 
   // Fechar dropdowns quando clicar fora
   useEffect(() => {
@@ -143,20 +144,42 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
     };
   }, []);
 
-  const { data: campaigns, isLoading, error, updateOptimistic, clearOptimistic } = useCampaignsData(accountId, settings.dateFilter);
+  const { data: campaigns, isLoading, error, updateOptimistic, clearOptimistic } = useCampaignsData(localSelectedAccount, settings.dateFilter);
   const { data: availableAccounts, isLoading: accountsLoading } = useAvailableAccounts();
 
-  // Clear local status updates when campaigns data is refreshed
+  // Sync local account selection with prop
   useEffect(() => {
-    if (campaigns && campaigns.length > 0) {
-      setLocalStatusUpdates({});
+    if (accountId !== localSelectedAccount) {
+      setLocalSelectedAccount(accountId);
     }
-  }, [campaigns]);
+  }, [accountId]);
+
+  // Clear local status updates only when the server data matches the local updates
+  useEffect(() => {
+    if (campaigns && campaigns.length > 0 && Object.keys(localStatusUpdates).length > 0) {
+      // Check if any local status updates have been reflected in the server data
+      const updatesToKeep: { [campaignId: string]: string } = {};
+      
+      Object.entries(localStatusUpdates).forEach(([campaignId, localStatus]) => {
+        const campaign = campaigns.find(c => c.id === campaignId || c.realId === campaignId);
+        
+        // Only keep the local update if the server hasn't updated yet
+        if (campaign && campaign.statusFinal !== localStatus) {
+          updatesToKeep[campaignId] = localStatus;
+        }
+      });
+      
+      // Only update if there are changes
+      if (Object.keys(updatesToKeep).length !== Object.keys(localStatusUpdates).length) {
+        setLocalStatusUpdates(updatesToKeep);
+      }
+    }
+  }, [campaigns, localStatusUpdates]);
 
 
 
-  // Sorting functionality with default sort by CPA descending
-  const { sortedData: sortedCampaigns, handleSort, getSortDirection } = useTableSort(campaigns || [], { column: 'cpa', direction: 'desc' });
+  // Sorting functionality with default sort by spend (valor investido) descending
+  const { sortedData: sortedCampaigns, handleSort, getSortDirection } = useTableSort(campaigns || [], { column: 'spend', direction: 'desc' });
 
   const filteredCampaigns = useMemo(() => {
     if (!sortedCampaigns) return [];
@@ -257,6 +280,10 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
     console.log('Calling updateCampaign with:', { campaignId: campaign.realId, status, userEmail: user?.email });
     await updateCampaign(campaign.realId, 'status', status, user?.email || '');
     console.log('updateCampaign completed successfully');
+    
+    // Wait a bit before invalidating to give the database time to update
+    // This prevents the UI from reverting before the DB is updated
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Invalidate the specific query to force a refresh from the server
     console.log('Invalidating query with key:', ['ads-data', settings.dateFilter]);
@@ -682,9 +709,32 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
     <div className="space-y-4">
       {!isMobile && (
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground">Campanhas</h2>
-            <p className="text-slate-600">Gerencie suas campanhas de anúncios</p>
+          <div className="flex items-center gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-foreground">Campanhas</h2>
+              <p className="text-slate-600">Gerencie suas campanhas de anúncios</p>
+            </div>
+            
+            {/* Account Selector */}
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs text-slate-600">Conta de Anúncios</Label>
+              <Select 
+                value={localSelectedAccount || 'all'} 
+                onValueChange={(value) => setLocalSelectedAccount(value === 'all' ? null : value)}
+              >
+                <SelectTrigger className="w-[250px]">
+                  <SelectValue placeholder="Todas as contas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as contas</SelectItem>
+                  {availableAccounts?.map((account) => (
+                    <SelectItem key={account} value={account}>
+                      {account}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           
           <div className="flex items-center space-x-3">
@@ -765,6 +815,31 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
         </div>
       )}
 
+      {/* Mobile Account Selector */}
+      {isMobile && (
+        <div className="mb-4">
+          <Label className="text-sm font-medium text-slate-700 mb-2 block">
+            Conta de Anúncios
+          </Label>
+          <Select 
+            value={localSelectedAccount || 'all'} 
+            onValueChange={(value) => setLocalSelectedAccount(value === 'all' ? null : value)}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Todas as contas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as contas</SelectItem>
+              {availableAccounts?.map((account) => (
+                <SelectItem key={account} value={account}>
+                  {account}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       <FilterBar
         activeTab="campaigns"
         dateFilter={settings.dateFilter}
@@ -783,6 +858,11 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
             onCampaignClick={handleMobileCampaignClick}
             onStatusChange={handleStatusChange}
             onBudgetEdit={handleBudgetEdit}
+            onBudgetSave={handleBudgetSave}
+            onBudgetCancel={handleBudgetCancel}
+            editingBudget={editingBudget}
+            tempBudget={tempBudget}
+            setTempBudget={setTempBudget}
             statusUpdateLoading={statusUpdateLoading}
             isEditMode={isEditMode}
             localStatusUpdates={localStatusUpdates}

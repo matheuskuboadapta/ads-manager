@@ -207,19 +207,6 @@ export default function Index() {
                         </li>
                         <li>
                           <Button
-                            variant={activeTab === 'accounts' ? 'default' : 'ghost'}
-                            className="w-full justify-start"
-                            onClick={() => {
-                              setActiveTab('accounts');
-                              setMobileMenuOpen(false);
-                            }}
-                          >
-                            <Users className="h-4 w-4 mr-2" />
-                            Contas
-                          </Button>
-                        </li>
-                        <li>
-                          <Button
                             variant={activeTab === 'campaigns' ? 'default' : 'ghost'}
                             className="w-full justify-start"
                             onClick={() => {
@@ -229,45 +216,6 @@ export default function Index() {
                           >
                             <Target className="h-4 w-4 mr-2" />
                             Campanhas
-                          </Button>
-                        </li>
-                        <li>
-                          <Button
-                            variant={activeTab === 'adsets' ? 'default' : 'ghost'}
-                            className="w-full justify-start"
-                            onClick={() => {
-                              setActiveTab('adsets');
-                              setMobileMenuOpen(false);
-                            }}
-                          >
-                            <BarChart3 className="h-4 w-4 mr-2" />
-                            Conjuntos
-                          </Button>
-                        </li>
-                        <li>
-                          <Button
-                            variant={activeTab === 'ads' ? 'default' : 'ghost'}
-                            className="w-full justify-start"
-                            onClick={() => {
-                              setActiveTab('ads');
-                              setMobileMenuOpen(false);
-                            }}
-                          >
-                            <Megaphone className="h-4 w-4 mr-2" />
-                            Anúncios
-                          </Button>
-                        </li>
-                        <li>
-                          <Button
-                            variant={activeTab === 'rules' ? 'default' : 'ghost'}
-                            className="w-full justify-start"
-                            onClick={() => {
-                              setActiveTab('rules');
-                              setMobileMenuOpen(false);
-                            }}
-                          >
-                            <Settings className="h-4 w-4 mr-2" />
-                            Regras
                           </Button>
                         </li>
                       </ul>

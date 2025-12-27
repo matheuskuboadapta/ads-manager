@@ -130,12 +130,27 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
 
   const { data: ads, isLoading, error } = useAdsListData(adsetId, campaignId, settings.dateFilter);
   
-  // Clear local status updates when data is refreshed from server
+  // Clear local status updates only when the server data matches the local updates
   useEffect(() => {
-    if (ads && ads.length > 0) {
-      setLocalStatusUpdates({});
+    if (ads && ads.length > 0 && Object.keys(localStatusUpdates).length > 0) {
+      // Check if any local status updates have been reflected in the server data
+      const updatesToKeep: { [adId: string]: string } = {};
+      
+      Object.entries(localStatusUpdates).forEach(([adId, localStatus]) => {
+        const ad = ads.find(a => a.id === adId);
+        
+        // Only keep the local update if the server hasn't updated yet
+        if (ad && ad.statusFinal !== localStatus) {
+          updatesToKeep[adId] = localStatus;
+        }
+      });
+      
+      // Only update if there are changes
+      if (Object.keys(updatesToKeep).length !== Object.keys(localStatusUpdates).length) {
+        setLocalStatusUpdates(updatesToKeep);
+      }
     }
-  }, [ads]);
+  }, [ads, localStatusUpdates]);
   const { data: availableAccounts, isLoading: accountsLoading } = useAvailableAccounts();
 
 
@@ -235,6 +250,9 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
     console.log('Calling updateAd with:', { adId: ad.id, status, userEmail: user?.email });
     await updateAd(ad.id, 'status', status, user?.email || '');
     console.log('updateAd completed successfully');
+    
+    // Wait a bit before invalidating to give the database time to update
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Invalidate the specific query to force a refresh from the server
     console.log('Invalidating query with key:', ['ads-list-data', adsetId, campaignId, settings.dateFilter]);

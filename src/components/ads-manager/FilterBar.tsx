@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { format, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useEditMode } from '@/contexts/EditModeContext';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export interface DateFilter {
   from: Date;
@@ -37,6 +38,7 @@ const FilterBar = ({
   dateFilter
 }: FilterBarProps) => {
   const { isEditMode } = useEditMode();
+  const isMobile = useIsMobile();
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [customDateRange, setCustomDateRange] = useState<{from: Date | undefined, to: Date | undefined}>({
     from: undefined,
@@ -277,97 +279,99 @@ const FilterBar = ({
             </div>
           )}
 
-          {/* Date Filter */}
-          <div className="space-y-2">
-            <Label className="text-sm font-medium text-slate-700">
-              Período de Visualização
-            </Label>
-            <div className="flex items-center space-x-2">
-              <Select 
-                value={dateFilter?.label || 'Hoje'} 
-                onValueChange={handlePresetSelect}
-              >
-                <SelectTrigger className="flex-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os períodos</SelectItem>
-                  {getPresetDateRanges().map((preset) => (
-                    <SelectItem key={preset.label} value={preset.label}>
-                      {preset.label}
-                    </SelectItem>
-                  ))}
-                  {dateFilter?.label === 'Período personalizado' && (
-                    <SelectItem value="Período personalizado">
-                      Período personalizado
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              
-              {/* Custom Date Picker */}
-              <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-10 w-10"
-                  >
-                    <CalendarIcon className="h-4 w-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    initialFocus
-                    mode="range"
-                    defaultMonth={customDateRange.from}
-                    selected={{from: customDateRange.from, to: customDateRange.to}}
-                    onSelect={handleCustomDateSelect}
-                    numberOfMonths={2}
-                    locale={ptBR}
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-              
-              {(dateFilter || nameFilter || statusFilter !== 'all') && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={clearAllFilters}
-                  className="h-10 w-10"
-                  title="Limpar todos os filtros"
+          {/* Date Filter - Hidden on mobile */}
+          {!isMobile && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-slate-700">
+                Período de Visualização
+              </Label>
+              <div className="flex items-center space-x-2">
+                <Select 
+                  value={dateFilter?.label || 'Hoje'} 
+                  onValueChange={handlePresetSelect}
                 >
-                  <X className="h-4 w-4" />
-                </Button>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os períodos</SelectItem>
+                    {getPresetDateRanges().map((preset) => (
+                      <SelectItem key={preset.label} value={preset.label}>
+                        {preset.label}
+                      </SelectItem>
+                    ))}
+                    {dateFilter?.label === 'Período personalizado' && (
+                      <SelectItem value="Período personalizado">
+                        Período personalizado
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                
+                {/* Custom Date Picker */}
+                <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-10 w-10"
+                    >
+                      <CalendarIcon className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      initialFocus
+                      mode="range"
+                      defaultMonth={customDateRange.from}
+                      selected={{from: customDateRange.from, to: customDateRange.to}}
+                      onSelect={handleCustomDateSelect}
+                      numberOfMonths={2}
+                      locale={ptBR}
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                {(dateFilter || nameFilter || statusFilter !== 'all') && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={clearAllFilters}
+                    className="h-10 w-10"
+                    title="Limpar todos os filtros"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+              
+              {dateFilter && (
+                <p className="text-xs text-slate-500">
+                  {(() => {
+                    // Helper function to get local date string without timezone conversion
+                    const getLocalDateString = (date: Date): string => {
+                      const year = date.getFullYear();
+                      const month = String(date.getMonth() + 1).padStart(2, '0');
+                      const day = String(date.getDate()).padStart(2, '0');
+                      return `${year}-${month}-${day}`;
+                    };
+                    
+                    const fromDate = getLocalDateString(dateFilter.from);
+                    const toDate = getLocalDateString(dateFilter.to);
+                    
+                    if (fromDate === toDate) {
+                      // Same day - show only one date
+                      return format(dateFilter.from, "dd/MM/yyyy", { locale: ptBR });
+                    } else {
+                      // Different days - show range
+                      return `${format(dateFilter.from, "dd/MM/yyyy", { locale: ptBR })} - ${format(dateFilter.to, "dd/MM/yyyy", { locale: ptBR })}`;
+                    }
+                  })()}
+                </p>
               )}
             </div>
-            
-            {dateFilter && (
-              <p className="text-xs text-slate-500">
-                {(() => {
-                  // Helper function to get local date string without timezone conversion
-                  const getLocalDateString = (date: Date): string => {
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    const day = String(date.getDate()).padStart(2, '0');
-                    return `${year}-${month}-${day}`;
-                  };
-                  
-                  const fromDate = getLocalDateString(dateFilter.from);
-                  const toDate = getLocalDateString(dateFilter.to);
-                  
-                  if (fromDate === toDate) {
-                    // Same day - show only one date
-                    return format(dateFilter.from, "dd/MM/yyyy", { locale: ptBR });
-                  } else {
-                    // Different days - show range
-                    return `${format(dateFilter.from, "dd/MM/yyyy", { locale: ptBR })} - ${format(dateFilter.to, "dd/MM/yyyy", { locale: ptBR })}`;
-                  }
-                })()}
-              </p>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </>
