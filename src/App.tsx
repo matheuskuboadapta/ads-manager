@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { EditModeProvider } from "@/contexts/EditModeContext";
+import { OptimisticUpdatesProvider } from "@/contexts/OptimisticUpdatesContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import UploadAds from "./pages/UploadAds";
@@ -11,11 +12,14 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
+const App = () => {
+  console.log('App component rendering');
+  return (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
       <TooltipProvider>
         <EditModeProvider>
+          <OptimisticUpdatesProvider>
           <BrowserRouter>
             <Routes>
               <Route path="/auth" element={<Auth />} />
@@ -33,10 +37,12 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
+          </OptimisticUpdatesProvider>
         </EditModeProvider>
       </TooltipProvider>
     </ThemeProvider>
   </QueryClientProvider>
-);
+  );
+};
 
 export default App;

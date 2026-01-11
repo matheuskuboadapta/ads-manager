@@ -146,6 +146,14 @@ const fetchOptimizationData = async (type: 'campaigns' | 'adsets' | 'ads', dateR
       roas: item.spend > 0 ? (item.revenue / item.spend) * 100 : 0,
     }));
     
+    // Sort by sales (descending) first, then by spend (descending) as tiebreaker
+    result.sort((a, b) => {
+      if (a.sales !== b.sales) {
+        return b.sales - a.sales; // More sales first
+      }
+      return b.spend - a.spend; // Higher spend first as tiebreaker
+    });
+    
     console.log(`Processed ${groupBy}:`, result.length, 'items');
     return result;
   };

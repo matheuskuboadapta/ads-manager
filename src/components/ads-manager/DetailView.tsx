@@ -36,42 +36,6 @@ const DetailView = ({ type, name, id, campaignName, adsetName, onMetricsReady }:
     }
   }, [metricsData, onMetricsReady]);
 
-  // Auto-scroll para mostrar o DetailView completamente
-  useEffect(() => {
-    console.log('DetailView mounted, attempting scroll for:', type, name);
-    
-    // Aguardar o DOM estar pronto e então fazer scroll
-    const attemptScroll = () => {
-      const element = document.querySelector('[data-detail-view]');
-      if (element) {
-        console.log('Found DetailView element, scrolling...');
-        // Scroll para mostrar o elemento com um pouco de espaço acima
-        element.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center',
-          inline: 'nearest'
-        });
-        return true;
-      } else {
-        console.log('DetailView element not found for scroll');
-        return false;
-      }
-    };
-
-    // Tentativa imediata
-    if (!attemptScroll()) {
-      // Se não funcionou, tentar novamente após 300ms
-      const timer = setTimeout(() => {
-        if (!attemptScroll()) {
-          // Última tentativa após 600ms
-          setTimeout(attemptScroll, 300);
-        }
-      }, 300);
-
-      return () => clearTimeout(timer);
-    }
-  }, [type, name, id]); // Reagir quando mudar o item selecionado
-
   useEffect(() => {
     // Reset states quando mudar id/type
     setAiInsights('');

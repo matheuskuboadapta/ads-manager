@@ -77,3 +77,4 @@ Para expandir a responsividade para outras abas (Contas, Conjuntos, Anúncios, R
 2. Use o hook `useIsMobile()` para detectar e alternar entre interfaces
 3. Mantenha a consistência visual com cards e layouts verticais
 4. Preserve todas as funcionalidades essenciais
+

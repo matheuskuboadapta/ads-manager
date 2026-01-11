@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useHourlyMetrics } from '@/hooks/useHomeMetrics';
-import { useGlobalSettings } from '@/hooks/useGlobalSettings';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatCurrency, formatNumber } from '@/utils/formatters';
@@ -9,19 +9,19 @@ type MetricType = 'spend' | 'sales' | 'cpa';
 
 export function HourlyHeatmap() {
   const [selectedMetric, setSelectedMetric] = useState<MetricType>('spend');
-  const { settings } = useGlobalSettings();
-  const { data: hourlyData, isLoading } = useHourlyMetrics(settings.selectedAccount);
+  const { account: selectedAccount } = useUrlFilters();
+  const { data: hourlyData, isLoading } = useHourlyMetrics(selectedAccount);
 
   // Debug: Log when component re-renders
   console.log('=== HOURLY HEATMAP RENDER ===');
-  console.log('Component re-rendering with account:', settings.selectedAccount);
+  console.log('Component re-rendering with account:', selectedAccount);
   console.log('====================================');
 
   // Debug logs
   console.log('=== HOURLY HEATMAP DEBUG ===');
-  console.log('settings.selectedAccount:', settings.selectedAccount);
-  console.log('settings.selectedAccount type:', typeof settings.selectedAccount);
-  console.log('settings.selectedAccount value:', JSON.stringify(settings.selectedAccount));
+  console.log('selectedAccount:', selectedAccount);
+  console.log('selectedAccount type:', typeof selectedAccount);
+  console.log('selectedAccount value:', JSON.stringify(selectedAccount));
   console.log('hourlyData length:', hourlyData?.length || 0);
   console.log('isLoading:', isLoading);
   console.log('Sample hourlyData:', hourlyData?.slice(0, 3));

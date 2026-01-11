@@ -1,6 +1,6 @@
 import { useAuth } from '@/hooks/useAuth';
 import { useHomeMetrics, useAvailableAccounts } from '@/hooks/useHomeMetrics';
-import { useGlobalSettings } from '@/hooks/useGlobalSettings';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -9,8 +9,8 @@ import { HourlyHeatmap } from './HourlyHeatmap';
 
 export function HomeTab() {
   const { user } = useAuth();
-  const { settings, updateSelectedAccount } = useGlobalSettings();
-  const { data: metrics, isLoading: metricsLoading } = useHomeMetrics(settings.selectedAccount);
+  const { account: selectedAccount, setAccount } = useUrlFilters();
+  const { data: metrics, isLoading: metricsLoading } = useHomeMetrics(selectedAccount);
   const { data: availableAccounts, isLoading: isLoadingAccounts } = useAvailableAccounts();
 
   const userName = user?.email?.split('@')[0] || 'Usuário';
@@ -43,14 +43,14 @@ export function HomeTab() {
           <div className="flex items-center space-x-4">
             <label className="text-sm font-medium text-foreground">Filtrar por conta:</label>
             <Select 
-              value={settings.selectedAccount || 'all'} 
+              value={selectedAccount || 'all'} 
               onValueChange={(value) => {
                 console.log('=== ACCOUNT SELECTION DEBUG ===');
                 console.log('Selected value:', value);
-                console.log('Previous selectedAccount:', settings.selectedAccount);
+                console.log('Previous selectedAccount:', selectedAccount);
                 console.log('Will update to:', value === 'all' ? null : value);
                 console.log('==============================');
-                updateSelectedAccount(value === 'all' ? null : value);
+                setAccount(value === 'all' ? null : value);
               }}
             >
               <SelectTrigger className="w-64">
@@ -131,7 +131,7 @@ export function HomeTab() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <HourlyHeatmap key={settings.selectedAccount || 'all'} />
+          <HourlyHeatmap key={selectedAccount || 'all'} />
         </CardContent>
       </Card>
     </div>

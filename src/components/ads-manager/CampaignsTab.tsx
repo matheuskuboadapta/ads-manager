@@ -20,10 +20,11 @@ import { LoadingButton } from '@/components/ui/loading-button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import ColumnOrderDialog from './ColumnOrderDialog';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
-import { useGlobalSettings } from '@/hooks/useGlobalSettings';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
 import { useLoading } from '@/hooks/useLoading';
 import DetailView from './DetailView';
 import { useTableSort } from '@/hooks/useTableSort';
+import { useCustomSort } from '@/hooks/useCustomSort';
 import { SortableHeader } from '@/components/ui/sortable-header';
 import RuleCreationDialog from './RuleCreationDialog';
 import { useAvailableAccounts } from '@/hooks/useHomeMetrics';
@@ -118,7 +119,7 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
   const { loading: bulkUpdateLoading, withLoading: withBulkUpdateLoading } = useLoading();
   
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
-  const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
+  const { search: nameFilter, status: statusFilter, dateFilter, setSearch: updateNameFilter, setStatus: updateStatusFilter, setDateFilter: updateDateFilter, setAccount } = useUrlFilters();
   const { isEditMode } = useEditMode();
   const isMobile = useIsMobile();
   const [selectedCampaignMobile, setSelectedCampaignMobile] = useState<any>(null);
@@ -142,7 +143,7 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
     };
   }, []);
 
-  const { data: campaigns, isLoading, error, updateOptimistic, clearOptimistic } = useCampaignsData(localSelectedAccount, settings.dateFilter);
+  const { data: campaigns, isLoading, error, updateOptimistic, clearOptimistic } = useCampaignsData(localSelectedAccount, dateFilter);
   const { data: availableAccounts, isLoading: accountsLoading } = useAvailableAccounts();
 
   // Sync local account selection with prop
@@ -174,22 +175,23 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
     }
   }, [campaigns, localStatusUpdates]);
 
+  // Apply custom sorting: first by sales (descending), then by spend (descending) as tiebreaker
+  const customSortedCampaigns = useCustomSort(campaigns || []);
 
-
-  // Sorting functionality with default sort by spend (valor investido) descending
-  const { sortedData: sortedCampaigns, handleSort, getSortDirection } = useTableSort(campaigns || [], { column: 'spend', direction: 'desc' });
+  // Keep table sort functionality for manual column sorting
+  const { sortedData: sortedCampaigns, handleSort, getSortDirection } = useTableSort(customSortedCampaigns, { column: 'sales', direction: 'desc' });
 
   const filteredCampaigns = useMemo(() => {
     if (!sortedCampaigns) return [];
 
     return sortedCampaigns.filter(campaign => {
-      const matchesName = campaign.name.toLowerCase().includes(settings.nameFilter.toLowerCase());
-      const matchesStatus = settings.statusFilter === 'all' || 
-        (settings.statusFilter === 'ACTIVE' && campaign.statusFinal === 'ATIVO') ||
-        (settings.statusFilter === 'PAUSED' && campaign.statusFinal === 'DESATIVADA');
+      const matchesName = campaign.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || 
+        (statusFilter === 'ACTIVE' && campaign.statusFinal === 'ATIVO') ||
+        (statusFilter === 'PAUSED' && campaign.statusFinal === 'DESATIVADA');
       return matchesName && matchesStatus;
     });
-  }, [sortedCampaigns, settings.nameFilter, settings.statusFilter]);
+  }, [sortedCampaigns, nameFilter, statusFilter]);
 
   // Coletar todos os CPAs para o color scale (campanhas principais + 3 dias + 7 dias)
   const allCPAs = useMemo(() => {
@@ -284,9 +286,9 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Invalidate the specific query to force a refresh from the server
-    console.log('Invalidating query with key:', ['ads-data', settings.dateFilter]);
+    console.log('Invalidating query with key:', ['ads-data', dateFilter]);
     queryClient.invalidateQueries({
-      queryKey: ['ads-data', settings.dateFilter]
+      queryKey: ['ads-data', dateFilter]
     });
   });
 
@@ -308,7 +310,7 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
     
     // Invalidate the specific query to force a refresh from the server
     queryClient.invalidateQueries({
-      queryKey: ['ads-data', settings.dateFilter]
+      queryKey: ['ads-data', dateFilter]
     });
     
     // Close dialog and reset selection
@@ -323,7 +325,7 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
       
       // Invalidate the specific query to force a refresh from the server
       queryClient.invalidateQueries({
-        queryKey: ['ads-data', settings.dateFilter]
+        queryKey: ['ads-data', dateFilter]
       });
     } catch (error) {
       console.error('Error updating campaign objective:', error);
@@ -638,7 +640,11 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
               <Label className="text-xs text-slate-600">Conta de Anúncios</Label>
               <Select 
                 value={localSelectedAccount || 'all'} 
-                onValueChange={(value) => setLocalSelectedAccount(value === 'all' ? null : value)}
+                onValueChange={(value) => {
+                  const newAccount = value === 'all' ? null : value;
+                  setLocalSelectedAccount(newAccount);
+                  setAccount(newAccount);
+                }}
               >
                 <SelectTrigger className="w-[250px]">
                   <SelectValue placeholder="Todas as contas" />
@@ -741,7 +747,11 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
           </Label>
           <Select 
             value={localSelectedAccount || 'all'} 
-            onValueChange={(value) => setLocalSelectedAccount(value === 'all' ? null : value)}
+            onValueChange={(value) => {
+              const newAccount = value === 'all' ? null : value;
+              setLocalSelectedAccount(newAccount);
+              setAccount(newAccount);
+            }}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Todas as contas" />
@@ -760,9 +770,9 @@ const CampaignsTab = ({ accountId, accountName, onCampaignSelect }: CampaignsTab
 
       <FilterBar
         activeTab="campaigns"
-        dateFilter={settings.dateFilter}
-        nameFilter={settings.nameFilter}
-        statusFilter={settings.statusFilter}
+        dateFilter={dateFilter}
+        nameFilter={nameFilter}
+        statusFilter={statusFilter}
         onDateFilter={updateDateFilter}
         onNameFilter={updateNameFilter}
         onStatusFilter={updateStatusFilter}

@@ -3,6 +3,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { DateFilter } from '@/components/ads-manager/FilterBar';
+import { useOptimisticUpdates } from '@/contexts/OptimisticUpdatesContext';
 
 interface AdsViewData {
   account_name: string | null;
@@ -275,7 +276,10 @@ export const useAccountsData = (dateFilter?: DateFilter | null) => {
 
 export const useCampaignsData = (accountName?: string | null, dateFilter?: DateFilter | null) => {
   const { data: adsData, isLoading, error } = useAdsData(dateFilter);
-  const [optimisticUpdates, setOptimisticUpdates] = React.useState<Record<string, any>>({});
+  const { getUpdates, updateOptimistic: updateOptimisticGlobal, clearOptimistic: clearOptimisticGlobal } = useOptimisticUpdates();
+  
+  // Obtém os updates do contexto global para campanhas
+  const optimisticUpdates = getUpdates('campaign');
 
   const campaignsData = React.useMemo(() => {
     if (!adsData) return [];
@@ -348,27 +352,24 @@ export const useCampaignsData = (accountName?: string | null, dateFilter?: DateF
     return campaigns;
   }, [adsData, accountName, optimisticUpdates]);
 
+  // Wrapper para manter a interface compatível
   const updateOptimistic = React.useCallback((adId: string, updates: any) => {
-    setOptimisticUpdates(prev => ({
-      ...prev,
-      [adId]: { ...prev[adId], ...updates }
-    }));
-  }, []);
+    updateOptimisticGlobal(adId, updates, 'campaign');
+  }, [updateOptimisticGlobal]);
 
   const clearOptimistic = React.useCallback((adId: string) => {
-    setOptimisticUpdates(prev => {
-      const newUpdates = { ...prev };
-      delete newUpdates[adId];
-      return newUpdates;
-    });
-  }, []);
+    clearOptimisticGlobal(adId);
+  }, [clearOptimisticGlobal]);
 
   return { data: campaignsData, isLoading, error, updateOptimistic, clearOptimistic };
 };
 
-export const useAdsetsData = (campaignName?: string | null, dateFilter?: DateFilter | null) => {
+export const useAdsetsData = (campaignName?: string | null, dateFilter?: DateFilter | null, accountName?: string | null) => {
   const { data: adsData, isLoading, error } = useAdsData(dateFilter);
-  const [optimisticUpdates, setOptimisticUpdates] = React.useState<Record<string, any>>({});
+  const { getUpdates, updateOptimistic: updateOptimisticGlobal, clearOptimistic: clearOptimisticGlobal } = useOptimisticUpdates();
+  
+  // Obtém os updates do contexto global para adsets
+  const optimisticUpdates = getUpdates('adset');
 
   const adsetsData = React.useMemo(() => {
     if (!adsData) return [];
@@ -380,12 +381,14 @@ export const useAdsetsData = (campaignName?: string | null, dateFilter?: DateFil
 
     console.log('=== ADSETS DATA PROCESSING ===');
     console.log('Processing adsets data for campaign:', campaignName);
+    console.log('Processing adsets data for account:', accountName);
     console.log('Total raw ads data records:', adsData.length);
     
     // Group by adset_name and sum all metrics
     const adsetsMap = new Map<string, any>();
 
     adsData
+      .filter(row => !accountName || row.account_name === accountName)
       .filter(row => !campaignName || row.campaign_name?.toLowerCase().includes(campaignName.toLowerCase()))
       .forEach(row => {
         if (!row.adset_name) return;
@@ -440,33 +443,30 @@ export const useAdsetsData = (campaignName?: string | null, dateFilter?: DateFil
     console.log('Final processed adsets:', adsets.length);
     console.log('=== END ADSETS DATA PROCESSING ===');
     return adsets;
-  }, [adsData, campaignName, optimisticUpdates]);
+  }, [adsData, campaignName, accountName, optimisticUpdates]);
 
+  // Wrapper para manter a interface compatível
   const updateOptimistic = React.useCallback((adId: string, updates: any) => {
-    setOptimisticUpdates(prev => ({
-      ...prev,
-      [adId]: { ...prev[adId], ...updates }
-    }));
-  }, []);
+    updateOptimisticGlobal(adId, updates, 'adset');
+  }, [updateOptimisticGlobal]);
 
   const clearOptimistic = React.useCallback((adId: string) => {
-    setOptimisticUpdates(prev => {
-      const newUpdates = { ...prev };
-      delete newUpdates[adId];
-      return newUpdates;
-    });
-  }, []);
+    clearOptimisticGlobal(adId);
+  }, [clearOptimisticGlobal]);
 
   return { data: adsetsData, isLoading, error, updateOptimistic, clearOptimistic };
 };
 
-export const useAdsListData = (adsetName?: string | null, campaignName?: string | null, dateFilter?: DateFilter | null) => {
-  const [optimisticUpdates, setOptimisticUpdates] = React.useState<Record<string, any>>({});
+export const useAdsListData = (adsetName?: string | null, campaignName?: string | null, dateFilter?: DateFilter | null, accountName?: string | null) => {
+  const { getUpdates, updateOptimistic: updateOptimisticGlobal, clearOptimistic: clearOptimisticGlobal } = useOptimisticUpdates();
+  
+  // Obtém os updates do contexto global para ads
+  const optimisticUpdates = getUpdates('ad');
 
   const query = useQuery({
-    queryKey: ['ads-list-data', adsetName, campaignName, dateFilter],
+    queryKey: ['ads-list-data', adsetName, campaignName, dateFilter, accountName],
     queryFn: async () => {
-      console.log('Fetching ads list data with video links for adset:', adsetName, 'and campaign:', campaignName);
+      console.log('Fetching ads list data with video links for adset:', adsetName, 'campaign:', campaignName, 'account:', accountName);
       
       // Build query for meta_ads_view with date filter
       let query = supabase.from('meta_ads_view').select('*');
@@ -484,6 +484,10 @@ export const useAdsListData = (adsetName?: string | null, campaignName?: string 
       } else {
         console.log('No date filter provided - returning empty array');
         return [];
+      }
+      
+      if (accountName) {
+        query = query.eq('account_name', accountName);
       }
       
       if (adsetName) {
@@ -560,47 +564,46 @@ export const useAdsListData = (adsetName?: string | null, campaignName?: string 
         ad.impressions += row.impressions || 0;
       });
 
-      const ads = Array.from(adsMap.values()).map(ad => {
-        const updates = optimisticUpdates[ad.id] || {};
-        const finalAd = {
-          ...ad,
-          ...updates,
-          cpa: ad.sales > 0 ? ad.spend / ad.sales : 0,
-          cpm: ad.impressions > 0 ? (ad.spend / ad.impressions) * 1000 : 0,
-          cpc: ad.clicks > 0 ? ad.spend / ad.clicks : 0,
-          ctr: ad.impressions > 0 ? (ad.clicks / ad.impressions) * 100 : 0,
-          clickCv: ad.clicks > 0 ? (ad.sales / ad.clicks) * 100 : 0,
-          epc: ad.clicks > 0 ? ad.revenue / ad.clicks : 0,
-          roas: ad.spend > 0 ? ad.revenue / ad.spend : 0,
-        };
-        
-        return finalAd;
-      });
-
-      console.log('Processed ads with video links:', ads.length);
-      return ads;
+      return { adsMap, optimisticUpdates };
     },
     staleTime: 15 * 60 * 1000,
     refetchInterval: 15 * 60 * 1000,
   });
 
+  // Processa os ads com os optimistic updates (fora da queryFn para reagir a mudanças)
+  const processedData = React.useMemo(() => {
+    if (!query.data) return [];
+    
+    const { adsMap } = query.data as { adsMap: Map<string, any>, optimisticUpdates: Record<string, any> };
+    
+    return Array.from(adsMap.values()).map(ad => {
+      const updates = optimisticUpdates[ad.id] || {};
+      return {
+        ...ad,
+        ...updates,
+        cpa: ad.sales > 0 ? ad.spend / ad.sales : 0,
+        cpm: ad.impressions > 0 ? (ad.spend / ad.impressions) * 1000 : 0,
+        cpc: ad.clicks > 0 ? ad.spend / ad.clicks : 0,
+        ctr: ad.impressions > 0 ? (ad.clicks / ad.impressions) * 100 : 0,
+        clickCv: ad.clicks > 0 ? (ad.sales / ad.clicks) * 100 : 0,
+        epc: ad.clicks > 0 ? ad.revenue / ad.clicks : 0,
+        roas: ad.spend > 0 ? ad.revenue / ad.spend : 0,
+      };
+    });
+  }, [query.data, optimisticUpdates]);
+
+  // Wrapper para manter a interface compatível
   const updateOptimistic = React.useCallback((adId: string, updates: any) => {
-    setOptimisticUpdates(prev => ({
-      ...prev,
-      [adId]: { ...prev[adId], ...updates }
-    }));
-  }, []);
+    updateOptimisticGlobal(adId, updates, 'ad');
+  }, [updateOptimisticGlobal]);
 
   const clearOptimistic = React.useCallback((adId: string) => {
-    setOptimisticUpdates(prev => {
-      const newUpdates = { ...prev };
-      delete newUpdates[adId];
-      return newUpdates;
-    });
-  }, []);
+    clearOptimisticGlobal(adId);
+  }, [clearOptimisticGlobal]);
 
   return { 
-    ...query, 
+    ...query,
+    data: processedData,
     updateOptimistic, 
     clearOptimistic 
   };

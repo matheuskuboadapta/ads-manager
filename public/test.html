@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #333; }
+        .status { 
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            background: #4CAF50;
+            color: white;
+        }
+        .instructions {
+            background: #f9f9f9;
+            padding: 15px;
+            border-left: 4px solid #2196F3;
+            margin: 20px 0;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✅ Servidor Funcionando!</h1>
+        
+        <div class="status">
+            <strong>Status:</strong> O servidor Vite está rodando corretamente.
+        </div>
+
+        <div class="instructions">
+            <h2>Instruções para Resolver a Tela Branca:</h2>
+            
+            <h3>1. Limpar Cache do Navegador</h3>
+            <p>Pressione <code>Cmd + Shift + R</code> (Mac) ou <code>Ctrl + Shift + R</code> (Windows/Linux) para fazer um hard refresh.</p>
+            
+            <h3>2. Abrir o Console do Navegador</h3>
+            <p>Pressione <code>Cmd + Option + J</code> (Mac) ou <code>F12</code> (Windows/Linux) e verifique se há erros na aba Console.</p>
+            
+            <h3>3. Verificar a Aba Network</h3>
+            <p>Na aba Network do DevTools, verifique se todos os arquivos estão carregando com status 200.</p>
+            
+            <h3>4. Testar em Modo Anônimo</h3>
+            <p>Abra uma janela anônima/privada e teste a aplicação.</p>
+            
+            <h3>5. Acessar a Aplicação</h3>
+            <p>Acesse: <a href="http://localhost:8080/">http://localhost:8080/</a></p>
+        </div>
+
+        <h2>Funcionalidade de Navegação por Teclado</h2>
+        <p>A navegação por teclado foi implementada com sucesso:</p>
+        <ul>
+            <li><strong>Tecla A:</strong> Navega para a tab à esquerda</li>
+            <li><strong>Tecla D:</strong> Navega para a tab à direita</li>
+        </ul>
+        
+        <p><strong>Ordem das tabs:</strong> Home → Contas → Campanhas → Conjuntos → Anúncios → Regras</p>
+
+        <h2>Informações Técnicas</h2>
+        <ul>
+            <li>Build: ✅ Compilando sem erros</li>
+            <li>TypeScript: ✅ Sem erros de tipo</li>
+            <li>Linter: ✅ Sem erros</li>
+            <li>Servidor: ✅ Rodando na porta 8080</li>
+        </ul>
+    </div>
+
+    <script>
+        console.log('✅ Test page loaded successfully');
+        console.log('Server is responding correctly');
+        console.log('If you see this message, your browser and server are working fine');
+    </script>
+</body>
+</html>
+

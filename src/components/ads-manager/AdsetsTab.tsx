@@ -18,9 +18,10 @@ import { useAdsetsData } from '@/hooks/useAdsData';
 import FilterBar from './FilterBar';
 import ColumnOrderDialog from './ColumnOrderDialog';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
-import { useGlobalSettings } from '@/hooks/useGlobalSettings';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
 import DetailView from './DetailView';
 import { useTableSort } from '@/hooks/useTableSort';
+import { useCustomSort } from '@/hooks/useCustomSort';
 import { SortableHeader } from '@/components/ui/sortable-header';
 import RuleCreationDialog from './RuleCreationDialog';
 import { useAvailableAccounts } from '@/hooks/useHomeMetrics';
@@ -97,8 +98,9 @@ const AdsetsTab = ({ campaignId, accountName, onAdsetSelect }: AdsetsTabProps) =
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
   
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
-  const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
+  const { search: nameFilter, status: statusFilter, dateFilter, setSearch: updateNameFilter, setStatus: updateStatusFilter, setDateFilter: updateDateFilter, account: selectedAccount, setAccount } = useUrlFilters();
   const { isEditMode } = useEditMode();
+  const [localSelectedAccount, setLocalSelectedAccount] = useState<string | null>(selectedAccount);
 
   // Fechar dropdowns quando clicar fora
   useEffect(() => {
@@ -117,25 +119,33 @@ const AdsetsTab = ({ campaignId, accountName, onAdsetSelect }: AdsetsTabProps) =
     };
   }, []);
 
-  const { data: adsetsData, isLoading, error, updateOptimistic, clearOptimistic } = useAdsetsData(campaignId, settings.dateFilter);
+  const { data: adsetsData, isLoading, error, updateOptimistic, clearOptimistic } = useAdsetsData(campaignId, dateFilter, localSelectedAccount);
   const { data: availableAccounts, isLoading: accountsLoading } = useAvailableAccounts();
 
+  // Sync local account selection with URL param
+  useEffect(() => {
+    if (selectedAccount !== localSelectedAccount) {
+      setLocalSelectedAccount(selectedAccount);
+    }
+  }, [selectedAccount]);
 
+  // Apply custom sorting: first by sales (descending), then by spend (descending) as tiebreaker
+  const customSortedAdsets = useCustomSort(adsetsData || []);
 
-  // Sorting functionality with default sort by CPA descending
-  const { sortedData: sortedAdsets, handleSort, getSortDirection } = useTableSort(adsetsData || [], { column: 'cpa', direction: 'desc' });
+  // Keep table sort functionality for manual column sorting
+  const { sortedData: sortedAdsets, handleSort, getSortDirection } = useTableSort(customSortedAdsets, { column: 'sales', direction: 'desc' });
 
   const filteredAdsets = useMemo(() => {
     if (!sortedAdsets) return [];
 
     return sortedAdsets.filter(adset => {
-      const matchesName = adset.name.toLowerCase().includes(settings.nameFilter.toLowerCase());
-      const matchesStatus = settings.statusFilter === 'all' || 
-        (settings.statusFilter === 'ACTIVE' && adset.statusFinal === 'ATIVO') ||
-        (settings.statusFilter === 'PAUSED' && adset.statusFinal === 'DESATIVADA');
+      const matchesName = adset.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || 
+        (statusFilter === 'ACTIVE' && adset.statusFinal === 'ATIVO') ||
+        (statusFilter === 'PAUSED' && adset.statusFinal === 'DESATIVADA');
       return matchesName && matchesStatus;
     });
-  }, [sortedAdsets, settings.nameFilter, settings.statusFilter]);
+  }, [sortedAdsets, nameFilter, statusFilter]);
 
   // Coletar todos os CPAs para o color scale (conjuntos principais + 3 dias + 7 dias)
   const allCPAs = useMemo(() => {
@@ -459,10 +469,38 @@ const AdsetsTab = ({ campaignId, accountName, onAdsetSelect }: AdsetsTabProps) =
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Conjuntos de Anúncios</h2>
-          <p className="text-slate-600">Configure orçamentos e públicos-alvo</p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Conjuntos de Anúncios</h2>
+            <p className="text-slate-600">Configure orçamentos e públicos-alvo</p>
+          </div>
+          
+          {/* Account Selector */}
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs text-slate-600">Conta de Anúncios</Label>
+            <Select 
+              value={localSelectedAccount || 'all'} 
+              onValueChange={(value) => {
+                const newAccount = value === 'all' ? null : value;
+                setLocalSelectedAccount(newAccount);
+                setAccount(newAccount);
+              }}
+            >
+              <SelectTrigger className="w-[250px]">
+                <SelectValue placeholder="Todas as contas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as contas</SelectItem>
+                {availableAccounts?.map((account) => (
+                  <SelectItem key={account} value={account}>
+                    {account}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+        
         <div className="flex items-center space-x-3">
           <Badge variant="secondary" className="px-3 py-1">
             {filteredAdsets.length} conjuntos
@@ -534,9 +572,9 @@ const AdsetsTab = ({ campaignId, accountName, onAdsetSelect }: AdsetsTabProps) =
         onNameFilter={updateNameFilter}
         onStatusFilter={updateStatusFilter}
         onDateFilter={updateDateFilter}
-        nameFilter={settings.nameFilter}
-        statusFilter={settings.statusFilter}
-        dateFilter={settings.dateFilter}
+        nameFilter={nameFilter}
+        statusFilter={statusFilter}
+        dateFilter={dateFilter}
       />
 
       {!filteredAdsets || filteredAdsets.length === 0 ? (

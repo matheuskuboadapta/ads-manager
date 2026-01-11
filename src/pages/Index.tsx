@@ -4,12 +4,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LoadingButton } from '@/components/ui/loading-button';
+import { LoadingOverlay } from '@/components/ui/loading-overlay';
 import { RefreshCw, Users, Target, BarChart3, Megaphone, Settings, LogOut, Home, Upload } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
-import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import { useLoading } from '@/hooks/useLoading';
 import { useNavigate } from 'react-router-dom';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
 import AccountsTab from '@/components/ads-manager/AccountsTab';
 import CampaignsTab from '@/components/ads-manager/CampaignsTab';
 import AdsetsTab from '@/components/ads-manager/AdsetsTab';
@@ -20,17 +21,22 @@ import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu } from 'lucide-react';
+import { useKeyboardNavigation } from '@/hooks/useKeyboardNavigation';
 
 export default function Index() {
-  const [activeTab, setActiveTab] = useState('home');
-  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
-  const [selectedCampaign, setSelectedCampaign] = useState<string | null>(null);
-  const [selectedAdset, setSelectedAdset] = useState<string | null>(null);
+  // Use URL-based filters for tab, account, campaign, and adset
+  const { 
+    tab: activeTab, 
+    account: selectedAccount, 
+    campaign: selectedCampaign, 
+    adset: selectedAdset, 
+    setFilters
+  } = useUrlFilters();
+  
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatWidth, setChatWidth] = useState(400);
   const queryClient = useQueryClient();
   const { user, signOut } = useAuth();
-  const { updateNameFilter } = useGlobalSettings();
   const { loading: globalLoading, withLoading: withGlobalLoading } = useLoading();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -74,10 +80,13 @@ export default function Index() {
     console.log('Account selected:', accountName);
     console.log('Previous selectedAccount:', selectedAccount);
     
-    setSelectedAccount(accountName);
-    setSelectedCampaign(null);
-    setSelectedAdset(null);
-    setActiveTab('campaigns');
+    // Update all params at once to avoid sync issues
+    setFilters({
+      account: accountName,
+      campaign: null,
+      adset: null,
+      tab: 'campaigns'
+    });
     
     console.log('State will be updated to:', {
       selectedAccount: accountName,
@@ -94,13 +103,14 @@ export default function Index() {
     console.log('Current selectedAccount:', selectedAccount);
     console.log('Previous selectedCampaign:', selectedCampaign);
     
-    setSelectedCampaign(campaignName);
-    setSelectedAdset(null);
-    setActiveTab('adsets');
-    
-    // Clear the name filter when navigating to adsets tab
-    // This prevents the campaign search filter from being applied to adset names
-    updateNameFilter('');
+    // Update all params at once to avoid sync issues
+    // Clear the search filter when navigating to adsets tab
+    setFilters({
+      campaign: campaignName,
+      adset: null,
+      tab: 'adsets',
+      search: ''
+    });
     
     console.log('State will be updated to:', {
       selectedAccount: selectedAccount,
@@ -117,8 +127,11 @@ export default function Index() {
     console.log('Current selectedCampaign:', selectedCampaign);
     console.log('Previous selectedAdset:', selectedAdset);
     
-    setSelectedAdset(adsetName);
-    setActiveTab('ads');
+    // Update all params at once to avoid sync issues
+    setFilters({
+      adset: adsetName,
+      tab: 'ads'
+    });
     
     console.log('State will be updated to:', {
       selectedCampaign: selectedCampaign,
@@ -133,29 +146,48 @@ export default function Index() {
     console.log('Tab changed to:', tab);
     console.log('Previous tab:', activeTab);
     
-    setActiveTab(tab);
-    
-    // Clear selections when accessing tabs directly
+    // Clear selections when accessing tabs directly using setFilters for atomic updates
     if (tab === 'home') {
-      setSelectedAccount(null);
-      setSelectedCampaign(null);
-      setSelectedAdset(null);
+      setFilters({
+        tab: 'home',
+        account: null,
+        campaign: null,
+        adset: null
+      });
       console.log('Cleared all selections for', tab, 'tab');
     } else if (tab === 'accounts') {
-      setSelectedAccount(null);
-      setSelectedCampaign(null);
-      setSelectedAdset(null);
+      setFilters({
+        tab: 'accounts',
+        account: null,
+        campaign: null,
+        adset: null
+      });
       console.log('Cleared all selections for accounts tab');
     } else if (tab === 'campaigns') {
-      setSelectedCampaign(null);
-      setSelectedAdset(null);
+      setFilters({
+        tab: 'campaigns',
+        campaign: null,
+        adset: null
+      });
       console.log('Cleared campaign and adset selections for campaigns tab');
     } else if (tab === 'adsets') {
-      setSelectedAdset(null);
+      setFilters({
+        tab: 'adsets',
+        adset: null
+      });
       console.log('Cleared adset selection for adsets tab');
+    } else {
+      setFilters({ tab });
     }
     console.log('==========================');
   };
+
+  // Enable keyboard navigation (A/D keys to navigate between tabs)
+  useKeyboardNavigation({
+    currentTab: activeTab,
+    onTabChange: handleTabChange,
+    enabled: true,
+  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -189,7 +221,7 @@ export default function Index() {
                             variant={activeTab === 'home' ? 'default' : 'ghost'}
                             className="w-full justify-start"
                             onClick={() => {
-                              setActiveTab('home');
+                              handleTabChange('home');
                               setMobileMenuOpen(false);
                             }}
                           >
@@ -202,25 +234,12 @@ export default function Index() {
                             variant={activeTab === 'campaigns' ? 'default' : 'ghost'}
                             className="w-full justify-start"
                             onClick={() => {
-                              setActiveTab('campaigns');
+                              handleTabChange('campaigns');
                               setMobileMenuOpen(false);
                             }}
                           >
                             <Target className="h-4 w-4 mr-2" />
                             Campanhas
-                          </Button>
-                        </li>
-                        <li>
-                          <Button
-                            variant={activeTab === 'rules' ? 'default' : 'ghost'}
-                            className="w-full justify-start"
-                            onClick={() => {
-                              setActiveTab('rules');
-                              setMobileMenuOpen(false);
-                            }}
-                          >
-                            <Settings className="h-4 w-4 mr-2" />
-                            Regras
                           </Button>
                         </li>
                       </ul>
@@ -290,7 +309,7 @@ export default function Index() {
               variant="outline" 
               size="sm"
               loading={globalLoading}
-              loadingText=""
+              loadingText={isMobile ? "" : "Atualizando..."}
               className={isMobile ? "p-2" : ""}
             >
               <RefreshCw className={`h-4 w-4 ${!isMobile ? 'mr-2' : ''}`} />
@@ -374,6 +393,12 @@ export default function Index() {
           </div>
         </main>
       </div>
+      
+      {/* Global Loading Overlay */}
+      <LoadingOverlay 
+        isVisible={globalLoading} 
+        text="Atualizando dados..." 
+      />
     </div>
   );
 }

@@ -141,3 +141,4 @@ Após resolver o problema, remova o componente de debug:
 - [Documentação RLS](https://supabase.com/docs/guides/auth/row-level-security)
 - [SQL Editor no Supabase](https://supabase.com/dashboard/project/_/sql)
 
+

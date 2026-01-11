@@ -20,10 +20,11 @@ import { useAdsListData } from '@/hooks/useAdsData';
 import FilterBar from './FilterBar';
 import ColumnOrderDialog from './ColumnOrderDialog';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
-import { useGlobalSettings } from '@/hooks/useGlobalSettings';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
 import { useLoading } from '@/hooks/useLoading';
 import DetailView from './DetailView';
 import { useTableSort } from '@/hooks/useTableSort';
+import { useCustomSort } from '@/hooks/useCustomSort';
 import { SortableHeader } from '@/components/ui/sortable-header';
 import RuleCreationDialog from './RuleCreationDialog';
 import { useAvailableAccounts } from '@/hooks/useHomeMetrics';
@@ -106,8 +107,9 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
   const [bulkStatusValue, setBulkStatusValue] = useState<'ATIVO' | 'DESATIVADO'>('ATIVO');
   
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
-  const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
+  const { search: nameFilter, status: statusFilter, dateFilter, setSearch: updateNameFilter, setStatus: updateStatusFilter, setDateFilter: updateDateFilter, account: selectedAccount, setAccount } = useUrlFilters();
   const { isEditMode } = useEditMode();
+  const [localSelectedAccount, setLocalSelectedAccount] = useState<string | null>(selectedAccount);
 
   // Fechar dropdowns quando clicar fora
   useEffect(() => {
@@ -126,7 +128,15 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
     };
   }, []);
 
-  const { data: ads, isLoading, error } = useAdsListData(adsetId, campaignId, settings.dateFilter);
+  const { data: ads, isLoading, error } = useAdsListData(adsetId, campaignId, dateFilter, localSelectedAccount);
+  const { data: availableAccounts, isLoading: accountsLoading } = useAvailableAccounts();
+
+  // Sync local account selection with URL param
+  useEffect(() => {
+    if (selectedAccount !== localSelectedAccount) {
+      setLocalSelectedAccount(selectedAccount);
+    }
+  }, [selectedAccount]);
   
   // Clear local status updates only when the server data matches the local updates
   useEffect(() => {
@@ -149,24 +159,24 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
       }
     }
   }, [ads, localStatusUpdates]);
-  const { data: availableAccounts, isLoading: accountsLoading } = useAvailableAccounts();
 
+  // Apply custom sorting: first by sales (descending), then by spend (descending) as tiebreaker
+  const customSortedAds = useCustomSort(ads || []);
 
-
-  // Sorting functionality with default sort by CPA descending
-  const { sortedData: sortedAds, handleSort, getSortDirection } = useTableSort(ads || [], { column: 'cpa', direction: 'desc' });
+  // Keep table sort functionality for manual column sorting
+  const { sortedData: sortedAds, handleSort, getSortDirection } = useTableSort(customSortedAds, { column: 'sales', direction: 'desc' });
 
   const filteredAds = useMemo(() => {
     if (!sortedAds) return [];
 
     return sortedAds.filter(ad => {
-      const matchesName = ad.name.toLowerCase().includes(settings.nameFilter.toLowerCase());
-      const matchesStatus = settings.statusFilter === 'all' || 
-        (settings.statusFilter === 'ACTIVE' && ad.statusFinal === 'ATIVO') ||
-        (settings.statusFilter === 'PAUSED' && ad.statusFinal === 'DESATIVADO');
+      const matchesName = ad.name.toLowerCase().includes(nameFilter.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || 
+        (statusFilter === 'ACTIVE' && ad.statusFinal === 'ATIVO') ||
+        (statusFilter === 'PAUSED' && ad.statusFinal === 'DESATIVADO');
       return matchesName && matchesStatus;
     });
-  }, [sortedAds, settings.nameFilter, settings.statusFilter]);
+  }, [sortedAds, nameFilter, statusFilter]);
 
   // Coletar todos os CPAs para o color scale (anúncios principais + 3 dias + 7 dias)
   const allCPAs = useMemo(() => {
@@ -253,9 +263,9 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Invalidate the specific query to force a refresh from the server
-    console.log('Invalidating query with key:', ['ads-list-data', adsetId, campaignId, settings.dateFilter]);
+    console.log('Invalidating query with key:', ['ads-list-data', adsetId, campaignId, dateFilter]);
     queryClient.invalidateQueries({
-      queryKey: ['ads-list-data', adsetId, campaignId, settings.dateFilter]
+      queryKey: ['ads-list-data', adsetId, campaignId, dateFilter]
     });
   });
 
@@ -286,9 +296,9 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
     await Promise.all(updatePromises);
     
     // Invalidate the specific query to force a refresh from the server
-    console.log('Invalidating bulk query with key:', ['ads-list-data', adsetId, campaignId, settings.dateFilter]);
+    console.log('Invalidating bulk query with key:', ['ads-list-data', adsetId, campaignId, dateFilter]);
     queryClient.invalidateQueries({
-      queryKey: ['ads-list-data', adsetId, campaignId, settings.dateFilter]
+      queryKey: ['ads-list-data', adsetId, campaignId, dateFilter]
     });
     
     // Close dialog and reset selection
@@ -441,10 +451,38 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Anúncios</h2>
-          <p className="text-muted-foreground">Visualize o desempenho individual dos anúncios</p>
+        <div className="flex items-center gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground">Anúncios</h2>
+            <p className="text-muted-foreground">Visualize o desempenho individual dos anúncios</p>
+          </div>
+          
+          {/* Account Selector */}
+          <div className="flex flex-col gap-1">
+            <Label className="text-xs text-slate-600">Conta de Anúncios</Label>
+            <Select 
+              value={localSelectedAccount || 'all'} 
+              onValueChange={(value) => {
+                const newAccount = value === 'all' ? null : value;
+                setLocalSelectedAccount(newAccount);
+                setAccount(newAccount);
+              }}
+            >
+              <SelectTrigger className="w-[250px]">
+                <SelectValue placeholder="Todas as contas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as contas</SelectItem>
+                {availableAccounts?.map((account) => (
+                  <SelectItem key={account} value={account}>
+                    {account}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
+        
         <div className="flex items-center space-x-3">
           <Badge variant="secondary" className="px-3 py-1">
             {filteredAds.length} anúncios
@@ -517,9 +555,9 @@ const AdsTab = ({ adsetId, campaignId, accountName }: AdsTabProps) => {
         onNameFilter={updateNameFilter}
         onStatusFilter={updateStatusFilter}
         onDateFilter={updateDateFilter}
-        nameFilter={settings.nameFilter}
-        statusFilter={settings.statusFilter}
-        dateFilter={settings.dateFilter}
+        nameFilter={nameFilter}
+        statusFilter={statusFilter}
+        dateFilter={dateFilter}
       />
 
       {!ads || ads.length === 0 ? (

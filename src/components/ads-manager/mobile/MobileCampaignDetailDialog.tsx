@@ -13,7 +13,7 @@ import { useCampaignDetails } from '@/hooks/useCampaignDetails';
 import { updateAdset, updateAd } from '@/utils/api';
 import { useAuth } from '@/hooks/useAuth';
 import { useQueryClient } from '@tanstack/react-query';
-import { useGlobalSettings } from '@/hooks/useGlobalSettings';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -32,7 +32,7 @@ const MobileCampaignDetailDialog = ({
 }: MobileCampaignDetailDialogProps) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { settings } = useGlobalSettings();
+  const { dateFilter } = useUrlFilters();
   const [activeTab, setActiveTab] = useState<'adsets' | 'ads'>('adsets');
   const [editingBudget, setEditingBudget] = useState<string | null>(null);
   const [tempBudget, setTempBudget] = useState<string>('');
@@ -45,7 +45,7 @@ const MobileCampaignDetailDialog = ({
 
   const { data: campaignDetails, isLoading: detailsLoading } = useCampaignDetails(
     campaign?.name || null,
-    settings.dateFilter,
+    dateFilter,
     isOpen
   );
 

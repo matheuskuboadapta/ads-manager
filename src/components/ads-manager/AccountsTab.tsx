@@ -8,8 +8,9 @@ import { useAccountsData } from '@/hooks/useAdsData';
 import FilterBar from './FilterBar';
 import ColumnOrderDialog from './ColumnOrderDialog';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
-import { useGlobalSettings } from '@/hooks/useGlobalSettings';
+import { useUrlFilters } from '@/hooks/useUrlFilters';
 import { useTableSort } from '@/hooks/useTableSort';
+import { useCustomSort } from '@/hooks/useCustomSort';
 import { SortableHeader } from '@/components/ui/sortable-header';
 
 interface AccountsTabProps {
@@ -18,23 +19,26 @@ interface AccountsTabProps {
 
 const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
   const { columnOrders, updateColumnOrder, resetColumnOrder, getVisibleColumns, getAllColumns, isColumnVisible, toggleColumnVisibility } = useColumnOrder();
-  const { settings, updateDateFilter, updateNameFilter, updateStatusFilter } = useGlobalSettings();
+  const { search: nameFilter, status: statusFilter, dateFilter, setSearch: updateNameFilter, setStatus: updateStatusFilter, setDateFilter: updateDateFilter } = useUrlFilters();
   
   // Sempre carregar dados, mesmo que o dateFilter seja null
-  const { data: accounts, isLoading, error } = useAccountsData(settings.dateFilter);
+  const { data: accounts, isLoading, error } = useAccountsData(dateFilter);
 
-  // Sorting functionality with default sort by CPA descending
-  const { sortedData: sortedAccounts, handleSort, getSortDirection } = useTableSort(accounts || [], { column: 'cpa', direction: 'desc' });
+  // Apply custom sorting: first by sales (descending), then by spend (descending) as tiebreaker
+  const customSortedAccounts = useCustomSort(accounts || []);
+
+  // Keep table sort functionality for manual column sorting
+  const { sortedData: sortedAccounts, handleSort, getSortDirection } = useTableSort(customSortedAccounts, { column: 'sales', direction: 'desc' });
 
   // Filtrar contas por nome
   const filteredAccounts = useMemo(() => {
     if (!sortedAccounts) return [];
 
     return sortedAccounts.filter(account => {
-      const matchesName = account.name.toLowerCase().includes(settings.nameFilter.toLowerCase());
+      const matchesName = account.name.toLowerCase().includes(nameFilter.toLowerCase());
       return matchesName;
     });
-  }, [sortedAccounts, settings.nameFilter]);
+  }, [sortedAccounts, nameFilter]);
 
   // Cálculo das métricas de resumo
   const summaryMetrics = useMemo(() => {
@@ -114,9 +118,9 @@ const AccountsTab = ({ onAccountSelect }: AccountsTabProps) => {
         onNameFilter={updateNameFilter}
         onStatusFilter={updateStatusFilter}
         onDateFilter={updateDateFilter}
-        nameFilter={settings.nameFilter}
-        statusFilter={settings.statusFilter}
-        dateFilter={settings.dateFilter}
+        nameFilter={nameFilter}
+        statusFilter={statusFilter}
+        dateFilter={dateFilter}
       />
 
       {/* Tabela sempre visível */}

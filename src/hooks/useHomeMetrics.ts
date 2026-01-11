@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { useAccountsData } from '@/hooks/useAdsData';
-import { useGlobalSettings } from '@/hooks/useGlobalSettings';
 import { useMemo, useState, useEffect } from 'react';
 import React from 'react';
 
@@ -45,7 +44,6 @@ interface HourlyMetrics {
 
 // Create a custom hook that uses the same logic as AccountsTab
 export function useHomeMetrics(selectedAccount?: string | null) {
-  const { settings } = useGlobalSettings();
   
   // Use the same date filter logic as AccountsTab - NO substitutions
   const todayFilter = useMemo(() => {
